@@ -10,13 +10,13 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="bg-[#1e467c] py-20 text-white">
+      <section className="bg-[rgb(30,70,124)] py-20 text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
-            <h1 className="mb-6 text-balance text-4xl font-bold md:text-5xl">
+            <h1 className="hero-h1 mb-6 text-balance">
               Sobre FUDENSA
             </h1>
-            <p className="text-pretty text-lg leading-relaxed text-white/90 md:text-xl">
+            <p className="text-pretty leading-relaxed text-white/90 md:text-xl font-[Montserrat] text-[18px]">
               Fundación para el Desarrollo de la Enfermería y la Salud
             </p>
           </div>

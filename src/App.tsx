@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Palette, LayoutDashboard, Menu, X, Award } from "lucide-react";
+import { Palette, LayoutDashboard, Menu, X, Award, User, LogIn, LogOut } from "lucide-react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
 import { Home } from "./pages/Home";
@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "./components/ui/dropdown-menu";
+import { toast } from "sonner@2.0.3";
 
 type Page =
   | "home"
@@ -41,12 +42,18 @@ type Page =
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
   const [currentCourseId, setCurrentCourseId] = useState<string | undefined>();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const handleNavigate = (page: string, courseId?: string) => {
     setCurrentPage(page as Page);
     if (courseId) {
       setCurrentCourseId(courseId);
     }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentPage("home");
   };
 
   // Admin, Lesson Player, and Evaluation have their own layouts
@@ -80,10 +87,14 @@ export default function App() {
   // All other pages use the standard layout with navbar and footer
   return (
     <div className="flex min-h-screen flex-col">
-      <AppNavbar onNavigate={handleNavigate} />
+      <AppNavbar 
+        onNavigate={handleNavigate} 
+        isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
+      />
       
       <main className="flex-1">
-        {currentPage === "home" && <Home onNavigate={handleNavigate} />}
+        {currentPage === "home" && <Home onNavigate={handleNavigate} isLoggedIn={isLoggedIn} />}
         {currentPage === "catalog" && <CourseCatalog onNavigate={handleNavigate} />}
         {currentPage === "course" && <CourseDetail onNavigate={handleNavigate} />}
         {currentPage === "checkout" && <Checkout onNavigate={handleNavigate} />}
@@ -113,6 +124,45 @@ export default function App() {
             className="w-56"
             sideOffset={5}
           >
+            <DropdownMenuItem 
+              onClick={(e) => {
+                e.preventDefault();
+                setIsLoggedIn(!isLoggedIn);
+                toast.success(
+                  isLoggedIn 
+                    ? "Vista de visitante activada" 
+                    : "Vista de usuario autenticado activada"
+                );
+                if (!isLoggedIn) {
+                  handleNavigate("home");
+                }
+              }}
+              className="cursor-pointer"
+            >
+              {isLoggedIn ? (
+                <>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Ver como Visitante
+                </>
+              ) : (
+                <>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Ver como Usuario Autenticado
+                </>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={(e) => {
+                e.preventDefault();
+                handleNavigate("profile");
+              }}
+              className="cursor-pointer"
+            >
+              <User className="mr-2 h-4 w-4" />
+              Perfil de Usuario
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={(e) => {
                 e.preventDefault();

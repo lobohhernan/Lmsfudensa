@@ -17,6 +17,7 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
+  Menu,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
@@ -60,6 +61,12 @@ import {
 } from "../components/ui/dialog";
 import { Textarea } from "../components/ui/textarea";
 import { Label } from "../components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from "../components/ui/sheet";
 
 interface AdminPanelProps {
   onNavigate?: (page: string) => void;
@@ -212,6 +219,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactUser, setContactUser] = useState<{ name: string; email: string } | null>(null);
   const [contactMessage, setContactMessage] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     // Load courses from localStorage or use defaults
@@ -279,48 +287,78 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     { id: "certificates", label: "Certificados", icon: Award },
   ];
 
+  const SidebarContent = () => (
+    <>
+      <div className="flex h-16 items-center border-b px-6">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1e467c]">
+            <span className="text-sm font-bold text-white">F</span>
+          </div>
+          <span className="font-bold text-[#0F172A]">FUDENSA Admin</span>
+        </div>
+      </div>
+      <nav className="space-y-1 p-4">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id as any);
+                setSidebarOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors",
+                activeTab === item.id
+                  ? "bg-[#1e467c] text-white"
+                  : "text-[#64748B] hover:bg-[#F1F5F9]"
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </>
+  );
+
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <aside className="hidden w-64 border-r bg-white lg:block">
-        <div className="flex h-16 items-center border-b px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1e467c]">
-              <span className="text-sm font-bold text-white">F</span>
-            </div>
-            <span className="font-bold text-[#0F172A]">FUDENSA Admin</span>
-          </div>
-        </div>
-        <nav className="space-y-1 p-4">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id as any)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors",
-                  activeTab === item.id
-                    ? "bg-[#1e467c] text-white"
-                    : "text-[#64748B] hover:bg-[#F1F5F9]"
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
+        <SidebarContent />
       </aside>
+
+      {/* Mobile Sidebar (Sheet) */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-64 p-0">
+          <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
+          <SheetDescription className="sr-only">
+            Menú de navegación del panel de administración
+          </SheetDescription>
+          <SidebarContent />
+        </SheetContent>
+      </Sheet>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Header */}
         <header className="sticky top-0 z-10 border-b bg-white">
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-            <h1 className="text-[#0F172A]">
-              {menuItems.find((m) => m.id === activeTab)?.label}
-            </h1>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <h1 className="text-[#0F172A]">
+                {menuItems.find((m) => m.id === activeTab)?.label}
+              </h1>
+            </div>
             <Button variant="outline" onClick={() => onNavigate?.("home")}>
               Ver Sitio Web
             </Button>
@@ -332,48 +370,68 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* Dashboard */}
           {activeTab === "dashboard" && (
             <div className="space-y-6">
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm">Total Estudiantes</CardTitle>
-                    <Users className="h-4 w-4 text-[#64748B]" />
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <Card 
+                  className="cursor-pointer transition-all hover:shadow-lg hover:border-[#0B5FFF]"
+                  onClick={() => setActiveTab("users")}
+                >
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Total Estudiantes</CardTitle>
+                      <Users className="h-8 w-8 text-[#0B5FFF]" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl">52,340</div>
-                    <p className="text-xs text-[#64748B]">+12% desde el mes pasado</p>
+                  <CardContent className="space-y-2">
+                    <div className="text-4xl">52,340</div>
+                    <p className="text-sm text-[#64748B]">+12% desde el mes pasado</p>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm">Cursos Activos</CardTitle>
-                    <BookOpen className="h-4 w-4 text-[#64748B]" />
+                <Card 
+                  className="cursor-pointer transition-all hover:shadow-lg hover:border-[#0B5FFF]"
+                  onClick={() => setActiveTab("courses")}
+                >
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Cursos Activos</CardTitle>
+                      <BookOpen className="h-8 w-8 text-[#16A34A]" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl">24</div>
-                    <p className="text-xs text-[#64748B]">3 en borrador</p>
+                  <CardContent className="space-y-2">
+                    <div className="text-4xl">24</div>
+                    <p className="text-sm text-[#64748B]">3 en borrador</p>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm">Certificados Emitidos</CardTitle>
-                    <Award className="h-4 w-4 text-[#64748B]" />
+                <Card 
+                  className="cursor-pointer transition-all hover:shadow-lg hover:border-[#0B5FFF]"
+                  onClick={() => setActiveTab("certificates")}
+                >
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Certificados Emitidos</CardTitle>
+                      <Award className="h-8 w-8 text-[#F59E0B]" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl">18,450</div>
-                    <p className="text-xs text-[#64748B]">+245 esta semana</p>
+                  <CardContent className="space-y-2">
+                    <div className="text-4xl">18,450</div>
+                    <p className="text-sm text-[#64748B]">+245 esta semana</p>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm">Ingresos del Mes</CardTitle>
-                    <CreditCard className="h-4 w-4 text-[#64748B]" />
+                <Card 
+                  className="cursor-pointer transition-all hover:shadow-lg hover:border-[#0B5FFF]"
+                  onClick={() => setActiveTab("payments")}
+                >
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Ingresos del Mes</CardTitle>
+                      <CreditCard className="h-8 w-8 text-[#22C55E]" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl">ARS $1.890.000</div>
-                    <p className="text-xs text-[#64748B]">+8% desde el mes pasado</p>
+                  <CardContent className="space-y-2">
+                    <div className="text-4xl">ARS $1.890.000</div>
+                    <p className="text-sm text-[#64748B]">+8% desde el mes pasado</p>
                   </CardContent>
                 </Card>
               </div>

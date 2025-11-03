@@ -159,6 +159,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [evaluationData, setEvaluationData] = useState<EvaluationQuestion[]>([]);
   const [courseTitle, setCourseTitle] = useState("");
@@ -422,10 +423,20 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
       {/* Header */}
       <div className="sticky top-0 z-10 border-b bg-white">
         <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h1 className="text-[#0F172A]">Evaluación Final</h1>
-              <p className="text-sm text-[#64748B]">{courseTitle}</p>
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowExitDialog(true)}
+              >
+                <ChevronLeft className="h-5 w-5" />
+                <span className="hidden sm:inline">Volver al contenido</span>
+              </Button>
+              <div>
+                <h1 className="text-[#0F172A]">Evaluación Final</h1>
+                <p className="text-sm text-[#64748B]">{courseTitle}</p>
+              </div>
             </div>
             <Badge variant="outline" className="gap-1">
               <Clock className="h-3 w-3" />
@@ -558,6 +569,28 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSubmit}>
               Enviar de todas formas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Exit Confirmation Dialog */}
+      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Abandonar el examen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Si abandonas ahora, perderás todo el progreso de esta evaluación. 
+              Tendrás que comenzar nuevamente si deseas realizarla.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, continuar examen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowExitDialog(false);
+              onNavigate?.("lesson");
+            }}>
+              Sí, abandonar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

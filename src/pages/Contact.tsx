@@ -46,12 +46,14 @@ export function Contact({ onNavigate }: ContactProps) {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-[#1e467c] to-[#2a5a9e] px-4 py-20 text-white">
-        <div className="mx-auto max-w-4xl text-center">
-          <h1 className="mb-6">Contacto</h1>
-          <p className="mx-auto max-w-2xl text-lg text-white/90">
-            ¿Tienes alguna pregunta? Estamos aquí para ayudarte. Contáctanos y te responderemos lo antes posible.
-          </p>
+      <section className="bg-[rgb(30,70,124)] py-20 text-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+          <div className="mx-auto max-w-3xl text-center">
+            <h1 className="hero-h1 mb-6">Contacto</h1>
+            <p className="text-pretty leading-relaxed text-white/90 md:text-xl font-[Montserrat] text-[18px]">
+              ¿Tienes alguna pregunta? Estamos aquí para ayudarte.
+            </p>
+          </div>
         </div>
       </section>
 

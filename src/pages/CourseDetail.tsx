@@ -102,11 +102,13 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
                 <div className="flex items-center gap-1">
                   <Star className="h-5 w-5 fill-[#F59E0B] text-[#F59E0B]" />
                   <span className="font-medium text-[#0F172A]">4.9</span>
-                  <span>(2,450 valoraciones)</span>
+                  <span className="hidden sm:inline">(2,450 valoraciones)</span>
+                  <span className="sm:hidden">(2.4k)</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Users className="h-5 w-5" />
-                  <span>12,450 estudiantes</span>
+                  <span className="hidden sm:inline">12,450 estudiantes</span>
+                  <span className="sm:hidden">12.4k estudiantes</span>
                 </div>
               </div>
             </div>
@@ -129,13 +131,69 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
               </div>
             </div>
 
+            {/* Mobile CTA Buttons - Show only on mobile */}
+            <div className="lg:hidden">
+              <Card>
+                <CardContent className="space-y-4 p-4">
+                  <div className="grid grid-cols-2 gap-3 text-sm text-[#64748B]">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>8 horas</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4" />
+                      <span>Básico</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      <span>Español</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Award className="h-4 w-4" />
+                      <span>Certificado</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 border-t pt-4">
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={() => onNavigate?.("lesson")}
+                    >
+                      <Play className="mr-2 h-5 w-5" />
+                      Estudiar Gratis
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      size="lg"
+                      onClick={() => onNavigate?.("checkout")}
+                    >
+                      <Award className="mr-2 h-5 w-5" />
+                      Obtener Certificado
+                    </Button>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-[#64748B]">Precio certificado</span>
+                      <span className="text-xl font-bold text-[#0F172A]">ARS $29.900</span>
+                    </div>
+                    <p className="mt-2 text-xs text-[#64748B]">
+                      * Pago procesado mediante Mercado Pago
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Tabs */}
             <Tabs defaultValue="description" className="w-full">
               <TabsList className="w-full justify-start">
-                <TabsTrigger value="description">Descripción</TabsTrigger>
-                <TabsTrigger value="content">Contenido</TabsTrigger>
-                <TabsTrigger value="reviews">Reseñas</TabsTrigger>
-                <TabsTrigger value="instructor">Instructor</TabsTrigger>
+                <TabsTrigger value="description" className="flex-none">Descripción</TabsTrigger>
+                <TabsTrigger value="content" className="flex-none">Contenido</TabsTrigger>
+                <TabsTrigger value="reviews" className="flex-none">Reseñas</TabsTrigger>
+                <TabsTrigger value="instructor" className="flex-none">Instructor</TabsTrigger>
               </TabsList>
 
               <TabsContent value="description" className="space-y-4 pt-6">
@@ -291,8 +349,8 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
             </Tabs>
           </div>
 
-          {/* Sidebar */}
-          <aside className="space-y-6">
+          {/* Sidebar - Desktop Only */}
+          <aside className="hidden space-y-6 lg:block">
             <Card className="sticky top-24">
               <CardContent className="space-y-6 p-6">
                 <div className="space-y-4">

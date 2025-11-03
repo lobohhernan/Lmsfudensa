@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, CheckCircle, MessageSquare, Play, Pause, Volume2, Maximize, Award } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, MessageSquare, Play, Pause, Volume2, Maximize, Award, List } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
 import { LessonList, Lesson } from "../components/LessonList";
@@ -47,6 +47,7 @@ export function LessonPlayer({ onNavigate }: LessonPlayerProps) {
   const [currentLesson, setCurrentLesson] = useState("3");
   const [isPlaying, setIsPlaying] = useState(false);
   const [lessonProgress, setLessonProgress] = useState(35);
+  const [showSidebar, setShowSidebar] = useState(false);
   const currentLessonData = lessons.find((l) => l.id === currentLesson);
   const currentIndex = lessons.findIndex((l) => l.id === currentLesson);
   const completedCount = lessons.filter((l) => l.completed).length;
@@ -86,7 +87,7 @@ export function LessonPlayer({ onNavigate }: LessonPlayerProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* Video Player Area */}
         <div className="flex flex-1 flex-col overflow-y-auto">
-          <div className="mx-auto w-full max-w-5xl p-4 lg:p-6">
+          <div className="mx-auto w-full max-w-5xl p-4 lg:p-6 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {/* Video Player */}
             <div className="relative mb-6 overflow-hidden rounded-lg bg-black">
               <div className="relative aspect-video">
@@ -166,138 +167,77 @@ export function LessonPlayer({ onNavigate }: LessonPlayerProps) {
                     <ChevronRight className="ml-2 h-5 w-5" />
                   </Button>
                 )}
+                {/* Mobile Course Content Button */}
+                <Button
+                  variant="outline"
+                  className="lg:hidden"
+                  onClick={() => setShowSidebar(!showSidebar)}
+                >
+                  <List className="mr-2 h-5 w-5" />
+                  Contenido del curso
+                </Button>
               </div>
             </div>
 
-            {/* Tabs */}
-            <Tabs defaultValue="description" className="w-full">
-              <TabsList>
-                <TabsTrigger value="description">Descripción</TabsTrigger>
-                <TabsTrigger value="comments">
-                  Comentarios ({comments.length})
-                </TabsTrigger>
-                <TabsTrigger value="help">Ayuda</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="description" className="pt-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <p className="text-[#64748B]">
-                      En esta lección aprenderás a reconocer los signos y síntomas de un paro
-                      cardíaco. Es fundamental identificar rápidamente la situación para poder
-                      actuar de manera efectiva y aumentar las posibilidades de supervivencia de
-                      la víctima.
-                    </p>
-                    <div className="mt-6">
-                      <h3 className="mb-3 text-[#0F172A]">Puntos clave:</h3>
-                      <ul className="space-y-2 text-[#64748B]">
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
-                          <span>Evaluación de consciencia y respiración</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
-                          <span>Activación del sistema de emergencias</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
-                          <span>Verificación del pulso carotídeo</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
-                          <span>Reconocimiento de signos de paro cardíaco</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="comments" className="space-y-4 pt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Deja tu comentario</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Textarea
-                      placeholder="Escribe tu pregunta o comentario..."
-                      className="min-h-[100px]"
-                    />
-                    <Button>Publicar comentario</Button>
-                  </CardContent>
-                </Card>
-
-                {comments.map((comment) => (
-                  <Card key={comment.id}>
-                    <CardContent className="p-6">
-                      <div className="mb-3 flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <Avatar>
-                            <AvatarImage src={comment.avatar} alt={comment.author} />
-                            <AvatarFallback>{comment.author[0]}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-[#0F172A]">{comment.author}</p>
-                            <p className="text-sm text-[#64748B]">{comment.time}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mb-3 text-[#64748B]">{comment.content}</p>
-                      <Button variant="ghost" size="sm">
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        {comment.replies} respuestas
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </TabsContent>
-
-              <TabsContent value="help" className="pt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>¿Necesitas ayuda?</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h3 className="mb-2 text-[#0F172A]">Preguntas frecuentes</h3>
-                      <div className="space-y-3 text-[#64748B]">
-                        <div>
-                          <p className="font-medium text-[#0F172A]">
-                            ¿Cómo marco una lección como completada?
-                          </p>
-                          <p>
-                            Haz clic en el botón "Marcar como completada" al finalizar la lección.
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-[#0F172A]">
-                            ¿Puedo volver a ver las lecciones?
-                          </p>
-                          <p>Sí, puedes acceder al contenido las veces que necesites.</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t pt-4">
-                      <h3 className="mb-2 text-[#0F172A]">Contacto</h3>
-                      <p className="text-[#64748B]">
-                        Si tienes alguna pregunta, contáctanos por WhatsApp: +54 11 1234-5678
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+            {/* Description Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Descripción</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-[#64748B]">
+                  En esta lección aprenderás a reconocer los signos y síntomas de un paro
+                  cardíaco. Es fundamental identificar rápidamente la situación para poder
+                  actuar de manera efectiva y aumentar las posibilidades de supervivencia de
+                  la víctima.
+                </p>
+                <div>
+                  <h3 className="mb-3 text-[#0F172A]">Puntos clave:</h3>
+                  <ul className="space-y-2 text-[#64748B]">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
+                      <span>Evaluación de consciencia y respiración</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
+                      <span>Activación del sistema de emergencias</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
+                      <span>Verificación del pulso carotídeo</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
+                      <span>Reconocimiento de signos de paro cardíaco</span>
+                    </li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
         {/* Sidebar - Lesson List */}
-        <aside className="hidden w-96 border-l bg-white lg:block">
-          <div className="h-full overflow-y-auto p-6">
-            <h3 className="mb-4 text-[#0F172A]">Contenido del curso</h3>
+        <aside className={`${showSidebar ? 'fixed inset-0 z-50 bg-white' : 'hidden'} w-full lg:relative lg:block lg:w-96 lg:border-l`}>
+          <div className="flex h-full flex-col overflow-y-auto p-6">
+            <div className="mb-4 flex items-center justify-between lg:block">
+              <h3 className="text-[#0F172A]">Contenido del curso</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden"
+                onClick={() => setShowSidebar(false)}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            </div>
             <LessonList
               lessons={lessons}
               currentLessonId={currentLesson}
-              onLessonClick={setCurrentLesson}
+              onLessonClick={(id) => {
+                setCurrentLesson(id);
+                setShowSidebar(false);
+              }}
             />
             
             {/* Evaluation Button */}

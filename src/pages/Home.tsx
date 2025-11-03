@@ -1,12 +1,14 @@
-import { ArrowRight, Award, CheckCircle, MessageCircle, Star } from "lucide-react";
+import { ArrowRight, Award, CheckCircle, MessageCircle, Star, Play, Clock } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { CourseCard } from "../components/CourseCard";
-import { Card, CardContent } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { Progress } from "../components/ui/progress";
 
 interface HomeProps {
   onNavigate?: (page: string, courseId?: string) => void;
+  isLoggedIn?: boolean;
 }
 
 const featuredCourses = [
@@ -66,6 +68,27 @@ const featuredCourses = [
   },
 ];
 
+const coursesInProgress = [
+  {
+    id: "1",
+    title: "RCP Adultos AHA 2020 - Reanimación Cardiopulmonar",
+    image: "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjcHIlMjB0cmFpbmluZyUyMGR1bW15fGVufDF8fHx8MTc2MTg2MTMzMnww&ixlib=rb-4.1.0&q=80&w=1080",
+    progress: 65,
+    currentLesson: "Compresiones torácicas efectivas",
+    totalLessons: 8,
+    completedLessons: 5,
+  },
+  {
+    id: "3",
+    title: "Primeros Auxilios Básicos - Manejo de Emergencias",
+    image: "https://images.unsplash.com/photo-1622115585848-1d5b6e8af4e4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmaXJzdCUyMGFpZCUyMGNvdXJzZXxlbnwxfHx8fDE3NjE4NjEzMzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    progress: 30,
+    currentLesson: "Vendajes y curaciones",
+    totalLessons: 6,
+    completedLessons: 2,
+  },
+];
+
 const testimonials = [
   {
     name: "María González",
@@ -90,7 +113,7 @@ const testimonials = [
   },
 ];
 
-export function Home({ onNavigate }: HomeProps) {
+export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Hero Section */}
@@ -98,30 +121,56 @@ export function Home({ onNavigate }: HomeProps) {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div className="space-y-6">
-              <h1 className="text-4xl md:text-5xl">
-                Aprendé y certifícate con FUDENSA
+              <h1 className="hero-h1">
+                {isLoggedIn 
+                  ? "¡Bienvenido de nuevo a FUDENSA!" 
+                  : "Aprendé y certifícate con FUDENSA"}
               </h1>
-              <p className="text-lg text-blue-100">
-                Cursos online certificados en RCP, primeros auxilios y atención médica de emergencia.
-                Reconocidos internacionalmente y 100% a tu ritmo.
+              <p className="text-lg text-blue-100 font-[Montserrat] text-[18px]">
+                {isLoggedIn 
+                  ? "Continúa tu formación profesional en salud. Tienes 2 cursos en progreso y nuevas recomendaciones esperándote." 
+                  : "Cursos online certificados en RCP, primeros auxilios y atención médica de emergencia. Reconocidos internacionalmente y 100% a tu ritmo."}
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  size="lg"
-                  className="bg-white text-[#0B5FFF] hover:bg-blue-50"
-                  onClick={() => onNavigate?.("catalog")}
-                >
-                  Explorar Cursos
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-white bg-transparent text-white hover:bg-white/10"
-                  onClick={() => onNavigate?.("catalog")}
-                >
-                  Ver Programas
-                </Button>
+                {isLoggedIn ? (
+                  <>
+                    <Button
+                      size="lg"
+                      className="bg-white text-[#0B5FFF] hover:bg-blue-50"
+                      onClick={() => onNavigate?.("lesson")}
+                    >
+                      <Play className="mr-2 h-5 w-5" />
+                      Continuar Aprendiendo
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="border-white bg-transparent text-white hover:bg-white/10"
+                      onClick={() => onNavigate?.("catalog")}
+                    >
+                      Explorar más cursos
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="lg"
+                      className="bg-white text-[#0B5FFF] hover:bg-blue-50"
+                      onClick={() => onNavigate?.("catalog")}
+                    >
+                      Explorar Cursos
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="border-white bg-transparent text-white hover:bg-white/10"
+                      onClick={() => onNavigate?.("catalog")}
+                    >
+                      Ver Programas
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
             <div className="hidden lg:block">
@@ -135,14 +184,89 @@ export function Home({ onNavigate }: HomeProps) {
         </div>
       </section>
 
+      {/* Courses In Progress - Only show when logged in */}
+      {isLoggedIn && (
+        <section className="border-b bg-white py-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-6 flex items-end justify-between">
+              <div>
+                <h2 className="mb-2 text-[#0F172A]">Continuar Aprendiendo</h2>
+                <p className="text-[#64748B]">
+                  Retoma tus cursos donde los dejaste
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                onClick={() => onNavigate?.("profile")}
+                className="hidden sm:flex"
+              >
+                Ver todos
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              {coursesInProgress.map((course) => (
+                <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="flex flex-col sm:flex-row">
+                    <div className="relative h-48 w-full sm:h-auto sm:w-48">
+                      <ImageWithFallback
+                        src={course.image}
+                        alt={course.title}
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        <Button
+                          size="lg"
+                          className="rounded-full"
+                          onClick={() => onNavigate?.("lesson")}
+                        >
+                          <Play className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex flex-1 flex-col p-6">
+                      <h3 className="mb-3 text-[#0F172A] line-clamp-2">{course.title}</h3>
+                      <div className="mb-3 flex items-center gap-2 text-sm text-[#64748B]">
+                        <Clock className="h-4 w-4" />
+                        <span>Lección actual: {course.currentLesson}</span>
+                      </div>
+                      <div className="mt-auto space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-[#64748B]">
+                            {course.completedLessons} de {course.totalLessons} lecciones
+                          </span>
+                          <span className="font-semibold text-[#0B5FFF]">{course.progress}%</span>
+                        </div>
+                        <Progress value={course.progress} className="h-2" />
+                        <Button
+                          className="mt-3 w-full"
+                          onClick={() => onNavigate?.("lesson")}
+                        >
+                          Continuar Curso
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Featured Courses */}
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex items-end justify-between">
             <div>
-              <h2 className="mb-2 text-[#0F172A]">Cursos Destacados</h2>
+              <h2 className="mb-2 text-[#0F172A]">
+                {isLoggedIn ? "Cursos Recomendados para Ti" : "Cursos Destacados"}
+              </h2>
               <p className="text-[#64748B]">
-                Los cursos más populares de nuestra plataforma
+                {isLoggedIn 
+                  ? "Basados en tu progreso y preferencias" 
+                  : "Los cursos más populares de nuestra plataforma"}
               </p>
             </div>
             <Button

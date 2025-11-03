@@ -1,4 +1,4 @@
-import { Search, Menu, X } from "lucide-react";
+import { Search, Menu, X, User, LogOut, UserCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -10,12 +10,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { toast } from "sonner@2.0.3";
 
 interface AppNavbarProps {
   onNavigate?: (page: string) => void;
+  isLoggedIn?: boolean;
+  onLogout?: () => void;
 }
 
-export function AppNavbar({ onNavigate }: AppNavbarProps) {
+export function AppNavbar({ onNavigate, isLoggedIn = false, onLogout }: AppNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -62,15 +73,55 @@ export function AppNavbar({ onNavigate }: AppNavbarProps) {
 
             {/* Right Side - Desktop */}
             <div className="hidden items-center gap-4 md:flex">
-              <Button
-                variant="ghost"
-                onClick={() => setLoginOpen(true)}
-              >
-                Iniciar Sesión
-              </Button>
-              <Button onClick={() => setRegisterOpen(true)}>
-                Registrar
-              </Button>
+              {isLoggedIn ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-[#0B5FFF] text-white">
+                          JD
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="hidden lg:inline">Juan Pérez</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        onNavigate?.("profile");
+                        toast.success("Navegando a tu perfil");
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <UserCircle className="mr-2 h-4 w-4" />
+                      Mi Perfil
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        onLogout?.();
+                        toast.success("Sesión cerrada correctamente");
+                      }}
+                      className="cursor-pointer text-[#EF4444]"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Cerrar Sesión
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setLoginOpen(true)}
+                  >
+                    Iniciar Sesión
+                  </Button>
+                  <Button onClick={() => setRegisterOpen(true)}>
+                    Registrar
+                  </Button>
+                </>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -115,23 +166,61 @@ export function AppNavbar({ onNavigate }: AppNavbarProps) {
                 Contacto
               </button>
               <div className="flex flex-col gap-2 pt-4">
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setLoginOpen(true);
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  Iniciar Sesión
-                </Button>
-                <Button
-                  onClick={() => {
-                    setRegisterOpen(true);
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  Registrar
-                </Button>
+                {isLoggedIn ? (
+                  <>
+                    <div className="flex items-center gap-2 rounded-md border bg-[#F8FAFC] px-3 py-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-[#0B5FFF] text-white">
+                          JD
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm">Juan Pérez</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        onNavigate?.("profile");
+                        setMobileMenuOpen(false);
+                        toast.success("Navegando a tu perfil");
+                      }}
+                    >
+                      <UserCircle className="mr-2 h-4 w-4" />
+                      Mi Perfil
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        onLogout?.();
+                        setMobileMenuOpen(false);
+                        toast.success("Sesión cerrada correctamente");
+                      }}
+                      className="text-[#EF4444]"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Cerrar Sesión
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setLoginOpen(true);
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Iniciar Sesión
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setRegisterOpen(true);
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Registrar
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>

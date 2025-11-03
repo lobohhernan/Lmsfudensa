@@ -106,18 +106,18 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
 
         {/* Tabs */}
         <Tabs defaultValue="courses" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="courses">
-              <BookOpen className="mr-2 h-4 w-4" />
-              Mis Cursos
+          <TabsList className="mb-6 w-full justify-start">
+            <TabsTrigger value="courses" className="flex-none">
+              <BookOpen className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Mis Cursos</span>
             </TabsTrigger>
-            <TabsTrigger value="certificates">
-              <Award className="mr-2 h-4 w-4" />
-              Mis Certificados
+            <TabsTrigger value="certificates" className="flex-none">
+              <Award className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Mis Certificados</span>
             </TabsTrigger>
-            <TabsTrigger value="settings">
-              <SettingsIcon className="mr-2 h-4 w-4" />
-              Configuración
+            <TabsTrigger value="settings" className="flex-none">
+              <SettingsIcon className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Configuración</span>
             </TabsTrigger>
           </TabsList>
 
@@ -125,21 +125,23 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
           <TabsContent value="courses" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {myCourses.map((course) => (
-                <Card key={course.id} className="overflow-hidden">
-                  <div className="relative aspect-video">
-                    <img
-                      src={course.image}
-                      alt={course.title}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{course.title}</CardTitle>
-                    <CardDescription>
+                <Card key={course.id} className="overflow-hidden flex flex-col h-[480px]">
+                  <CardHeader className="p-0 flex-shrink-0">
+                    <div className="relative aspect-video overflow-hidden">
+                      <img
+                        src={course.image}
+                        alt={course.title}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardHeader className="flex-shrink-0">
+                    <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
+                    <CardDescription className="line-clamp-1">
                       Último acceso: {course.lastAccessed}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 flex-grow flex flex-col justify-between">
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-[#64748B]">Progreso</span>

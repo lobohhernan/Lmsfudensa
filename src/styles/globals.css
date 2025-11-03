@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -141,6 +143,18 @@
   }
 }
 
+/* Hide scrollbar but keep functionality */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /**
  * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
  */
@@ -198,4 +212,12 @@
 
 html {
   font-size: var(--font-size);
+}
+
+/* Hero H1 styles for Home, About Us, and Contact pages */
+.hero-h1 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 1.2;
 }
