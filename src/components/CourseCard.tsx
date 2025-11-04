@@ -31,19 +31,22 @@ export function CourseCard({
 
   return (
     <Card
-      className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg"
+      className="group cursor-pointer overflow-hidden border border-gray-200/50 bg-white transition-all duration-300 hover:border-white/20 hover:bg-gradient-to-b hover:from-white/90 hover:to-white/70 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] hover:backdrop-blur-xl hover:scale-105 flex flex-col h-full"
       onClick={onClick}
     >
-      <CardHeader className="p-0">
+      {/* Glass effect top highlight */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+      
+      <CardHeader className="p-0 flex-shrink-0">
         <div className="relative aspect-video overflow-hidden">
           <ImageWithFallback
             src={image}
             alt={title}
-            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           {certified && (
             <div className="absolute right-3 top-3">
-              <Badge className="bg-[#1e467c] text-white">
+              <Badge className="border border-white/30 bg-[#1e467c]/90 text-white backdrop-blur-md shadow-[0_4px_16px_0_rgba(30,70,124,0.3)]">
                 <Award className="mr-1 h-3 w-3" />
                 Certificado
               </Badge>
@@ -51,9 +54,9 @@ export function CourseCard({
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-4">
-        <h3 className="mb-3 line-clamp-2 text-[#0F172A]">{title}</h3>
-        <div className="flex flex-wrap items-center gap-3">
+      <CardContent className="p-4 flex-1 flex flex-col">
+        <h3 className="mb-3 line-clamp-2 text-[#0F172A] min-h-[3.5rem]">{title}</h3>
+        <div className="flex flex-wrap items-center gap-3 mt-auto">
           <div className="flex items-center gap-1 text-[#64748B]">
             <Clock className="h-4 w-4" />
             <span className="text-sm">{duration}</span>
@@ -67,7 +70,7 @@ export function CourseCard({
         </div>
       </CardContent>
       {students && (
-        <CardFooter className="border-t p-4">
+        <CardFooter className="border-t p-4 flex-shrink-0">
           <p className="text-sm text-[#64748B]">{students.toLocaleString()} estudiantes</p>
         </CardFooter>
       )}

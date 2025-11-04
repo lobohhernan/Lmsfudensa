@@ -8,6 +8,9 @@
   /* FUDENSA Brand Colors */
   --brand-primary: #1e467c;
   --brand-secondary: #55a5c7;
+  --brand-gradient-start: #1e467c;
+  --brand-gradient-middle: #2d5f93;
+  --brand-gradient-end: #55a5c7;
   --bg: #F8FAFC;
   --fg: #0F172A;
   --muted-color: #64748B;

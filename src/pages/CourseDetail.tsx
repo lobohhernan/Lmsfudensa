@@ -89,9 +89,9 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
             {/* Header */}
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
-                <Badge className="bg-[#0B5FFF] text-white">Salud</Badge>
-                <Badge className="bg-[#16A34A] text-white">RCP</Badge>
-                <Badge className="bg-[#22C55E] text-white">Certificado</Badge>
+                <Badge className="border border-white/30 bg-[#0B5FFF]/90 text-white backdrop-blur-md shadow-[0_4px_12px_0_rgba(11,95,255,0.3)]">Salud</Badge>
+                <Badge className="border border-white/30 bg-[#16A34A]/90 text-white backdrop-blur-md shadow-[0_4px_12px_0_rgba(22,163,74,0.3)]">RCP</Badge>
+                <Badge className="border border-white/30 bg-[#22C55E]/90 text-white backdrop-blur-md shadow-[0_4px_12px_0_rgba(34,197,94,0.3)]">Certificado</Badge>
               </div>
               
               <h1 className="text-[#0F172A]">
@@ -133,8 +133,9 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
 
             {/* Mobile CTA Buttons - Show only on mobile */}
             <div className="lg:hidden">
-              <Card>
-                <CardContent className="space-y-4 p-4">
+              <Card className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(11,95,255,0.12)]">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+                <CardContent className="space-y-4 p-4 bg-white/20">
                   <div className="grid grid-cols-2 gap-3 text-sm text-[#64748B]">
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
@@ -246,10 +247,10 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
                       {courseLessons.map((lesson, index) => (
                         <div
                           key={lesson.id}
-                          className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-[#F8FAFC]"
+                          className="group flex items-center justify-between rounded-lg border border-gray-200/50 bg-white/60 backdrop-blur-sm p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] transition-all hover:border-[#0B5FFF]/30 hover:bg-white/80 hover:shadow-[0_4px_12px_0_rgba(11,95,255,0.08)]"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B5FFF]/10">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#0B5FFF]/20 bg-[#0B5FFF]/10 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] group-hover:bg-[#0B5FFF]/20">
                               {lesson.type === "video" ? (
                                 <Play className="h-4 w-4 text-[#0B5FFF]" />
                               ) : (
@@ -272,10 +273,10 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
 
               <TabsContent value="reviews" className="space-y-4 pt-6">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="bg-white/30 backdrop-blur-sm">
                     <CardTitle>Reseñas de estudiantes</CardTitle>
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 rounded-xl border border-[#F59E0B]/20 bg-[#F59E0B]/10 backdrop-blur-sm px-4 py-2 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                         <Star className="h-6 w-6 fill-[#F59E0B] text-[#F59E0B]" />
                         <span className="text-2xl">4.9</span>
                       </div>
@@ -284,10 +285,10 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {reviews.map((review, index) => (
-                      <div key={index} className="space-y-3 border-b pb-6 last:border-0 last:pb-0">
+                      <div key={index} className="space-y-3 rounded-xl border border-gray-200/50 bg-white/60 backdrop-blur-sm p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] last:mb-0 mb-4">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
-                            <Avatar>
+                            <Avatar className="border-2 border-white/50 shadow-sm">
                               <AvatarImage src={review.avatar} alt={review.name} />
                               <AvatarFallback>{review.name[0]}</AvatarFallback>
                             </Avatar>
@@ -314,12 +315,12 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
 
               <TabsContent value="instructor" className="space-y-4 pt-6">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="bg-white/30 backdrop-blur-sm">
                     <CardTitle>Tu instructor</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-start gap-4">
-                      <Avatar className="h-20 w-20">
+                  <CardContent className="space-y-4 bg-white/20">
+                    <div className="flex items-start gap-4 rounded-xl border border-gray-200/50 bg-white/60 backdrop-blur-sm p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]">
+                      <Avatar className="h-20 w-20 border-2 border-[#0B5FFF]/20 shadow-lg">
                         <AvatarImage
                           src="https://api.dicebear.com/7.x/avataaars/svg?seed=Instructor"
                           alt="Dr. Juan Pérez"
@@ -331,10 +332,10 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
                         <p className="mb-2 text-[#64748B]">
                           Médico Emergentólogo • Instructor AHA
                         </p>
-                        <div className="flex gap-4 text-sm text-[#64748B]">
-                          <span>⭐ 4.9 calificación</span>
-                          <span>👨‍🎓 25,000 estudiantes</span>
-                          <span>📚 12 cursos</span>
+                        <div className="flex flex-wrap gap-2 text-sm">
+                          <span className="rounded-lg border border-[#F59E0B]/20 bg-[#F59E0B]/10 backdrop-blur-sm px-2 py-1">⭐ 4.9</span>
+                          <span className="rounded-lg border border-[#0B5FFF]/20 bg-[#0B5FFF]/10 backdrop-blur-sm px-2 py-1">👨‍🎓 25k</span>
+                          <span className="rounded-lg border border-[#16A34A]/20 bg-[#16A34A]/10 backdrop-blur-sm px-2 py-1">📚 12</span>
                         </div>
                       </div>
                     </div>
@@ -351,9 +352,10 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
 
           {/* Sidebar - Desktop Only */}
           <aside className="hidden space-y-6 lg:block">
-            <Card className="sticky top-24">
-              <CardContent className="space-y-6 p-6">
-                <div className="space-y-4">
+            <Card className="sticky top-24 border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(11,95,255,0.12)]">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+              <CardContent className="space-y-6 p-6 bg-white/20">
+                <div className="space-y-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/40 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]">
                   <div className="flex items-center gap-2 text-[#64748B]">
                     <Clock className="h-5 w-5" />
                     <span>8 horas de contenido</span>

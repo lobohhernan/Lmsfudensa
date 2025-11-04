@@ -289,12 +289,15 @@ export function Checkout({ onNavigate }: CheckoutProps) {
 
           {/* Sidebar - Order Summary */}
           <aside>
-            <Card className="sticky top-24">
-              <CardHeader>
+            <Card className="sticky top-24 border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(11,95,255,0.12)]">
+              {/* Glass effect top highlight */}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+              
+              <CardHeader className="relative bg-white/50 backdrop-blur-sm">
                 <CardTitle>Resumen del Pedido</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
+              <CardContent className="space-y-4 bg-white/30">
+                <div className="space-y-3 rounded-xl bg-white/60 backdrop-blur-sm border border-white/40 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]">
                   <div className="flex justify-between">
                     <span className="text-[#64748B]">Certificado</span>
                     <span className="text-[#0F172A]">
@@ -305,7 +308,7 @@ export function Checkout({ onNavigate }: CheckoutProps) {
                     <span className="text-[#64748B]">Descuento</span>
                     <span className="text-[#22C55E]">-$ 0</span>
                   </div>
-                  <Separator />
+                  <Separator className="bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
                   <div className="flex justify-between">
                     <span className="font-semibold text-[#0F172A]">Total ({currency})</span>
                     <span className="text-xl font-bold text-[#0F172A]">
@@ -314,16 +317,20 @@ export function Checkout({ onNavigate }: CheckoutProps) {
                   </div>
                 </div>
 
-                <div className="space-y-3 border-t pt-4">
+                <div className="space-y-3 rounded-xl bg-white/60 backdrop-blur-sm border border-white/40 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]">
                   <div className="flex items-start gap-2 text-sm">
-                    <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#22C55E]" />
-                    <span className="text-[#64748B]">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#22C55E]/20 backdrop-blur-sm border border-[#22C55E]/30">
+                      <ShieldCheck className="h-5 w-5 text-[#22C55E]" />
+                    </div>
+                    <span className="text-[#64748B] mt-1">
                       Pago seguro y encriptado
                     </span>
                   </div>
                   <div className="flex items-start gap-2 text-sm">
-                    <Award className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#0B5FFF]" />
-                    <span className="text-[#64748B]">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0B5FFF]/20 backdrop-blur-sm border border-[#0B5FFF]/30">
+                      <Award className="h-5 w-5 text-[#0B5FFF]" />
+                    </div>
+                    <span className="text-[#64748B] mt-1">
                       Certificado verificable con blockchain
                     </span>
                   </div>

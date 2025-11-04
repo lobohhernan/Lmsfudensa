@@ -91,6 +91,7 @@ export default function App() {
         onNavigate={handleNavigate} 
         isLoggedIn={isLoggedIn}
         onLogout={handleLogout}
+        currentPage={currentPage}
       />
       
       <main className="flex-1">

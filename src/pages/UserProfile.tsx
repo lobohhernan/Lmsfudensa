@@ -85,15 +85,15 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-4">
-                    <div className="text-center">
+                    <div className="text-center rounded-xl border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm px-6 py-3 shadow-[0_4px_16px_0_rgba(11,95,255,0.08)]">
                       <p className="text-2xl text-[#0F172A]">3</p>
                       <p className="text-sm text-[#64748B]">Cursos activos</p>
                     </div>
-                    <div className="text-center">
+                    <div className="text-center rounded-xl border border-[#22C55E]/20 bg-gradient-to-br from-white to-[#22C55E]/5 backdrop-blur-sm px-6 py-3 shadow-[0_4px_16px_0_rgba(34,197,94,0.08)]">
                       <p className="text-2xl text-[#0F172A]">2</p>
                       <p className="text-sm text-[#64748B]">Certificados</p>
                     </div>
-                    <div className="text-center">
+                    <div className="text-center rounded-xl border border-[#F59E0B]/20 bg-gradient-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm px-6 py-3 shadow-[0_4px_16px_0_rgba(245,158,11,0.08)]">
                       <p className="text-2xl text-[#0F172A]">24h</p>
                       <p className="text-sm text-[#64748B]">Horas cursadas</p>
                     </div>
@@ -125,7 +125,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
           <TabsContent value="courses" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {myCourses.map((course) => (
-                <Card key={course.id} className="overflow-hidden flex flex-col h-[480px]">
+                <Card key={course.id} className="overflow-hidden flex flex-col h-[480px] transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
                   <CardHeader className="p-0 flex-shrink-0">
                     <div className="relative aspect-video overflow-hidden">
                       <img
@@ -160,7 +160,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
               ))}
 
               {/* Add Course Card */}
-              <Card className="border-dashed">
+              <Card className="border-dashed transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
                 <CardContent className="flex h-full min-h-[300px] flex-col items-center justify-center p-6 text-center">
                   <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#F1F5F9]">
                     <BookOpen className="h-8 w-8 text-[#64748B]" />

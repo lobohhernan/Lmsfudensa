@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Filter, SlidersHorizontal } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { CourseCard } from "../components/CourseCard";
@@ -10,19 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Checkbox } from "../components/ui/checkbox";
-import { Label } from "../components/ui/label";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../components/ui/accordion";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "../components/ui/breadcrumb";
 import { Badge } from "../components/ui/badge";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../components/ui/sheet";
 
 interface CourseCatalogProps {
   onNavigate?: (page: string, courseId?: string) => void;
@@ -93,102 +81,32 @@ const allCourses = [
 
 export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
-
-  const FilterSidebar = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="mb-4 text-[#0F172A]">Filtros</h3>
-      </div>
-
-      <Accordion type="multiple" defaultValue={["category", "level"]}>
-        <AccordionItem value="category">
-          <AccordionTrigger>Categoría</AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-3">
-              {["RCP", "Primeros Auxilios", "Emergencias", "Avanzado"].map((category) => (
-                <div key={category} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`cat-${category}`}
-                    checked={selectedCategories.includes(category)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setSelectedCategories([...selectedCategories, category]);
-                      } else {
-                        setSelectedCategories(selectedCategories.filter((c) => c !== category));
-                      }
-                    }}
-                  />
-                  <Label htmlFor={`cat-${category}`} className="cursor-pointer text-[#64748B]">
-                    {category}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="level">
-          <AccordionTrigger>Nivel</AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-3">
-              {["Básico", "Intermedio", "Avanzado"].map((level) => (
-                <div key={level} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`level-${level}`}
-                    checked={selectedLevels.includes(level)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setSelectedLevels([...selectedLevels, level]);
-                      } else {
-                        setSelectedLevels(selectedLevels.filter((l) => l !== level));
-                      }
-                    }}
-                  />
-                  <Label htmlFor={`level-${level}`} className="cursor-pointer text-[#64748B]">
-                    {level}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      <Button variant="outline" className="w-full">
-        Limpiar Filtros
-      </Button>
-    </div>
-  );
+  const [selectedLevel, setSelectedLevel] = useState<string>("");
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <div className="border-b bg-white py-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink onClick={() => onNavigate?.("home")} className="cursor-pointer">
-                  Inicio
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Catálogo de Cursos</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] -mt-16 pt-32 pb-20 text-white">
+        {/* Decorative background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -left-32 top-0 h-[500px] w-[500px] rounded-full bg-white/5 blur-3xl"></div>
+          <div className="absolute -right-32 bottom-0 h-[500px] w-[500px] rounded-full bg-[#55a5c7]/20 blur-3xl"></div>
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-white/3 blur-3xl"></div>
         </div>
-      </div>
+        
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative">
+          <div className="mx-auto max-w-3xl text-center">
+            <h1 className="hero-h1 mb-6 text-balance">Catálogo de Cursos</h1>
+            <p className="text-pretty leading-relaxed text-white/90 md:text-xl font-[Montserrat] text-[18px]">
+              Explora nuestros cursos certificados
+            </p>
+          </div>
+        </div>
+      </section>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="mb-2 text-[#0F172A]">Catálogo de Cursos</h1>
-          <p className="text-[#64748B]">Explora nuestros cursos certificados</p>
-        </div>
 
-        {/* Search and Quick Filters */}
+        {/* Search and Quick Filters - Glass Effect */}
         <div className="mb-6 flex flex-col gap-4 lg:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#64748B]" />
@@ -196,12 +114,24 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
               placeholder="Buscar cursos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 border-[#0B5FFF]/20 bg-white/60 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] transition-all hover:border-[#0B5FFF]/40 focus:border-[#0B5FFF] focus:bg-white"
             />
           </div>
           <div className="flex gap-2">
+            <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+              <SelectTrigger className="w-[180px] border-[#0B5FFF]/20 bg-white/60 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] hover:border-[#0B5FFF]/40">
+                <SelectValue placeholder="Nivel" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los niveles</SelectItem>
+                <SelectItem value="Básico">Básico</SelectItem>
+                <SelectItem value="Intermedio">Intermedio</SelectItem>
+                <SelectItem value="Avanzado">Avanzado</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Select>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] border-[#0B5FFF]/20 bg-white/60 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] hover:border-[#0B5FFF]/40">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
               <SelectContent>
@@ -210,91 +140,73 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
                 <SelectItem value="rating">Mejor valorados</SelectItem>
               </SelectContent>
             </Select>
-            
-            {/* Mobile Filter Button */}
-            <Sheet>
-              <SheetTrigger asChild className="lg:hidden">
-                <Button variant="outline">
-                  <SlidersHorizontal className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left">
-                <SheetHeader>
-                  <SheetTitle>Filtros</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6">
-                  <FilterSidebar />
-                </div>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
 
         {/* Active Filters */}
-        {(selectedCategories.length > 0 || selectedLevels.length > 0) && (
+        {selectedLevel && selectedLevel !== "all" && (
           <div className="mb-6 flex flex-wrap gap-2">
-            {selectedCategories.map((cat) => (
-              <Badge key={cat} variant="secondary" className="px-3 py-1">
-                {cat}
-                <button
-                  onClick={() => setSelectedCategories(selectedCategories.filter((c) => c !== cat))}
-                  className="ml-2"
-                >
-                  ×
-                </button>
-              </Badge>
-            ))}
-            {selectedLevels.map((level) => (
-              <Badge key={level} variant="secondary" className="px-3 py-1">
-                {level}
-                <button
-                  onClick={() => setSelectedLevels(selectedLevels.filter((l) => l !== level))}
-                  className="ml-2"
-                >
-                  ×
-                </button>
-              </Badge>
-            ))}
+            <Badge variant="secondary" className="px-3 py-1 border border-[#0B5FFF]/30 bg-[#0B5FFF]/10 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+              Nivel: {selectedLevel}
+              <button
+                onClick={() => setSelectedLevel("")}
+                className="ml-2 hover:text-[#0B5FFF]"
+              >
+                ×
+              </button>
+            </Badge>
           </div>
         )}
 
         {/* Main Content */}
-        <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-          {/* Desktop Sidebar */}
-          <aside className="hidden lg:block">
-            <div className="sticky top-24 rounded-lg border bg-white p-6">
-              <FilterSidebar />
-            </div>
-          </aside>
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-[#64748B]">{allCourses.length} cursos disponibles</p>
+          </div>
+          
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {allCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                {...course}
+                onClick={() => onNavigate?.("course", course.id)}
+              />
+            ))}
+          </div>
 
-          {/* Course Grid */}
-          <div>
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-[#64748B]">{allCourses.length} cursos disponibles</p>
-            </div>
-            
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {allCourses.map((course) => (
-                <CourseCard
-                  key={course.id}
-                  {...course}
-                  onClick={() => onNavigate?.("course", course.id)}
-                />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            <div className="mt-8 flex justify-center gap-2">
-              <Button variant="outline" disabled>
-                Anterior
-              </Button>
-              <Button variant="outline" className="bg-[#0B5FFF] text-white">
-                1
-              </Button>
-              <Button variant="outline">2</Button>
-              <Button variant="outline">3</Button>
-              <Button variant="outline">Siguiente</Button>
-            </div>
+          {/* Pagination */}
+          <div className="mt-8 flex justify-center gap-2">
+            <Button 
+              variant="outline" 
+              disabled
+              className="border-gray-300/50 bg-white/40 backdrop-blur-sm text-gray-400"
+            >
+              Anterior
+            </Button>
+            <Button 
+              variant="outline" 
+              className="border-[#0B5FFF]/30 bg-gradient-to-br from-[#0B5FFF] to-[#0B5FFF]/80 text-white backdrop-blur-sm shadow-[0_4px_12px_0_rgba(11,95,255,0.25)] hover:shadow-[0_6px_16px_0_rgba(11,95,255,0.35)] hover:from-[#0B5FFF]/90 hover:to-[#0B5FFF]/70"
+            >
+              1
+            </Button>
+            <Button 
+              variant="outline"
+              className="border-[#0B5FFF]/20 bg-white/60 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] hover:border-[#0B5FFF]/40 hover:bg-white/80 hover:shadow-[0_4px_12px_0_rgba(11,95,255,0.08)]"
+            >
+              2
+            </Button>
+            <Button 
+              variant="outline"
+              className="border-[#0B5FFF]/20 bg-white/60 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] hover:border-[#0B5FFF]/40 hover:bg-white/80 hover:shadow-[0_4px_12px_0_rgba(11,95,255,0.08)]"
+            >
+              3
+            </Button>
+            <Button 
+              variant="outline"
+              className="border-[#0B5FFF]/20 bg-white/60 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] hover:border-[#0B5FFF]/40 hover:bg-white/80 hover:shadow-[0_4px_12px_0_rgba(11,95,255,0.08)]"
+            >
+              Siguiente
+            </Button>
           </div>
         </div>
       </div>

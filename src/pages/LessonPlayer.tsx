@@ -110,15 +110,18 @@ export function LessonPlayer({ onNavigate }: LessonPlayerProps) {
                     )}
                   </Button>
                 </div>
-                {/* Bottom Controls */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                {/* Bottom Controls - Liquid Glass Effect */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent backdrop-blur-xl border-t border-white/10 shadow-[0_-8px_32px_0_rgba(0,0,0,0.3)] p-4">
+                  {/* Glass effect top highlight */}
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                  
                   <Progress value={lessonProgress} className="mb-3 h-1" />
                   <div className="flex items-center justify-between text-white">
                     <div className="flex items-center gap-3">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-white hover:bg-white/20"
+                        className="text-white hover:bg-white/20 hover:backdrop-blur-sm border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
                         onClick={() => setIsPlaying(!isPlaying)}
                       >
                         {isPlaying ? (
@@ -133,14 +136,14 @@ export function LessonPlayer({ onNavigate }: LessonPlayerProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-white hover:bg-white/20"
+                        className="text-white hover:bg-white/20 hover:backdrop-blur-sm border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
                       >
                         <Volume2 className="h-5 w-5" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-white hover:bg-white/20"
+                        className="text-white hover:bg-white/20 hover:backdrop-blur-sm border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
                       >
                         <Maximize className="h-5 w-5" />
                       </Button>

@@ -372,64 +372,76 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <Card 
-                  className="cursor-pointer transition-all hover:shadow-lg hover:border-[#0B5FFF]"
+                  className="group relative cursor-pointer overflow-hidden border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("users")}
                 >
-                  <CardHeader className="pb-4">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Total Estudiantes</CardTitle>
-                      <Users className="h-8 w-8 text-[#0B5FFF]" />
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#0B5FFF]/20 backdrop-blur-sm border border-[#0B5FFF]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                        <Users className="h-6 w-6 text-[#0B5FFF]" />
+                      </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="space-y-2 bg-white/20 flex-1">
                     <div className="text-4xl">52,340</div>
                     <p className="text-sm text-[#64748B]">+12% desde el mes pasado</p>
                   </CardContent>
                 </Card>
 
                 <Card 
-                  className="cursor-pointer transition-all hover:shadow-lg hover:border-[#0B5FFF]"
+                  className="group relative cursor-pointer overflow-hidden border border-[#16A34A]/20 bg-gradient-to-br from-white to-[#16A34A]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#16A34A]/40 hover:shadow-[0_8px_32px_0_rgba(22,163,74,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("courses")}
                 >
-                  <CardHeader className="pb-4">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#16A34A]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Cursos Activos</CardTitle>
-                      <BookOpen className="h-8 w-8 text-[#16A34A]" />
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#16A34A]/20 backdrop-blur-sm border border-[#16A34A]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                        <BookOpen className="h-6 w-6 text-[#16A34A]" />
+                      </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="space-y-2 bg-white/20 flex-1">
                     <div className="text-4xl">24</div>
                     <p className="text-sm text-[#64748B]">3 en borrador</p>
                   </CardContent>
                 </Card>
 
                 <Card 
-                  className="cursor-pointer transition-all hover:shadow-lg hover:border-[#0B5FFF]"
+                  className="group relative cursor-pointer overflow-hidden border border-[#F59E0B]/20 bg-gradient-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#F59E0B]/40 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("certificates")}
                 >
-                  <CardHeader className="pb-4">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Certificados Emitidos</CardTitle>
-                      <Award className="h-8 w-8 text-[#F59E0B]" />
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#F59E0B]/20 backdrop-blur-sm border border-[#F59E0B]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                        <Award className="h-6 w-6 text-[#F59E0B]" />
+                      </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="space-y-2 bg-white/20 flex-1">
                     <div className="text-4xl">18,450</div>
                     <p className="text-sm text-[#64748B]">+245 esta semana</p>
                   </CardContent>
                 </Card>
 
                 <Card 
-                  className="cursor-pointer transition-all hover:shadow-lg hover:border-[#0B5FFF]"
+                  className="group relative cursor-pointer overflow-hidden border border-[#22C55E]/20 bg-gradient-to-br from-white to-[#22C55E]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#22C55E]/40 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("payments")}
                 >
-                  <CardHeader className="pb-4">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#22C55E]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Ingresos del Mes</CardTitle>
-                      <CreditCard className="h-8 w-8 text-[#22C55E]" />
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#22C55E]/20 backdrop-blur-sm border border-[#22C55E]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                        <CreditCard className="h-6 w-6 text-[#22C55E]" />
+                      </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="space-y-2 bg-white/20 flex-1">
                     <div className="text-4xl">ARS $1.890.000</div>
                     <p className="text-sm text-[#64748B]">+8% desde el mes pasado</p>
                   </CardContent>
