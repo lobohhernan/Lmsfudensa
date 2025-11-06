@@ -46,13 +46,21 @@ const myCourses = [
 const myCertificates = [
   {
     courseName: "RCP Adultos AHA 2020 - Reanimación Cardiopulmonar",
-    issueDate: "15 de Octubre, 2025",
+    issueDate: "15 de Octubre de 2025",
     hash: "a7f8e9c2b4d6f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e1",
+    studentName: "Juan Pérez",
+    dni: "12.345.678",
+    courseHours: "40",
+    certificateId: "CERT-A7F8E9C2B4D6",
   },
   {
     courseName: "Primeros Auxilios Básicos - Manejo de Emergencias",
-    issueDate: "2 de Octubre, 2025",
+    issueDate: "2 de Octubre de 2025",
     hash: "b8g9f0d3e5g2i4k6m8o0p2r4t6v8x0z2a4c6e8g0i2",
+    studentName: "Juan Pérez",
+    dni: "12.345.678",
+    courseHours: "30",
+    certificateId: "CERT-B8G9F0D3E5G2",
   },
 ];
 
@@ -184,7 +192,6 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                 <CertificateCard
                   key={index}
                   {...cert}
-                  onVerify={() => onNavigate?.("verify")}
                 />
               ))}
             </div>

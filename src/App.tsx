@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Palette, LayoutDashboard, Menu, X, Award, User, LogIn, LogOut } from "lucide-react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
@@ -9,7 +9,6 @@ import { LessonPlayer } from "./pages/LessonPlayer";
 import { Checkout } from "./pages/Checkout";
 import { UserProfile } from "./pages/UserProfile";
 import { AdminPanel } from "./pages/AdminPanel";
-import { CertificateVerify } from "./pages/CertificateVerify";
 import { DesignSystem } from "./pages/DesignSystem";
 import { Evaluation } from "./pages/Evaluation";
 import { AboutUs } from "./pages/AboutUs";
@@ -33,7 +32,6 @@ type Page =
   | "checkout"
   | "profile"
   | "admin"
-  | "verify"
   | "design"
   | "evaluation"
   | "about"
@@ -43,6 +41,14 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
   const [currentCourseId, setCurrentCourseId] = useState<string | undefined>();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState<{ email: string; name: string } | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   const handleNavigate = (page: string, courseId?: string) => {
     setCurrentPage(page as Page);
@@ -51,8 +57,20 @@ export default function App() {
     }
   };
 
+  const handleLogin = (user: { email: string; name: string }) => {
+    setIsLoggedIn(true);
+    setUserData(user);
+    
+    // Si había una navegación pendiente, ejecutarla
+    if (pendingNavigation) {
+      handleNavigate(pendingNavigation.page, pendingNavigation.courseId);
+      setPendingNavigation(null);
+    }
+  };
+
   const handleLogout = () => {
     setIsLoggedIn(false);
+    setUserData(null);
     setCurrentPage("home");
   };
 
@@ -91,22 +109,39 @@ export default function App() {
         onNavigate={handleNavigate} 
         isLoggedIn={isLoggedIn}
         onLogout={handleLogout}
+        onLogin={handleLogin}
         currentPage={currentPage}
+        openLoginModal={showAuthModal}
+        onLoginModalChange={setShowAuthModal}
       />
       
       <main className="flex-1">
         {currentPage === "home" && <Home onNavigate={handleNavigate} isLoggedIn={isLoggedIn} />}
         {currentPage === "catalog" && <CourseCatalog onNavigate={handleNavigate} />}
-        {currentPage === "course" && <CourseDetail onNavigate={handleNavigate} />}
-        {currentPage === "checkout" && <Checkout onNavigate={handleNavigate} />}
+        {currentPage === "course" && (
+          <CourseDetail 
+            onNavigate={handleNavigate} 
+            isLoggedIn={isLoggedIn}
+            onAuthRequired={(page, courseId) => {
+              setPendingNavigation({ page, courseId });
+              setShowAuthModal(true);
+            }}
+          />
+        )}
+        {currentPage === "checkout" && (
+          <Checkout 
+            onNavigate={handleNavigate}
+            courseId={currentCourseId}
+            userData={userData}
+          />
+        )}
         {currentPage === "profile" && <UserProfile onNavigate={handleNavigate} />}
-        {currentPage === "verify" && <CertificateVerify onNavigate={handleNavigate} />}
         {currentPage === "design" && <DesignSystem />}
         {currentPage === "about" && <AboutUs onNavigate={handleNavigate} />}
         {currentPage === "contact" && <Contact onNavigate={handleNavigate} />}
       </main>
 
-      {currentPage !== "verify" && <AppFooter />}
+      <AppFooter />
       
       {/* Quick Access Menu - Demo purposes */}
       <div className="fixed bottom-6 right-6 z-[100]">
@@ -194,15 +229,6 @@ export default function App() {
             >
               <Award className="mr-2 h-4 w-4" />
               Evaluación
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={(e) => {
-                e.preventDefault();
-                handleNavigate("verify");
-              }}
-              className="cursor-pointer"
-            >
-              Verificar Certificado
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

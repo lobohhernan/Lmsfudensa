@@ -14,9 +14,12 @@ import {
   BreadcrumbSeparator,
 } from "../components/ui/breadcrumb";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { instructors } from "../lib/data";
 
 interface CourseDetailProps {
   onNavigate?: (page: string, courseId?: string) => void;
+  isLoggedIn?: boolean;
+  onAuthRequired?: (page: string, courseId?: string) => void;
 }
 
 const courseLessons = [
@@ -54,33 +57,24 @@ const reviews = [
   },
 ];
 
-export function CourseDetail({ onNavigate }: CourseDetailProps) {
+export function CourseDetail({ onNavigate, isLoggedIn, onAuthRequired }: CourseDetailProps) {
+  // Por ahora usamos el primer instructor, pero esto debería venir del curso
+  const courseInstructor = instructors[0];
+
+  const handleEnrollClick = () => {
+    if (!isLoggedIn) {
+      // Usuario no autenticado, abrir modal de login
+      onAuthRequired?.("checkout", "rcp-adultos-aha");
+    } else {
+      // Usuario autenticado, ir directamente a checkout
+      onNavigate?.("checkout", "rcp-adultos-aha");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Breadcrumbs */}
-      <div className="border-b bg-white py-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink onClick={() => onNavigate?.("home")} className="cursor-pointer">
-                  Inicio
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink onClick={() => onNavigate?.("catalog")} className="cursor-pointer">
-                  Catálogo
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>RCP Adultos AHA 2020</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-      </div>
+
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
@@ -120,14 +114,17 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
                 alt="Curso preview"
                 className="h-full w-full object-cover opacity-80"
               />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Button
-                  size="lg"
-                  className="h-16 w-16 rounded-full bg-white text-[#0B5FFF] hover:bg-blue-50"
-                  onClick={() => onNavigate?.("lesson")}
-                >
-                  <Play className="h-8 w-8" />
-                </Button>
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <div className="text-center">
+                  <Button
+                    size="lg"
+                    className="h-16 w-16 rounded-full bg-white text-[#0B5FFF] hover:bg-blue-50 mb-3"
+                    onClick={handleEnrollClick}
+                  >
+                    <Play className="h-8 w-8" />
+                  </Button>
+                  <p className="text-sm text-white">Vista previa del curso</p>
+                </div>
               </div>
             </div>
 
@@ -159,29 +156,20 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
                     <Button
                       className="w-full"
                       size="lg"
-                      onClick={() => onNavigate?.("lesson")}
-                    >
-                      <Play className="mr-2 h-5 w-5" />
-                      Estudiar Gratis
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      size="lg"
-                      onClick={() => onNavigate?.("checkout")}
+                      onClick={handleEnrollClick}
                     >
                       <Award className="mr-2 h-5 w-5" />
-                      Obtener Certificado
+                      Inscribirme Ahora
                     </Button>
                   </div>
 
                   <div className="border-t pt-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-[#64748B]">Precio certificado</span>
+                      <span className="text-sm text-[#64748B]">Precio del curso</span>
                       <span className="text-xl font-bold text-[#0F172A]">ARS $29.900</span>
                     </div>
                     <p className="mt-2 text-xs text-[#64748B]">
-                      * Pago procesado mediante Mercado Pago
+                      Certificado emitido al completar el curso y aprobar la evaluación
                     </p>
                   </div>
                 </CardContent>
@@ -192,8 +180,6 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
             <Tabs defaultValue="description" className="w-full">
               <TabsList className="w-full justify-start">
                 <TabsTrigger value="description" className="flex-none">Descripción</TabsTrigger>
-                <TabsTrigger value="content" className="flex-none">Contenido</TabsTrigger>
-                <TabsTrigger value="reviews" className="flex-none">Reseñas</TabsTrigger>
                 <TabsTrigger value="instructor" className="flex-none">Instructor</TabsTrigger>
               </TabsList>
 
@@ -236,114 +222,82 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="content" className="space-y-4 pt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Contenido del curso</CardTitle>
-                    <CardDescription>8 lecciones • 3h 10min de contenido</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {courseLessons.map((lesson, index) => (
-                        <div
-                          key={lesson.id}
-                          className="group flex items-center justify-between rounded-lg border border-gray-200/50 bg-white/60 backdrop-blur-sm p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] transition-all hover:border-[#0B5FFF]/30 hover:bg-white/80 hover:shadow-[0_4px_12px_0_rgba(11,95,255,0.08)]"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#0B5FFF]/20 bg-[#0B5FFF]/10 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] group-hover:bg-[#0B5FFF]/20">
-                              {lesson.type === "video" ? (
-                                <Play className="h-4 w-4 text-[#0B5FFF]" />
-                              ) : (
-                                <CheckCircle className="h-4 w-4 text-[#F59E0B]" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-[#0F172A]">
-                                {index + 1}. {lesson.title}
-                              </p>
-                              <p className="text-sm text-[#64748B]">{lesson.duration}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="reviews" className="space-y-4 pt-6">
-                <Card>
-                  <CardHeader className="bg-white/30 backdrop-blur-sm">
-                    <CardTitle>Reseñas de estudiantes</CardTitle>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 rounded-xl border border-[#F59E0B]/20 bg-[#F59E0B]/10 backdrop-blur-sm px-4 py-2 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
-                        <Star className="h-6 w-6 fill-[#F59E0B] text-[#F59E0B]" />
-                        <span className="text-2xl">4.9</span>
-                      </div>
-                      <div className="text-[#64748B]">2,450 valoraciones</div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {reviews.map((review, index) => (
-                      <div key={index} className="space-y-3 rounded-xl border border-gray-200/50 bg-white/60 backdrop-blur-sm p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] last:mb-0 mb-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="border-2 border-white/50 shadow-sm">
-                              <AvatarImage src={review.avatar} alt={review.name} />
-                              <AvatarFallback>{review.name[0]}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-[#0F172A]">{review.name}</p>
-                              <p className="text-sm text-[#64748B]">{review.date}</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-1">
-                            {Array.from({ length: review.rating }).map((_, i) => (
-                              <Star
-                                key={i}
-                                className="h-4 w-4 fill-[#F59E0B] text-[#F59E0B]"
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-[#64748B]">{review.comment}</p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
               <TabsContent value="instructor" className="space-y-4 pt-6">
                 <Card>
                   <CardHeader className="bg-white/30 backdrop-blur-sm">
-                    <CardTitle>Tu instructor</CardTitle>
+                    <CardTitle>Instructor del curso</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4 bg-white/20">
-                    <div className="flex items-start gap-4 rounded-xl border border-gray-200/50 bg-white/60 backdrop-blur-sm p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]">
-                      <Avatar className="h-20 w-20 border-2 border-[#0B5FFF]/20 shadow-lg">
+                  <CardContent className="space-y-6 bg-white/20">
+                    {/* Perfil del instructor */}
+                    <div className="flex flex-col sm:flex-row items-start gap-6 rounded-xl border border-gray-200/50 bg-white/60 backdrop-blur-sm p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]">
+                      <Avatar className="h-24 w-24 border-2 border-[#0B5FFF]/20 shadow-lg">
                         <AvatarImage
-                          src="https://api.dicebear.com/7.x/avataaars/svg?seed=Instructor"
-                          alt="Dr. Juan Pérez"
+                          src={courseInstructor.avatar}
+                          alt={courseInstructor.name}
                         />
-                        <AvatarFallback>JP</AvatarFallback>
+                        <AvatarFallback>{courseInstructor.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                       </Avatar>
-                      <div>
-                        <h3 className="text-[#0F172A]">Dr. Juan Pérez</h3>
-                        <p className="mb-2 text-[#64748B]">
-                          Médico Emergentólogo • Instructor AHA
-                        </p>
-                        <div className="flex flex-wrap gap-2 text-sm">
-                          <span className="rounded-lg border border-[#F59E0B]/20 bg-[#F59E0B]/10 backdrop-blur-sm px-2 py-1">⭐ 4.9</span>
-                          <span className="rounded-lg border border-[#0B5FFF]/20 bg-[#0B5FFF]/10 backdrop-blur-sm px-2 py-1">👨‍🎓 25k</span>
-                          <span className="rounded-lg border border-[#16A34A]/20 bg-[#16A34A]/10 backdrop-blur-sm px-2 py-1">📚 12</span>
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <h3 className="text-xl text-[#0F172A]">{courseInstructor.name}</h3>
+                          <p className="text-[#64748B]">{courseInstructor.title}</p>
+                        </div>
+                        
+                        {/* Estadísticas del instructor */}
+                        <div className="flex flex-wrap gap-3">
+                          <div className="flex items-center gap-2 rounded-lg border border-[#F59E0B]/20 bg-[#F59E0B]/10 backdrop-blur-sm px-3 py-2">
+                            <Star className="h-4 w-4 fill-[#F59E0B] text-[#F59E0B]" />
+                            <span className="text-sm">{courseInstructor.rating} Valoración</span>
+                          </div>
+                          <div className="flex items-center gap-2 rounded-lg border border-[#0B5FFF]/20 bg-[#0B5FFF]/10 backdrop-blur-sm px-3 py-2">
+                            <Users className="h-4 w-4 text-[#0B5FFF]" />
+                            <span className="text-sm">{courseInstructor.students.toLocaleString()} Estudiantes</span>
+                          </div>
+                          <div className="flex items-center gap-2 rounded-lg border border-[#16A34A]/20 bg-[#16A34A]/10 backdrop-blur-sm px-3 py-2">
+                            <Play className="h-4 w-4 text-[#16A34A]" />
+                            <span className="text-sm">{courseInstructor.courses} Cursos</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <p className="text-[#64748B]">
-                      Médico especialista en emergencias con más de 15 años de experiencia.
-                      Instructor certificado de la American Heart Association con amplia trayectoria
-                      en la formación de profesionales de la salud en técnicas de soporte vital.
-                    </p>
+
+                    {/* Biografía */}
+                    <div className="space-y-3">
+                      <h4 className="text-[#0F172A]">Sobre el instructor</h4>
+                      <p className="text-[#64748B] leading-relaxed">
+                        {courseInstructor.biography}
+                      </p>
+                    </div>
+
+                    {/* Credenciales y Certificaciones */}
+                    {courseInstructor.credentials.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="text-[#0F172A]">Credenciales y Certificaciones</h4>
+                        <div className="grid gap-2">
+                          {courseInstructor.credentials.map((credential, index) => (
+                            <div key={index} className="flex items-start gap-3 rounded-lg border border-gray-200/50 bg-white/40 backdrop-blur-sm p-3">
+                              <Award className="h-5 w-5 text-[#0B5FFF] mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="text-sm text-[#0F172A]">{credential.title}</p>
+                                <p className="text-xs text-[#64748B]">{credential.institution} - {credential.year}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Experiencia Profesional */}
+                    {courseInstructor.experience.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="text-[#0F172A]">Experiencia Profesional</h4>
+                        <div className="space-y-2 text-sm text-[#64748B]">
+                          {courseInstructor.experience.map((exp, index) => (
+                            <p key={index}>• {exp}</p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -370,38 +324,48 @@ export function CourseDetail({ onNavigate }: CourseDetailProps) {
                   </div>
                   <div className="flex items-center gap-2 text-[#64748B]">
                     <Award className="h-5 w-5" />
-                    <span>Certificado incluido</span>
+                    <span>Certificado al finalizar</span>
                   </div>
                 </div>
 
                 <div className="space-y-3 border-t pt-6">
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    onClick={() => onNavigate?.("lesson")}
-                  >
-                    <Play className="mr-2 h-5 w-5" />
-                    Estudiar Gratis
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    size="lg"
-                    onClick={() => onNavigate?.("checkout")}
-                  >
-                    <Award className="mr-2 h-5 w-5" />
-                    Obtener Certificado
-                  </Button>
-                </div>
-
-                <div className="space-y-3 border-t pt-6">
-                  <div className="flex justify-between">
-                    <span className="text-[#64748B]">Precio certificado</span>
-                    <span className="text-xl font-bold text-[#0F172A]">ARS $29.900</span>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[#64748B]">Precio del curso</span>
+                    <span className="text-2xl font-bold text-[#0F172A]">ARS $29.900</span>
                   </div>
-                  <p className="text-xs text-[#64748B]">
-                    * Pago procesado en Pesos Argentinos mediante Mercado Pago
+                  
+                  <Button
+                    className="w-full bg-[#0066FF] hover:bg-[#0052CC]"
+                    size="lg"
+                    onClick={handleEnrollClick}
+                  >
+                    Inscribirme Ahora
+                  </Button>
+                  
+                  <p className="text-xs text-[#64748B] text-center">
+                    Certificado emitido al completar el curso y aprobar la evaluación
                   </p>
+                </div>
+
+                <div className="space-y-2 border-t pt-6">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-[#10B981] mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-[#64748B]">
+                      Acceso inmediato a todas las lecciones
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-[#10B981] mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-[#64748B]">
+                      Certificado digital oficial al aprobar
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-[#10B981] mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-[#64748B]">
+                      Pago seguro con Mercado Pago
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

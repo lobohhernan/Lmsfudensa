@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { CreditCard, Award, Check, ChevronRight, ShieldCheck, CheckCircle } from "lucide-react";
+import { CreditCard, Award, Check, ChevronRight, ShieldCheck, CheckCircle, Loader2 } from "lucide-react";
+import { toast } from "sonner@2.0.3";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -25,13 +26,16 @@ import { Badge } from "../components/ui/badge";
 
 interface CheckoutProps {
   onNavigate?: (page: string) => void;
+  courseId?: string;
+  userData?: { email: string; name: string } | null;
 }
 
-export function Checkout({ onNavigate }: CheckoutProps) {
+export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
   const [step, setStep] = useState(1);
   const [country, setCountry] = useState("AR");
   const [paymentMethod, setPaymentMethod] = useState("mercadopago");
   const [couponCode, setCouponCode] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const prices: Record<string, number> = {
     AR: 29900,
@@ -51,6 +55,18 @@ export function Checkout({ onNavigate }: CheckoutProps) {
 
   const price = prices[country] || prices.US;
   const currency = currencies[country] || currencies.US;
+
+  const handlePayment = () => {
+    setIsProcessing(true);
+    
+    // Simular procesamiento de pago
+    setTimeout(() => {
+      toast.success("¡Pago procesado exitosamente!");
+      setIsProcessing(false);
+      // Ir directamente al reproductor de lecciones
+      onNavigate?.("lesson");
+    }, 2000);
+  };
 
   if (step === 3) {
     return (
@@ -352,15 +368,26 @@ export function Checkout({ onNavigate }: CheckoutProps) {
                     <Button
                       className="w-full"
                       size="lg"
-                      onClick={() => setStep(3)}
+                      onClick={handlePayment}
+                      disabled={isProcessing}
                     >
-                      Confirmar Pago
-                      <CreditCard className="ml-2 h-5 w-5" />
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Procesando pago...
+                        </>
+                      ) : (
+                        <>
+                          Confirmar Pago
+                          <CreditCard className="ml-2 h-5 w-5" />
+                        </>
+                      )}
                     </Button>
                     <Button
                       variant="ghost"
                       className="w-full"
                       onClick={() => setStep(1)}
+                      disabled={isProcessing}
                     >
                       Volver
                     </Button>

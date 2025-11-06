@@ -42,7 +42,7 @@ export function CourseCard({
           <ImageWithFallback
             src={image}
             alt={title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="h-full w-full object-cover"
           />
           {certified && (
             <div className="absolute right-3 top-3">

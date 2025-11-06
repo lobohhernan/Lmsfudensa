@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Trash2, GripVertical, Save } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, Trash2, GripVertical, Save, Upload } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -20,11 +20,14 @@ import type { FullCourse, CourseLesson, EvaluationQuestion } from "../lib/data";
 
 interface CourseFormProps {
   course?: FullCourse;
+  instructors: any[]; // Lista de instructores disponibles
   onSave: (course: FullCourse) => void;
   onCancel: () => void;
 }
 
-export function CourseForm({ course, onSave, onCancel }: CourseFormProps) {
+export function CourseForm({ course, instructors, onSave, onCancel }: CourseFormProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState<Partial<FullCourse>>(
     course || {
       title: "",
@@ -68,6 +71,35 @@ export function CourseForm({ course, onSave, onCancel }: CourseFormProps) {
 
   const handleInputChange = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar que sea una imagen
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor selecciona un archivo de imagen válido");
+      return;
+    }
+
+    // Validar tamaño (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La imagen es demasiado grande. Máximo 5MB");
+      return;
+    }
+
+    // Convertir a base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setFormData({ ...formData, image: base64String });
+      toast.success("Imagen cargada exitosamente");
+    };
+    reader.onerror = () => {
+      toast.error("Error al cargar la imagen");
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleArrayChange = (field: "requirements" | "learningOutcomes", index: number, value: string) => {
@@ -171,7 +203,7 @@ export function CourseForm({ course, onSave, onCancel }: CourseFormProps) {
       rating: formData.rating || 0,
       reviews: formData.reviews || 0,
       price: formData.price || 0,
-      instructor: formData.instructor || "",
+      instructorId: formData.instructorId || "",
       description: formData.description || "",
       fullDescription: formData.fullDescription,
       requirements: formData.requirements?.filter((r) => r.trim() !== ""),
@@ -305,30 +337,62 @@ export function CourseForm({ course, onSave, onCancel }: CourseFormProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="instructor">Instructor</Label>
-                  <Input
-                    id="instructor"
-                    placeholder="Dr. Juan Pérez"
-                    value={formData.instructor}
-                    onChange={(e) => handleInputChange("instructor", e.target.value)}
-                  />
+                  <Label htmlFor="instructorId">Instructor</Label>
+                  <Select
+                    value={formData.instructorId}
+                    onValueChange={(value) => handleInputChange("instructorId", value)}
+                  >
+                    <SelectTrigger id="instructorId">
+                      <SelectValue placeholder="Selecciona un instructor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instructors.map((instructor) => (
+                        <SelectItem key={instructor.id} value={instructor.id}>
+                          {instructor.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {instructors.length === 0 && (
+                    <p className="text-xs text-[#F59E0B]">
+                      ⚠️ No hay instructores disponibles. Crea uno primero en la sección de Instructores.
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">URL de la Imagen</Label>
-                <Input
-                  id="image"
-                  placeholder="https://images.unsplash.com/..."
-                  value={formData.image}
-                  onChange={(e) => handleInputChange("image", e.target.value)}
+                <Label htmlFor="image">Imagen del Curso</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {formData.image ? "Cambiar Imagen" : "Seleccionar Imagen"}
+                </Button>
+                <p className="text-xs text-[#64748B]">
+                  Formatos permitidos: JPG, PNG, GIF. Tamaño máximo: 5MB
+                </p>
                 {formData.image && (
-                  <img
-                    src={formData.image}
-                    alt="Preview"
-                    className="mt-2 h-32 w-full rounded-lg object-cover"
-                  />
+                  <div className="space-y-2">
+                    <p className="text-xs text-[#55a5c7]">
+                      ✓ Imagen cargada correctamente
+                    </p>
+                    <img
+                      src={formData.image}
+                      alt="Preview"
+                      className="h-32 w-full rounded-lg object-cover"
+                    />
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -493,6 +557,21 @@ export function CourseForm({ course, onSave, onCancel }: CourseFormProps) {
                           />
                         </div>
                       </div>
+                      {lesson.type === "video" && (
+                        <div className="space-y-2">
+                          <Label>ID de YouTube</Label>
+                          <Input
+                            placeholder="Ej: dQw4w9WgXcQ (desde youtube.com/watch?v=ID)"
+                            value={lesson.youtubeId || ""}
+                            onChange={(e) => updateLesson(index, "youtubeId", e.target.value)}
+                          />
+                          <p className="text-xs text-[#64748B]">
+                            Ingresa solo el ID del video de YouTube. Por ejemplo, si la URL es 
+                            <code className="mx-1 rounded bg-[#F1F5F9] px-1">youtube.com/watch?v=dQw4w9WgXcQ</code>
+                            el ID es <code className="mx-1 rounded bg-[#F1F5F9] px-1">dQw4w9WgXcQ</code>
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

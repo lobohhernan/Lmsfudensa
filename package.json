@@ -4,6 +4,7 @@
       "version": "0.1.0",
       "private": true,
       "dependencies": {
+          "@jsr/supabase__supabase-js": "^2.49.8",
           "@radix-ui/react-accordion": "^1.2.3",
           "@radix-ui/react-alert-dialog": "^1.1.6",
           "@radix-ui/react-aspect-ratio": "^1.1.2",
@@ -34,7 +35,10 @@
           "clsx": "*",
           "cmdk": "^1.1.1",
           "embla-carousel-react": "^8.6.0",
+          "hono": "*",
+          "html2canvas": "*",
           "input-otp": "^1.4.2",
+          "jspdf": "*",
           "lucide-react": "^0.487.0",
           "motion": "*",
           "next-themes": "^0.4.6",

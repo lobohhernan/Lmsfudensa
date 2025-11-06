@@ -247,31 +247,25 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
           <div ref={statsRef} className="grid gap-8 md:grid-cols-3">
             {/* Profesionales Capacitados */}
             <div className="relative group">
-              {/* Liquid Glass effect */}
-              <div className="absolute -inset-1 bg-gradient-to-br from-white/30 via-[#FCD34D]/30 to-white/20 rounded-2xl blur-lg opacity-50 group-hover:opacity-100 transition duration-500"></div>
-              <div className="relative rounded-2xl border border-white/30 bg-white/10 backdrop-blur-sm p-8 shadow-[0_8px_32px_0_rgba(255,255,255,0.1)] text-center">
-                <div className="mb-2 text-5xl font-bold">{count1.toLocaleString()}+</div>
-                <div className="text-lg text-white/90">Profesionales Capacitados</div>
+              <div className="relative text-center">
+                <div className="mb-2 text-5xl font-bold" style={{ filter: 'drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.4))' }}>{count1.toLocaleString()}+</div>
+                <div className="text-lg text-white/90" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.4))' }}>Profesionales Capacitados</div>
               </div>
             </div>
 
             {/* Cursos Especializados */}
             <div className="relative group">
-              {/* Liquid Glass effect */}
-              <div className="absolute -inset-1 bg-gradient-to-br from-white/30 via-[#FCD34D]/30 to-white/20 rounded-2xl blur-lg opacity-50 group-hover:opacity-100 transition duration-500"></div>
-              <div className="relative rounded-2xl border border-white/30 bg-white/10 backdrop-blur-sm p-8 shadow-[0_8px_32px_0_rgba(255,255,255,0.1)] text-center">
-                <div className="mb-2 text-5xl font-bold">{count2}+</div>
-                <div className="text-lg text-white/90">Cursos Especializados</div>
+              <div className="relative text-center">
+                <div className="mb-2 text-5xl font-bold" style={{ filter: 'drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.4))' }}>{count2}+</div>
+                <div className="text-lg text-white/90" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.4))' }}>Cursos Especializados</div>
               </div>
             </div>
 
             {/* Certificaciones Emitidas */}
             <div className="relative group">
-              {/* Liquid Glass effect */}
-              <div className="absolute -inset-1 bg-gradient-to-br from-white/30 via-[#FCD34D]/30 to-white/20 rounded-2xl blur-lg opacity-50 group-hover:opacity-100 transition duration-500"></div>
-              <div className="relative rounded-2xl border border-white/30 bg-white/10 backdrop-blur-sm p-8 shadow-[0_8px_32px_0_rgba(255,255,255,0.1)] text-center">
-                <div className="mb-2 text-5xl font-bold">{count3.toLocaleString()}+</div>
-                <div className="text-lg text-white/90">Certificaciones Emitidas</div>
+              <div className="relative text-center">
+                <div className="mb-2 text-5xl font-bold" style={{ filter: 'drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.4))' }}>{count3.toLocaleString()}+</div>
+                <div className="text-lg text-white/90" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.4))' }}>Certificaciones Emitidas</div>
               </div>
             </div>
           </div>

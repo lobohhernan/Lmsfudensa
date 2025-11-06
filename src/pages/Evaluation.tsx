@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   CheckCircle2,
   XCircle,
@@ -7,6 +7,8 @@ import {
   Clock,
   Award,
   RotateCcw,
+  Download,
+  Eye,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
@@ -14,6 +16,14 @@ import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Label } from "../components/ui/label";
 import { Progress } from "../components/ui/progress";
 import { Badge } from "../components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +35,9 @@ import {
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
 import { courses, type EvaluationQuestion } from "../lib/data";
+import { CertificateTemplate, type CertificateData } from "../components/CertificateTemplate";
+import { generateCertificatePDF, generateCertificateId, formatCertificateDate, generateCertificatePreview } from "../utils/certificate";
+import { toast } from "sonner@2.0.3";
 
 interface EvaluationProps {
   onNavigate?: (page: string) => void;
@@ -163,6 +176,11 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [evaluationData, setEvaluationData] = useState<EvaluationQuestion[]>([]);
   const [courseTitle, setCourseTitle] = useState("");
+  const [certificateData, setCertificateData] = useState<CertificateData | null>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [showCertificatePreview, setShowCertificatePreview] = useState(false);
+  const [certificatePreviewUrl, setCertificatePreviewUrl] = useState<string>("");
+  const certificateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Load evaluation questions for the specific course
@@ -211,6 +229,24 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
   const confirmSubmit = () => {
     setShowSubmitDialog(false);
     setIsSubmitted(true);
+    
+    // Calculate score to check if passed
+    const score = calculateScore();
+    const passed = score.percentage >= 70;
+    
+    // Generate certificate if passed
+    if (passed) {
+      const course = courses.find((c) => c.id === courseId);
+      const certData: CertificateData = {
+        studentName: "Juan Pérez", // TODO: Obtener del usuario logueado
+        dni: "12.345.678", // TODO: Obtener del usuario logueado
+        courseName: courseTitle || course?.title || "Curso Completado",
+        courseHours: course?.duration || "40",
+        issueDate: formatCertificateDate(),
+        certificateId: generateCertificateId(),
+      };
+      setCertificateData(certData);
+    }
   };
 
   const calculateScore = () => {
@@ -232,6 +268,43 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     setCurrentQuestion(0);
     setIsSubmitted(false);
     setTimeElapsed(0);
+    setCertificateData(null);
+    setShowCertificatePreview(false);
+    setCertificatePreviewUrl("");
+  };
+
+  const handleViewCertificate = async () => {
+    if (!certificateRef.current) {
+      toast.error("No se pudo generar la vista previa");
+      return;
+    }
+
+    try {
+      const previewUrl = await generateCertificatePreview(certificateRef.current);
+      setCertificatePreviewUrl(previewUrl);
+      setShowCertificatePreview(true);
+    } catch (error) {
+      toast.error("Error al generar la vista previa");
+      console.error("Error:", error);
+    }
+  };
+
+  const handleDownloadCertificate = async () => {
+    if (!certificateRef.current || !certificateData) {
+      toast.error("No se pudo generar el certificado");
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+    try {
+      await generateCertificatePDF(certificateRef.current, certificateData);
+      toast.success("Certificado descargado exitosamente");
+    } catch (error) {
+      toast.error("Error al generar el certificado. Por favor, intente nuevamente.");
+      console.error("Error:", error);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   // Results View
@@ -346,16 +419,51 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
                 })}
               </div>
 
+              {/* Certificate Section - Only if passed */}
+              {passed && certificateData && (
+                <Card className="bg-gradient-to-br from-[#55a5c7]/5 to-[#1e467c]/5 border-[#55a5c7]/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-[#1e467c]">
+                      <Award className="h-6 w-6" />
+                      Tu Certificado está Listo
+                    </CardTitle>
+                    <CardDescription>
+                      ¡Felicitaciones! Has completado exitosamente el curso. Visualiza y descarga tu certificado oficial.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button 
+                      onClick={handleViewCertificate}
+                      variant="outline"
+                      size="lg"
+                      className="w-full"
+                    >
+                      <Eye className="mr-2 h-5 w-5" />
+                      Ver Certificado
+                    </Button>
+                    <Button 
+                      onClick={handleDownloadCertificate}
+                      disabled={isGeneratingPDF}
+                      size="lg"
+                      className="w-full"
+                    >
+                      <Download className="mr-2 h-5 w-5" />
+                      {isGeneratingPDF ? "Generando PDF..." : "Descargar PDF"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Actions */}
               <div className="flex flex-col gap-3 sm:flex-row">
                 {passed ? (
                   <>
                     <Button
-                      onClick={() => onNavigate?.("verify")}
+                      onClick={() => onNavigate?.("profile")}
                       className="flex-1"
                     >
                       <Award className="mr-2 h-4 w-4" />
-                      Ver Certificado
+                      Ver Mis Certificados
                     </Button>
                     <Button
                       variant="outline"
@@ -384,6 +492,52 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
             </CardContent>
           </Card>
         </div>
+
+        {/* Hidden Certificate Template for PDF Generation */}
+        {certificateData && (
+          <div className="fixed -left-[10000px] top-0">
+            <CertificateTemplate ref={certificateRef} data={certificateData} />
+          </div>
+        )}
+
+        {/* Certificate Preview Dialog */}
+        <Dialog open={showCertificatePreview} onOpenChange={setShowCertificatePreview}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
+            <DialogHeader>
+              <DialogTitle className="text-[#1e467c]">Vista Previa del Certificado</DialogTitle>
+              <DialogDescription>
+                Revisa tu certificado antes de descargarlo
+              </DialogDescription>
+            </DialogHeader>
+            <div className="w-full overflow-auto">
+              {certificatePreviewUrl && (
+                <img 
+                  src={certificatePreviewUrl} 
+                  alt="Vista previa del certificado" 
+                  className="w-full h-auto border-2 border-[#E2E8F0] rounded-lg shadow-lg"
+                />
+              )}
+            </div>
+            <DialogFooter className="flex gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => setShowCertificatePreview(false)}
+              >
+                Cerrar
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowCertificatePreview(false);
+                  handleDownloadCertificate();
+                }}
+                disabled={isGeneratingPDF}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {isGeneratingPDF ? "Generando..." : "Descargar PDF"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

@@ -1,21 +1,86 @@
-import { Award, Calendar, Shield, ExternalLink } from "lucide-react";
+import { useState, useRef } from "react";
+import { Award, Calendar, Shield, Download, Eye } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "./ui/dialog";
+import { CertificateTemplate, type CertificateData } from "./CertificateTemplate";
+import { generateCertificatePDF, generateCertificatePreview } from "../utils/certificate";
+import { toast } from "sonner@2.0.3";
 
 export interface CertificateCardProps {
   courseName: string;
   issueDate: string;
   hash: string;
-  onVerify?: () => void;
+  studentName?: string;
+  dni?: string;
+  courseHours?: string;
+  certificateId?: string;
 }
 
 export function CertificateCard({
   courseName,
   issueDate,
   hash,
-  onVerify,
+  studentName = "Juan Pérez",
+  dni = "12.345.678",
+  courseHours = "40",
+  certificateId = hash.substring(0, 16).toUpperCase(),
 }: CertificateCardProps) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const certificateRef = useRef<HTMLDivElement>(null);
+
+  const certificateData: CertificateData = {
+    studentName,
+    dni,
+    courseName,
+    courseHours,
+    issueDate,
+    certificateId,
+  };
+
+  const handleViewCertificate = async () => {
+    if (!certificateRef.current) {
+      toast.error("No se pudo generar la vista previa");
+      return;
+    }
+
+    try {
+      const url = await generateCertificatePreview(certificateRef.current);
+      setPreviewUrl(url);
+      setShowPreview(true);
+    } catch (error) {
+      toast.error("Error al generar la vista previa");
+      console.error("Error:", error);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!certificateRef.current) {
+      toast.error("No se pudo generar el certificado");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      await generateCertificatePDF(certificateRef.current, certificateData);
+      toast.success("Certificado descargado exitosamente");
+    } catch (error) {
+      toast.error("Error al generar el certificado. Por favor, intente nuevamente.");
+      console.error("Error:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
   return (
     <Card className="group relative overflow-hidden border-l-4 border-l-[#55a5c7] border border-[#55a5c7]/20 bg-gradient-to-br from-white to-[#55a5c7]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#55a5c7]/40 hover:shadow-[0_8px_32px_0_rgba(85,165,199,0.25),inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:scale-105 cursor-pointer flex flex-col h-full">
       {/* Glass effect top highlight */}
@@ -49,15 +114,68 @@ export function CertificateCard({
           </code>
         </div>
       </CardContent>
-      <CardFooter className="border-t p-4 flex-shrink-0">
-        <div className="flex w-full gap-2">
-          <Button variant="outline" className="flex-1" onClick={onVerify}>
-            <ExternalLink className="mr-2 h-4 w-4" />
-            Verificar
-          </Button>
-          <Button className="flex-1">Descargar PDF</Button>
-        </div>
+      <CardFooter className="border-t p-4 flex-shrink-0 gap-2">
+        <Button 
+          variant="outline"
+          className="flex-1" 
+          onClick={handleViewCertificate}
+        >
+          <Eye className="mr-2 h-4 w-4" />
+          Ver
+        </Button>
+        <Button 
+          className="flex-1" 
+          onClick={handleDownload}
+          disabled={isGenerating}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          {isGenerating ? "Generando..." : "Descargar"}
+        </Button>
       </CardFooter>
+
+      {/* Hidden Certificate Template for PDF Generation */}
+      <div className="fixed -left-[10000px] top-0">
+        <CertificateTemplate ref={certificateRef} data={certificateData} />
+      </div>
+
+      {/* Certificate Preview Dialog */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#1e467c]">Vista Previa del Certificado</DialogTitle>
+            <DialogDescription>
+              {courseName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="w-full overflow-auto">
+            {previewUrl && (
+              <img 
+                src={previewUrl} 
+                alt="Vista previa del certificado" 
+                className="w-full h-auto border-2 border-[#E2E8F0] rounded-lg shadow-lg"
+              />
+            )}
+          </div>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowPreview(false)}
+            >
+              Cerrar
+            </Button>
+            <Button
+              onClick={() => {
+                setShowPreview(false);
+                handleDownload();
+              }}
+              disabled={isGenerating}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {isGenerating ? "Generando..." : "Descargar PDF"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

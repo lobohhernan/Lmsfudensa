@@ -96,11 +96,6 @@ export function AppFooter() {
               </li>
               <li>
                 <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
-                  Verificar Certificado
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
                   Mi Perfil
                 </a>
               </li>

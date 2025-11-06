@@ -18,6 +18,7 @@ import {
   CheckCircle,
   XCircle,
   Menu,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
@@ -49,7 +50,8 @@ import {
 import { Badge } from "../components/ui/badge";
 import { cn } from "../components/ui/utils";
 import { CourseForm } from "../components/CourseForm";
-import { courses, saveCourses, type FullCourse } from "../lib/data";
+import { InstructorForm } from "../components/InstructorForm";
+import { courses, saveCourses, instructors, saveInstructors, type FullCourse, type Instructor } from "../lib/data";
 import { toast } from "sonner@2.0.3";
 import {
   Dialog,
@@ -210,20 +212,25 @@ const certificatesData = [
 ];
 
 export function AdminPanel({ onNavigate }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "courses" | "users" | "payments" | "certificates">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "courses" | "instructors" | "users" | "payments" | "certificates">("dashboard");
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<FullCourse | undefined>();
   const [courseList, setCourseList] = useState<FullCourse[]>([]);
+  const [showInstructorForm, setShowInstructorForm] = useState(false);
+  const [editingInstructor, setEditingInstructor] = useState<Instructor | undefined>();
+  const [instructorList, setInstructorList] = useState<Instructor[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
+  const [instructorToDelete, setInstructorToDelete] = useState<string | null>(null);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactUser, setContactUser] = useState<{ name: string; email: string } | null>(null);
   const [contactMessage, setContactMessage] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // Load courses from localStorage or use defaults
+    // Load courses and instructors from localStorage or use defaults
     setCourseList(courses);
+    setInstructorList(instructors);
   }, []);
 
   const handleSaveCourse = (course: FullCourse) => {
@@ -251,6 +258,31 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setDeleteDialogOpen(true);
   };
 
+  const handleSaveInstructor = (instructor: Instructor) => {
+    let updated: Instructor[];
+    if (editingInstructor) {
+      // Update existing instructor
+      updated = instructorList.map((i) => (i.id === instructor.id ? instructor : i));
+    } else {
+      // Add new instructor
+      updated = [...instructorList, instructor];
+    }
+    setInstructorList(updated);
+    saveInstructors(updated);
+    setShowInstructorForm(false);
+    setEditingInstructor(undefined);
+  };
+
+  const handleEditInstructor = (instructor: Instructor) => {
+    setEditingInstructor(instructor);
+    setShowInstructorForm(true);
+  };
+
+  const handleDeleteInstructor = (instructorId: string) => {
+    setInstructorToDelete(instructorId);
+    setDeleteDialogOpen(true);
+  };
+
   const confirmDelete = () => {
     if (courseToDelete) {
       const updated = courseList.filter((c) => c.id !== courseToDelete);
@@ -258,8 +290,15 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       saveCourses(updated);
       toast.success("Curso eliminado exitosamente");
     }
+    if (instructorToDelete) {
+      const updated = instructorList.filter((i) => i.id !== instructorToDelete);
+      setInstructorList(updated);
+      saveInstructors(updated);
+      toast.success("Instructor eliminado exitosamente");
+    }
     setDeleteDialogOpen(false);
     setCourseToDelete(null);
+    setInstructorToDelete(null);
   };
 
   const handleContactUser = (name: string, email: string) => {
@@ -282,6 +321,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "courses", label: "Cursos", icon: BookOpen },
+    { id: "instructors", label: "Instructores", icon: GraduationCap },
     { id: "users", label: "Usuarios", icon: Users },
     { id: "payments", label: "Pagos", icon: CreditCard },
     { id: "certificates", label: "Certificados", icon: Award },
@@ -542,10 +582,104 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               </Button>
               <CourseForm
                 course={editingCourse}
+                instructors={instructorList}
                 onSave={handleSaveCourse}
                 onCancel={() => {
                   setShowCourseForm(false);
                   setEditingCourse(undefined);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Instructors */}
+          {activeTab === "instructors" && !showInstructorForm && (
+            <div className="space-y-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative flex-1 sm:max-w-md">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+                  <Input placeholder="Buscar instructores..." className="pl-10" />
+                </div>
+                <Button onClick={() => setShowInstructorForm(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nuevo Instructor
+                </Button>
+              </div>
+
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Título</TableHead>
+                      <TableHead>Valoración</TableHead>
+                      <TableHead>Estudiantes</TableHead>
+                      <TableHead>Cursos</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {instructorList.map((instructor) => (
+                      <TableRow key={instructor.id}>
+                        <TableCell className="text-[#0F172A]">{instructor.name}</TableCell>
+                        <TableCell className="max-w-xs truncate">{instructor.title}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{instructor.rating} ⭐</Badge>
+                        </TableCell>
+                        <TableCell>{instructor.students.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{instructor.courses} cursos</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditInstructor(instructor)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteInstructor(instructor.id)}
+                                className="text-[#EF4444]"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            </div>
+          )}
+
+          {/* Instructor Form */}
+          {activeTab === "instructors" && showInstructorForm && (
+            <div>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowInstructorForm(false);
+                  setEditingInstructor(undefined);
+                }}
+                className="mb-4"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Volver a la lista
+              </Button>
+              <InstructorForm
+                instructor={editingInstructor}
+                onSave={handleSaveInstructor}
+                onCancel={() => {
+                  setShowInstructorForm(false);
+                  setEditingInstructor(undefined);
                 }}
               />
             </div>
@@ -603,7 +737,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                                 Editar
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => {
-                                onNavigate?.("verify");
                                 toast.info(`Certificados de ${user.name}: ${user.certificates}`);
                               }}>
                                 <Award className="mr-2 h-4 w-4" />
@@ -757,10 +890,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
                   <Input placeholder="Buscar certificados..." className="pl-10" />
                 </div>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Emitir Certificado
-                </Button>
               </div>
 
               <Card>
@@ -793,10 +922,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => onNavigate?.("verify")}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Verificar
-                              </DropdownMenuItem>
                               <DropdownMenuItem>
                                 <Download className="mr-2 h-4 w-4" />
                                 Descargar PDF
@@ -824,7 +949,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Esto eliminará permanentemente el curso y todas sus lecciones y evaluaciones asociadas.
+              {courseToDelete && "Esta acción no se puede deshacer. Esto eliminará permanentemente el curso y todas sus lecciones y evaluaciones asociadas."}
+              {instructorToDelete && "Esta acción no se puede deshacer. Esto eliminará permanentemente el instructor. Los cursos asignados a este instructor mantendrán su referencia."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

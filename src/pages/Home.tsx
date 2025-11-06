@@ -146,14 +146,10 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
           <div className="flex items-center justify-center">
             <div className="max-w-3xl space-y-6 lg:space-y-8 text-center">
               <h1 className="hero-h1 drop-shadow-lg">
-                {isLoggedIn 
-                  ? "¡Bienvenido de nuevo a FUDENSA!" 
-                  : "Formación profesional en salud certificada"}
+                Formación profesional en salud certificada
               </h1>
               <p className="text-base sm:text-lg leading-relaxed text-white/95 font-[Montserrat] drop-shadow-md">
-                {isLoggedIn 
-                  ? "Continúa tu formación profesional en salud. Tienes 2 cursos en progreso y nuevas recomendaciones esperándote." 
-                  : "Cursos online certificados en RCP, primeros auxilios y atención médica de emergencia. Reconocidos internacionalmente y 100% a tu ritmo con soporte continuo."}
+                Cursos online certificados en RCP, primeros auxilios y atención médica de emergencia. Reconocidos internacionalmente y 100% a tu ritmo con soporte continuo.
               </p>
               <div className="flex flex-col gap-4 sm:flex-row justify-center mt-6 lg:mt-8">
                 {isLoggedIn ? (
@@ -169,7 +165,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="border-white/30 bg-white/10 text-white hover:bg-white/20 shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105"
+                      className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105"
                       onClick={() => onNavigate?.("catalog")}
                     >
                       Explorar más cursos
@@ -188,7 +184,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="border-white/30 bg-white/10 text-white hover:bg-white/20 shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)]"
+                      className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)]"
                       onClick={() => onNavigate?.("contact")}
                     >
                       Contáctanos

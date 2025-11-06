@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, CheckCircle, MessageSquare, Play, Pause, Volume2, Maximize, Award, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, MessageSquare, Award, List, Youtube } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
 import { LessonList, Lesson } from "../components/LessonList";
@@ -7,20 +7,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Textarea } from "../components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
 interface LessonPlayerProps {
   onNavigate?: (page: string) => void;
 }
 
-const lessons: Lesson[] = [
-  { id: "1", title: "Introducción a RCP", duration: "15 min", type: "video", completed: true, locked: false },
-  { id: "2", title: "Anatomía del sistema cardiovascular", duration: "20 min", type: "video", completed: true, locked: false },
-  { id: "3", title: "Reconocimiento de paro cardíaco", duration: "18 min", type: "video", completed: false, locked: false },
-  { id: "4", title: "Compresiones torácicas efectivas", duration: "25 min", type: "video", completed: false, locked: false },
-  { id: "5", title: "Ventilaciones de rescate", duration: "22 min", type: "video", completed: false, locked: true },
-  { id: "6", title: "Uso del DEA", duration: "30 min", type: "video", completed: false, locked: true },
-  { id: "7", title: "RCP en casos especiales", duration: "20 min", type: "video", completed: false, locked: true },
+// Extendemos el tipo Lesson para incluir youtubeId
+interface LessonWithYoutube extends Lesson {
+  youtubeId?: string;
+}
+
+const lessons: LessonWithYoutube[] = [
+  { id: "1", title: "Introducción a RCP", duration: "15 min", type: "video", completed: true, locked: false, youtubeId: "dQw4w9WgXcQ" },
+  { id: "2", title: "Anatomía del sistema cardiovascular", duration: "20 min", type: "video", completed: true, locked: false, youtubeId: "dQw4w9WgXcQ" },
+  { id: "3", title: "Reconocimiento de paro cardíaco", duration: "18 min", type: "video", completed: false, locked: false, youtubeId: "dQw4w9WgXcQ" },
+  { id: "4", title: "Compresiones torácicas efectivas", duration: "25 min", type: "video", completed: false, locked: false, youtubeId: "dQw4w9WgXcQ" },
+  { id: "5", title: "Ventilaciones de rescate", duration: "22 min", type: "video", completed: false, locked: true, youtubeId: "dQw4w9WgXcQ" },
+  { id: "6", title: "Uso del DEA", duration: "30 min", type: "video", completed: false, locked: true, youtubeId: "dQw4w9WgXcQ" },
+  { id: "7", title: "RCP en casos especiales", duration: "20 min", type: "video", completed: false, locked: true, youtubeId: "dQw4w9WgXcQ" },
   { id: "8", title: "Evaluación de conocimientos", duration: "30 min", type: "quiz", completed: false, locked: true },
 ];
 
@@ -45,8 +49,6 @@ const comments = [
 
 export function LessonPlayer({ onNavigate }: LessonPlayerProps) {
   const [currentLesson, setCurrentLesson] = useState("3");
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [lessonProgress, setLessonProgress] = useState(35);
   const [showSidebar, setShowSidebar] = useState(false);
   const currentLessonData = lessons.find((l) => l.id === currentLesson);
   const currentIndex = lessons.findIndex((l) => l.id === currentLesson);
@@ -89,75 +91,47 @@ export function LessonPlayer({ onNavigate }: LessonPlayerProps) {
         <div className="flex flex-1 flex-col overflow-y-auto">
           <div className="mx-auto w-full max-w-5xl p-4 lg:p-6 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {/* Video Player */}
-            <div className="relative mb-6 overflow-hidden rounded-lg bg-black">
+            <div className="relative mb-6 overflow-hidden rounded-lg bg-black shadow-2xl">
               <div className="relative aspect-video">
-                <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=1200"
-                  alt="Video lesson"
-                  className="h-full w-full object-cover opacity-80"
-                />
-                {/* Video Controls Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                  <Button
-                    size="lg"
-                    className="h-16 w-16 rounded-full"
-                    onClick={() => setIsPlaying(!isPlaying)}
-                  >
-                    {isPlaying ? (
-                      <Pause className="h-8 w-8" />
-                    ) : (
-                      <Play className="h-8 w-8" />
-                    )}
-                  </Button>
-                </div>
-                {/* Bottom Controls - Liquid Glass Effect */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent backdrop-blur-xl border-t border-white/10 shadow-[0_-8px_32px_0_rgba(0,0,0,0.3)] p-4">
-                  {/* Glass effect top highlight */}
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                  
-                  <Progress value={lessonProgress} className="mb-3 h-1" />
-                  <div className="flex items-center justify-between text-white">
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-white hover:bg-white/20 hover:backdrop-blur-sm border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
-                        onClick={() => setIsPlaying(!isPlaying)}
-                      >
-                        {isPlaying ? (
-                          <Pause className="h-5 w-5" />
-                        ) : (
-                          <Play className="h-5 w-5" />
-                        )}
-                      </Button>
-                      <span className="text-sm">5:20 / 15:00</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-white hover:bg-white/20 hover:backdrop-blur-sm border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
-                      >
-                        <Volume2 className="h-5 w-5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-white hover:bg-white/20 hover:backdrop-blur-sm border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
-                      >
-                        <Maximize className="h-5 w-5" />
-                      </Button>
+                {currentLessonData?.youtubeId ? (
+                  <iframe
+                    src={`https://www.youtube.com/embed/${currentLessonData.youtubeId}?rel=0&modestbranding=1&fs=1&cc_load_policy=1`}
+                    title={currentLessonData.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="h-full w-full"
+                    style={{ border: 0 }}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1e467c] to-[#55a5c7]">
+                    <div className="text-center text-white p-8">
+                      <Award className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                      <p className="text-xl mb-2">Contenido no disponible</p>
+                      <p className="text-sm opacity-75">Este contenido no tiene video asignado</p>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
             {/* Lesson Info */}
             <div className="mb-6">
-              <h1 className="mb-2 text-[#0F172A]">{currentLessonData?.title}</h1>
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <h1 className="text-[#0F172A]">{currentLessonData?.title}</h1>
+                {currentLessonData?.youtubeId && (
+                  <a
+                    href={`https://www.youtube.com/watch?v=${currentLessonData.youtubeId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#0066FF] transition-colors"
+                  >
+                    <Youtube className="h-4 w-4" />
+                    Ver en YouTube
+                  </a>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-4">
-                <Button onClick={() => setLessonProgress(100)}>
+                <Button>
                   <CheckCircle className="mr-2 h-5 w-5" />
                   Marcar como completada
                 </Button>
