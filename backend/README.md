@@ -7,11 +7,14 @@ Este directorio contiene el backend del proyecto LMS FUDENSA, basado en **Supaba
 ```
 backend/
 ├── supabase/
+│   ├── config.toml          # Configuración de Supabase
 │   ├── functions/
 │   │   └── server/
 │   │       ├── index.tsx    # Función principal del servidor
 │   │       └── kv_store.tsx # Almacenamiento en KV store
-│   └── config.toml          # Configuración de Supabase (si existe)
+│   └── migrations/
+│       └── 20241107_initial_schema.sql  # Migraciones de base de datos
+├── .env.example             # Variables de entorno de ejemplo
 └── README.md                # Este archivo
 ```
 
@@ -87,17 +90,55 @@ backend/
 
 3. **Monitorea y gestiona** desde el dashboard de Supabase: [supabase.com](https://supabase.com).
 
-## Funciones Principales
+## Conexión con la Base de Datos
 
-- **`index.tsx`**: Maneja las operaciones principales del servidor (e.g., gestión de cursos, usuarios).
-- **`kv_store.tsx`**: Utilidades para almacenamiento en KV store (e.g., sesiones, caché).
+Las Edge Functions se conectan automáticamente a la base de datos de Supabase usando el cliente integrado. Para configuraciones personalizadas:
 
-## Recomendaciones
+- Usa `createClient` de `@supabase/supabase-js` en las funciones.
+- Las credenciales se obtienen de las variables de entorno o configuración de Supabase.
 
-- **Seguridad**: Usa variables de entorno para claves sensibles (configura en `supabase/config.toml` o dashboard).
-- **Testing**: Prueba las funciones localmente antes de desplegar.
-- **Colaboración**: Usa branches para desarrollo y mergea a main para despliegue.
-- **Documentación**: Mantén este README actualizado con cambios en las funciones.
+## Conexión con el Frontend
+
+El frontend se conecta al backend a través de la API de Supabase:
+
+- **Cliente Supabase**: Configurado en `frontend/src/utils/supabase/info.tsx` con `projectId` y `publicAnonKey`.
+- Las funciones Edge se llaman desde el frontend usando `supabase.functions.invoke('server', { body: data })`.
+- Asegúrate de que las políticas RLS (Row Level Security) permitan el acceso desde el frontend.
+
+## Funciones y Archivos Pendientes de Implementación
+
+Esta sección lista las funciones y archivos identificados en los guidelines del proyecto que aún no están completamente implementados. Úsalas como roadmap para desarrollo futuro. Cada función incluye ubicación sugerida y descripción.
+
+### Sección: Panel Admin
+
+- **manageCourses()**: Ubicación: `frontend/src/pages/AdminPanel.tsx` y `backend/supabase/functions/server/index.tsx`. Gestionar cursos (crear, editar, eliminar) según Admin-YouTube-Guide.md.
+- **manageUsers()**: Ubicación: `frontend/src/pages/AdminPanel.tsx` y `backend/supabase/functions/server/kv_store.tsx`. Administrar usuarios y permisos.
+- **generateReports()**: Ubicación: `backend/supabase/functions/server/index.tsx`. Generar reportes de uso y ventas según E2E-Implementation-Summary.md.
+
+### Sección: Crear Curso
+
+- **createCourse()**: Ubicación: `frontend/src/components/CourseForm.tsx` y `backend/supabase/functions/server/index.tsx`. Crear un nuevo curso con lecciones y metadatos según Guidelines.md.
+- **assignInstructor()**: Ubicación: `frontend/src/components/InstructorForm.tsx` y `backend/supabase/functions/server/index.tsx`. Asignar instructor a un curso.
+- **uploadCourseAssets()**: Ubicación: `backend/supabase/functions/server/index.tsx`. Subir assets (videos, imágenes) para cursos.
+
+### Sección: Gestión de Lecciones
+
+- **addLesson()**: Ubicación: `frontend/src/components/LessonList.tsx` y `backend/supabase/functions/server/index.tsx`. Agregar lecciones a un curso según YouTube-Integration.md.
+- **integrateYouTubeVideo()**: Ubicación: `backend/supabase/functions/server/index.tsx`. Integrar videos de YouTube en lecciones.
+- **trackProgress()**: Ubicación: `frontend/src/pages/LessonPlayer.tsx` y `backend/supabase/functions/server/kv_store.tsx`. Rastrear progreso del estudiante en lecciones.
+
+### Sección: Flujo de Compra y Pagos
+
+- **processPayment()**: Ubicación: `frontend/src/pages/Checkout.tsx` y `backend/supabase/functions/server/index.tsx`. Procesar pagos para cursos según E2E-Purchase-Flow.md.
+- **validatePurchase()**: Ubicación: `backend/supabase/functions/server/index.tsx`. Validar compra y acceso al curso.
+- **issueCertificate()**: Ubicación: `frontend/src/pages/CertificateVerify.tsx` y `backend/supabase/functions/server/index.tsx`. Emitir certificado tras completar curso.
+
+### Sección: Integración y Utilidades
+
+- **verifyCertificate()**: Ubicación: `frontend/src/utils/certificate.ts` y `backend/supabase/functions/server/index.tsx`. Verificar autenticidad de certificados según Quick-Start-E2E.md.
+- **storeSessionData()**: Ubicación: `backend/supabase/functions/server/kv_store.tsx`. Almacenar datos de sesión en KV store.
+
+**Nota**: Implementa estas funciones gradualmente. Si necesitas archivos adicionales (e.g., hooks en frontend o functions separadas en backend), agrégalos y actualiza este README.
 
 ## Soporte
 
