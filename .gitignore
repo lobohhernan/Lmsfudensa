@@ -1,1 +1,23 @@
+```ignore
 node_modules
+
+# Archivos de entorno (contienen claves secretas)
+.env
+.env.local
+.env.*.local
+
+# Dependencias
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+```
