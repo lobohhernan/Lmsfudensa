@@ -19,11 +19,13 @@ Documentación para el equipo de desarrollo. El backend usa **Supabase** (Postgr
 ## 🗄️ Esquema de la Base de Datos (Completo)
 
 ### Tabla: `auth.users` (Supabase Auth)
+
 - Gestiona autenticación (email, password, etc.)
 - **Controlada por Supabase** — no editar directamente
 - FK: referenciada por `public.profiles.id`
 
 ### Tabla: `public.profiles`
+
 Información de usuarios del sistema.
 
 ```sql
@@ -39,6 +41,7 @@ CREATE TABLE profiles (
 ```
 
 ### Tabla: `public.courses`
+
 Cursos disponibles en la plataforma.
 
 ```sql
@@ -64,6 +67,7 @@ CREATE TABLE courses (
 ```
 
 ### Tabla: `public.lessons`
+
 Lecciones dentro de un curso.
 
 ```sql
@@ -82,6 +86,7 @@ CREATE TABLE lessons (
 ```
 
 ### Tabla: `public.evaluations`
+
 Preguntas de evaluación/cuestionarios.
 
 ```sql
@@ -98,6 +103,7 @@ CREATE TABLE evaluations (
 ```
 
 ### Tabla: `public.course_requirements`
+
 Requisitos previos de un curso.
 
 ```sql
@@ -111,6 +117,7 @@ CREATE TABLE course_requirements (
 ```
 
 ### Tabla: `public.course_learning_outcomes`
+
 Objetivos de aprendizaje de un curso.
 
 ```sql

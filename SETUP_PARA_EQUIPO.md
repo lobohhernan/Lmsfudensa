@@ -48,6 +48,8 @@ npm install
 cd ..
 ```
 
+**⚠️ IMPORTANTE:** Cada vez que hagas `git pull` y hay cambios en `package.json` o `package-lock.json`, debes ejecutar `npm install` para traer las nuevas dependencias.
+
 ### Paso 4: Crear Archivo `.env.local` en la Raíz
 
 ```bash
@@ -341,6 +343,29 @@ Probablemente ruta no existe o BD no cargó datos. Verifica:
 - Captura pantalla del error
 - Pega en el grupo
 - Alguien te ayuda
+
+---
+
+## 🔄 Mantener Dependencias Actualizadas
+
+Cuando alguien del equipo agregue nuevas dependencias (librerías), el `package.json` y `package-lock.json` cambian. 
+
+**Para traer las nuevas dependencias:**
+
+```bash
+# 1. Trae los cambios del repositorio
+git pull origin SantiBranch
+
+# 2. Si hay cambios en frontend/package.json, instala las nuevas deps
+cd frontend
+npm install
+cd ..
+
+# 3. Verifica que no hay errores
+npm run dev  # o lo que sea
+```
+
+**Regla simple:** Si ves que `package.json` cambió después de `git pull`, ejecuta `npm install` en la carpeta `frontend/`.
 
 ---
 
