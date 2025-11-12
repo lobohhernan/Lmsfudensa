@@ -13,6 +13,7 @@ import { DesignSystem } from "./pages/DesignSystem";
 import { Evaluation } from "./pages/Evaluation";
 import { AboutUs } from "./pages/AboutUs";
 import { Contact } from "./pages/Contact";
+import { DatabaseTest } from "./DatabaseTest";
 import { Toaster } from "./components/ui/sonner";
 import { Button } from "./components/ui/button";
 import {
@@ -44,6 +45,10 @@ export default function App() {
   const [userData, setUserData] = useState<{ email: string; name: string } | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // 🧪 TEST DE BASE DE DATOS - Temporal para verificar conexión
+  // Descomenta la siguiente línea para probar la conexión:
+  return <DatabaseTest />;
 
   // Scroll to top when page changes
   useEffect(() => {
