@@ -4,15 +4,43 @@ Documentación para el equipo de desarrollo. El backend usa **Supabase** (Postgr
 
 ---
 
+## ⚡ Quick Start (Para Nuevos Integrantes)
+
+```bash
+# 1. Clonar y cambiar a la rama correcta
+git clone https://github.com/lobohhernan/Lmsfudensa.git
+cd Lmsfudensa
+git checkout SantiBranch
+
+# 2. Instalar dependencias del frontend
+cd frontend
+npm install
+
+# 3. Crear archivo .env.local con las credenciales (ver sección "Paso 3" abajo)
+# Copia las credenciales de Supabase en frontend/.env.local
+
+# 4. Iniciar servidor de desarrollo
+npm run dev
+
+# 5. Verificar que la BD tiene datos (desde raíz del proyecto)
+cd ..\backend\scripts
+.\query_db.ps1 -ServiceRoleKey "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6dGtzcHF1bnhlYXVhd3FjaWt3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjY5NTc3OCwiZXhwIjoyMDc4MjcxNzc4fQ.t_buPMiP1pGFh7IfIAGUr0iVPttJRWwhV07UgbqvPPs"
+```
+
+**🎯 Resultado esperado:** Ver el curso "RCP Adultos AHA 2020" y perfiles en la consola.
+
+---
+
 ## 📋 Tabla de Contenidos
 
 1. [Estructura de Base de Datos](#estructura-de-base-de-datos)
 2. [Setup Inicial (Para Nuevos Integrantes)](#setup-inicial-para-nuevos-integrantes)
 3. [Ejecutar Migraciones](#ejecutar-migraciones)
 4. [Ejecutar Seed (Datos de Prueba)](#ejecutar-seed-datos-de-prueba)
-5. [Conectarse a la BD desde Código](#conectarse-a-la-bd-desde-código)
-6. [Ejemplos de Queries REST](#ejemplos-de-queries-rest)
-7. [Troubleshooting](#troubleshooting)
+5. [Verificar Conexión y Ver Datos desde VS Code](#verificar-conexión-y-ver-datos-desde-vs-code)
+6. [Conectarse a la BD desde Código](#conectarse-a-la-bd-desde-código)
+7. [Ejemplos de Queries SQL](#ejemplos-de-queries-sql)
+8. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -152,20 +180,40 @@ cd ..
 
 ### Paso 3: Obtener Credenciales de Supabase
 
-Solicita al **Project Owner** las siguientes credenciales:
-- **SUPABASE_URL**: `https://<PROJECT_REF>.supabase.co`
-- **SUPABASE_ANON_KEY**: Clave pública (para cliente)
-- **SUPABASE_SERVICE_ROLE_KEY**: Clave privada (solo para seed/admin — **no en público**)
+**Proyecto Actual:** LMS Fudensa (hztkspqunxeauawqcikw)
 
-### Paso 4: Crear `.env.local` (Opcional pero Recomendado)
+#### Credenciales Públicas (Puedes Compartir)
 
-En la raíz del proyecto, crea un archivo `.env.local` (**no lo commits**):
+```env
+SUPABASE_URL=https://hztkspqunxeauawqcikw.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6dGtzcHF1bnhlYXVhd3FjaWt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzNjE4NzgsImV4cCI6MjA0NjkzNzg3OH0.sb_publishable_rZtJ7xTLTI8ubfk2jRBYNw_EW2HNI7B
+```
+
+#### Credencial Privada (Solo para Seed y Admin - **NO COMMITEAR**)
+
+Solicita al **Project Owner** o **Tech Lead** la clave privada:
+- **SUPABASE_SERVICE_ROLE_KEY**: `eyJhbGc...` (clave larga, ~300 caracteres)
+
+> ⚠️ **IMPORTANTE:** Nunca subas la `SERVICE_ROLE_KEY` a GitHub. Úsala solo localmente en `.env.local` o como variable de entorno temporal.
+
+### Paso 4: Crear `.env.local` en Frontend
+
+En `frontend/.env.local` (**no lo commits, ya está en .gitignore**):
 
 ```bash
-SUPABASE_URL=https://<PROJECT_REF>.supabase.co
-SUPABASE_ANON_KEY=<YOUR_ANON_KEY>
-SUPABASE_SERVICE_ROLE_KEY=<YOUR_SECRET_KEY>
+# frontend/.env.local
+VITE_SUPABASE_URL=https://hztkspqunxeauawqcikw.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6dGtzcHF1bnhlYXVhd3FjaWt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzNjE4NzgsImV4cCI6MjA0NjkzNzg3OH0.sb_publishable_rZtJ7xTLTI8ubfk2jRBYNw_EW2HNI7B
 ```
+
+### Paso 5: Verificar Instalación
+
+```bash
+cd frontend
+npm run dev
+```
+
+Abre `http://localhost:3000` en tu navegador. Si ves la página, ¡todo está funcionando! ✅
 
 ---
 
@@ -313,7 +361,91 @@ export function CourseList() {
 
 ---
 
-## 📊 Ejemplos de Queries
+## 📊 Verificar Conexión y Ver Datos desde VS Code
+
+Después de ejecutar las migraciones y el seed, puedes verificar que la base de datos tiene datos usando el script `query_db.ps1` directamente desde la consola de VS Code.
+
+### Script: `backend/scripts/query_db.ps1`
+
+Este script consulta todas las tablas y muestra los datos en formato tabla en la consola.
+
+**Ubicación:** `backend/scripts/query_db.ps1`
+
+**Uso:**
+
+```powershell
+# Desde la raíz del proyecto
+cd backend\scripts
+.\query_db.ps1 -ServiceRoleKey "TU_SERVICE_ROLE_KEY"
+```
+
+**Salida Esperada:**
+
+```
+========================================
+  TEST DE CONEXION A SUPABASE
+========================================
+
+CURSOS (SELECT id, title, slug, category):
+
+id                                   title                                             slug                  category
+--                                   -----                                             ----                  --------
+2241e2a6-491f-4db1-b63a-4351c917ba5a RCP Adultos AHA 2020 - Reanimación Cardiopulmonar rcp-adultos-aha-2020 RCP
+
+Total: 1 curso(s)
+
+PERFILES (SELECT *):
+
+id                                   email               full_name           role
+--                                   -----               ---------           ----
+550e8400-e29b-41d4-a716-446655440000 instructor@test.com Dr. Test Instructor instructor
+
+Total: 1 perfil(es)
+
+LECCIONES (SELECT *):
+
+id                                   title                               duration order_index
+--                                   -----                               -------- -----------
+d887872b-d443-4747-9d48-ba42de68f692 Introducción a RCP                  15 min   1
+55349c36-69bb-4e21-ab69-f6da27b40a40 Anatomía del sistema cardiovascular 20 min   2
+fe5025ce-91ec-4a5d-934a-2944d40f51a1 Compresiones torácicas efectivas    25 min   3
+
+Total: 3 leccion(es)
+
+EVALUACIONES (SELECT *):
+
+Preguntas encontradas:
+  - ¿Cuál es la profundidad correcta de las compresiones torácicas en un adulto durante la RCP?
+  - ¿Cuál es la frecuencia recomendada de compresiones torácicas por minuto?
+
+Total: 2 evaluacion(es)
+
+========================================
+  TEST COMPLETADO
+========================================
+```
+
+### ¿Qué Hace el Script?
+
+1. **Conecta a Supabase** usando tu Service Role Key
+2. **Consulta todas las tablas principales:**
+   - `courses` (cursos)
+   - `profiles` (perfiles de usuarios)
+   - `lessons` (lecciones)
+   - `evaluations` (evaluaciones/preguntas)
+3. **Muestra los datos en formato tabla** directamente en la consola de VS Code
+4. **Confirma que todo está funcionando** ✅
+
+### Cuándo Usar Este Script
+
+- ✅ Después de ejecutar el seed por primera vez
+- ✅ Para verificar que las migraciones se aplicaron correctamente
+- ✅ Para debugging: ver qué datos hay en la BD sin abrir el Dashboard
+- ✅ Para confirmar que la conexión funciona antes de desarrollar
+
+---
+
+## 📊 Ejemplos de Queries SQL
 
 ### Obtener Todos los Cursos
 
