@@ -1,5 +1,5 @@
 import { Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
-import logoHorizontal from "figma:asset/8052e84e5f711ed276951754c7c911a5c6a4f35f.png";
+import logoHorizontal from "../assets/logo-horizontal.svg";
 
 export function AppFooter() {
   return (
