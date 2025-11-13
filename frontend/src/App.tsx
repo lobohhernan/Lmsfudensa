@@ -13,7 +13,6 @@ import { DesignSystem } from "./pages/DesignSystem";
 import { Evaluation } from "./pages/Evaluation";
 import { AboutUs } from "./pages/AboutUs";
 import { Contact } from "./pages/Contact";
-import { DatabaseTest } from "./DatabaseTest";
 import { Toaster } from "./components/ui/sonner";
 import { Button } from "./components/ui/button";
 import {
@@ -23,7 +22,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "./components/ui/dropdown-menu";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 type Page =
   | "home"
@@ -48,7 +47,7 @@ export default function App() {
 
   // 🧪 TEST DE BASE DE DATOS - Temporal para verificar conexión
   // Descomenta la siguiente línea para probar la conexión:
-  return <DatabaseTest />;
+  // return <DatabaseTest />;
 
   // Scroll to top when page changes
   useEffect(() => {
