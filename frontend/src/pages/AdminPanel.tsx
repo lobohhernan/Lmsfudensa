@@ -53,6 +53,7 @@ import { CourseForm } from "../components/CourseForm";
 import { InstructorForm } from "../components/InstructorForm";
 import { courses, saveCourses, instructors, saveInstructors, type FullCourse, type Instructor } from "../lib/data";
 import { toast } from "sonner@2.0.3";
+import { supabase } from "../lib/supabase";
 import logoHorizontal from "../assets/logo-horizontal.svg";
 import {
   Dialog,
