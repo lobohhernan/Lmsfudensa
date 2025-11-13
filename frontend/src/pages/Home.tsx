@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { Progress } from "../components/ui/progress";
-import cprTrainingImage from "figma:asset/8a9e5cb5c2b30e2a7a391bdb4b195783e4af86a6.png";
+import cprTrainingImage from "../assets/section-home.png";
 
 interface HomeProps {
   onNavigate?: (page: string, courseId?: string, courseSlug?: string) => void;

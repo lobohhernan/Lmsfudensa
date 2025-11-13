@@ -116,7 +116,7 @@ export function AppNavbar({
             <div className="flex items-center gap-8">
               <button
                 onClick={() => onNavigate?.("home")}
-                className="flex items-center transition-transform hover:scale-105"
+                className="flex items-center transition-all duration-200 hover:scale-[1.02] hover:opacity-80"
               >
                 <img 
                   src={logoHorizontal} 
