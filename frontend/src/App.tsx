@@ -362,7 +362,7 @@ export default function App() {
             sideOffset={5}
           >
             <DropdownMenuItem 
-              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 setIsLoggedIn(!isLoggedIn);
                 toast.success(
@@ -390,7 +390,7 @@ export default function App() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 handleNavigate("profile");
               }}
@@ -401,7 +401,7 @@ export default function App() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 handleNavigate("design");
               }}
@@ -411,7 +411,7 @@ export default function App() {
               Design System
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 handleNavigate("admin");
               }}
@@ -422,7 +422,7 @@ export default function App() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 handleNavigate("evaluation");
               }}

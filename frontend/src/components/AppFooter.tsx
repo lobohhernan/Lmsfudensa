@@ -1,5 +1,5 @@
 import { Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
-import logoHorizontal from "figma:asset/8052e84e5f711ed276951754c7c911a5c6a4f35f.png";
+import logoVertical from "../assets/logo-vertical.svg";
 
 export function AppFooter() {
   return (
@@ -12,9 +12,9 @@ export function AppFooter() {
           <div className="space-y-4">
             <div className="flex items-center">
               <img 
-                src={logoHorizontal} 
+                src={logoVertical} 
                 alt="FUDENSA" 
-                className="h-10 w-auto sm:h-12"
+                className="h-32 w-auto"
               />
             </div>
             <p className="text-[#64748B]">

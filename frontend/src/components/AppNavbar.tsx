@@ -20,8 +20,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { toast } from "sonner";
-import logoHorizontal from "figma:asset/8052e84e5f711ed276951754c7c911a5c6a4f35f.png";
-import { supabase } from "../lib/supabase";
+import logoHorizontal from "../assets/logo-horizontal.svg";
 
 interface AppNavbarProps {
   onNavigate?: (page: string) => void;
