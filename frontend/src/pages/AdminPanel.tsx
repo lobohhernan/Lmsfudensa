@@ -52,7 +52,7 @@ import { cn } from "../components/ui/utils";
 import { CourseForm } from "../components/CourseForm";
 import { InstructorForm } from "../components/InstructorForm";
 import { courses, saveCourses, instructors, saveInstructors, type FullCourse, type Instructor } from "../lib/data";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
 import logoHorizontal from "../assets/logo-horizontal.svg";
 import {
@@ -93,6 +93,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
 
   // Datos de ejemplo para secciones no implementadas
   const paymentsData: any[] = [];
@@ -101,8 +102,15 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   // Cargar cursos desde Supabase
   const loadCourses = async () => {
     try {
+      console.log("Iniciando carga de cursos...");
       const { data, error } = await supabase.from("courses").select("*");
-      if (error) throw error;
+      
+      if (error) {
+        console.error("Supabase error al cargar cursos:", error);
+        throw error;
+      }
+      
+      console.log("Cursos cargados:", data?.length);
       
       setCourseList((data || []).map(course => ({
         id: course.id,
@@ -123,20 +131,30 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       })));
     } catch (err: any) {
       toast.error("Error al cargar cursos: " + err.message);
-      console.error(err);
+      console.error("Error completo al cargar cursos:", err);
     }
   };
 
   // Cargar usuarios desde Supabase
   const loadUsers = async () => {
     setUsersLoading(true);
+    setUsersError(null);
     try {
+      // Direct fetch with longer timeout for Supabase
       const { data, error } = await supabase.from("profiles").select("*");
-      if (error) throw error;
+      
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
+      
       setUsersList(data || []);
+      console.log("Usuarios cargados:", data?.length);
     } catch (err: any) {
-      toast.error("Error al cargar usuarios: " + err.message);
-      console.error(err);
+      const msg = err?.message || String(err);
+      setUsersError(msg);
+      toast.error("Error al cargar usuarios: " + msg);
+      console.error("Error completo:", err);
     } finally {
       setUsersLoading(false);
     }
@@ -701,6 +719,12 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-4">
                           <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                        </TableCell>
+                      </TableRow>
+                    ) : usersError ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-4 text-red-600">
+                          Error cargando usuarios: {usersError}
                         </TableCell>
                       </TableRow>
                     ) : usersList.length === 0 ? (
