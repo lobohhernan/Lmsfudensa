@@ -17,6 +17,7 @@ import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { Button } from "./components/ui/button";
 import { supabase } from "./lib/supabase";
+import { initCacheManager } from "./lib/cacheManager";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -111,6 +112,9 @@ export default function App() {
 
   // Cargar sesión de Supabase al iniciar
   useEffect(() => {
+    // ✨ Inicializar Cache Manager (detección automática de versión)
+    initCacheManager()
+
     const loadSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
