@@ -2,8 +2,22 @@
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
+// Plugin to normalize versioned imports like @package@1.0.0 to @package
+const normalizeImportsPlugin = () => {
+  return {
+    name: 'normalize-imports',
+    resolveId(id) {
+      // Strip version numbers from imports like @radix-ui/react-dialog@1.1.6
+      const normalized = id.replace(/@([\w-]+)@[\d.]+/g, '@$1');
+      if (normalized !== id) {
+        return this.resolve(normalized);
+      }
+    },
+  };
+};
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [normalizeImportsPlugin(), react()],
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
     alias: {
