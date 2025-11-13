@@ -30,6 +30,7 @@ export function CourseDetail({ courseId, onNavigate, isLoggedIn, onAuthRequired 
     const loadCourseData = async () => {
       try {
         setLoading(true);
+        console.log("Cargando curso con ID:", courseId);
         
         // Cargar datos del curso
         const { data: course, error: courseError } = await supabase
@@ -38,24 +39,34 @@ export function CourseDetail({ courseId, onNavigate, isLoggedIn, onAuthRequired 
           .eq("id", courseId)
           .single();
 
-        if (courseError) throw courseError;
+        if (courseError) {
+          console.error("Error al cargar curso:", courseError);
+          throw courseError;
+        }
         
+        console.log("Curso cargado:", course);
         setCourseData(course);
 
-        // Cargar lecciones del curso
+        // Cargar lecciones del curso (ordenar por order_index, no 'order')
         const { data: courseLessons, error: lessonsError } = await supabase
           .from("lessons")
           .select("*")
           .eq("course_id", courseId)
-          .order("order", { ascending: true });
+          .order("order_index", { ascending: true });
 
-        if (lessonsError) throw lessonsError;
+        if (lessonsError) {
+          console.error("Error al cargar lecciones:", lessonsError);
+          // No bloquear si no hay lecciones
+          setLessons([]);
+        } else {
+          console.log("Lecciones cargadas:", courseLessons?.length || 0);
+          setLessons(courseLessons || []);
+        }
         
-        setLessons(courseLessons || []);
         setError(null);
       } catch (err: any) {
         console.error("Error cargando curso:", err);
-        setError("Error al cargar los datos del curso");
+        setError(err.message || "Error al cargar los datos del curso");
       } finally {
         setLoading(false);
       }
@@ -129,7 +140,7 @@ export function CourseDetail({ courseId, onNavigate, isLoggedIn, onAuthRequired 
             {/* Video Preview */}
             <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
               <ImageWithFallback
-                src={courseData.thumbnail_url || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=1200"}
+                src={courseData.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=1200"}
                 alt={courseData.title}
                 className="h-full w-full object-cover opacity-80"
               />
@@ -206,7 +217,7 @@ export function CourseDetail({ courseId, onNavigate, isLoggedIn, onAuthRequired 
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-[#64748B]">
-                      {courseData.description || "Sin descripción disponible"}
+                      {courseData.full_description || courseData.description || "Sin descripción disponible"}
                     </p>
                   </CardContent>
                 </Card>
@@ -251,15 +262,15 @@ export function CourseDetail({ courseId, onNavigate, isLoggedIn, onAuthRequired 
                 <div className="space-y-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/40 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]">
                   <div className="flex items-center gap-2 text-[#64748B]">
                     <Clock className="h-5 w-5" />
-                    <span>{courseData.duration_hours || 0} horas de contenido</span>
+                    <span>{courseData.duration || "8 horas"} de contenido</span>
                   </div>
                   <div className="flex items-center gap-2 text-[#64748B]">
                     <BarChart3 className="h-5 w-5" />
-                    <span>Nivel {courseData.level || "No especificado"}</span>
+                    <span>Nivel {courseData.level || "Básico"}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[#64748B]">
                     <Award className="h-5 w-5" />
-                    <span>Certificado al finalizar</span>
+                    <span>{courseData.certified ? "Certificado al finalizar" : "Sin certificado"}</span>
                   </div>
                 </div>
 
