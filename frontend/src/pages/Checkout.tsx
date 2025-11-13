@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CreditCard, Award, Check, ChevronRight, ShieldCheck, CheckCircle, Loader2 } from "lucide-react";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";

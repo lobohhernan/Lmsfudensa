@@ -13,7 +13,7 @@ import {
 } from "./ui/dialog";
 import { CertificateTemplate, type CertificateData } from "./CertificateTemplate";
 import { generateCertificatePDF, generateCertificatePreview } from "../utils/certificate";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 export interface CertificateCardProps {
   courseName: string;
@@ -29,8 +29,8 @@ export function CertificateCard({
   courseName,
   issueDate,
   hash,
-  studentName = "Juan Pérez",
-  dni = "12.345.678",
+  studentName = "Certificado",
+  dni = "",
   courseHours = "40",
   certificateId = hash.substring(0, 16).toUpperCase(),
 }: CertificateCardProps) {

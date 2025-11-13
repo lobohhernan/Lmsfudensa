@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Palette, LayoutDashboard, Menu, X, Award, User, LogIn, LogOut } from "lucide-react";
+import { Palette, LayoutDashboard, Menu, Award, User, LogIn, LogOut } from "lucide-react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
 import { Home } from "./pages/Home";
@@ -14,7 +14,9 @@ import { Evaluation } from "./pages/Evaluation";
 import { AboutUs } from "./pages/AboutUs";
 import { Contact } from "./pages/Contact";
 import { Toaster } from "./components/ui/sonner";
+import { toast } from "sonner";
 import { Button } from "./components/ui/button";
+import { supabase } from "./lib/supabase";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +24,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "./components/ui/dropdown-menu";
-import { toast } from "sonner";
 
 type Page =
   | "home"
@@ -40,24 +41,187 @@ type Page =
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
   const [currentCourseId, setCurrentCourseId] = useState<string | undefined>();
+  const [currentCourseSlug, setCurrentCourseSlug] = useState<string | undefined>();
+  const [currentLessonId, setCurrentLessonId] = useState<string | undefined>();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState<{ email: string; name: string } | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // 🧪 TEST DE BASE DE DATOS - Temporal para verificar conexión
-  // Descomenta la siguiente línea para probar la conexión:
-  // return <DatabaseTest />;
+  // Actualizar URL según la página activa
+  useEffect(() => {
+    if (currentPage === "profile" && userData) {
+      // Perfil: /perfil/username
+      const userId = userData.email.split('@')[0];
+      window.history.replaceState(null, "", `#/perfil/${userId}`);
+      document.title = `Perfil - ${userData.name} | FUDENSA`;
+    } else if (currentPage === "catalog") {
+      // Catálogo: /cursos
+      window.history.replaceState(null, "", "#/cursos");
+      document.title = "Catálogo de Cursos | FUDENSA";
+    } else if (currentPage === "course" && currentCourseSlug) {
+      // Curso: /curso/nombre-del-curso
+      window.history.replaceState(null, "", `#/curso/${currentCourseSlug}`);
+      document.title = `${currentCourseSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} | FUDENSA`;
+    } else if (currentPage === "lesson" && currentCourseSlug && currentLessonId) {
+      // Lección: /curso/nombre-del-curso/leccion/1
+      window.history.replaceState(null, "", `#/curso/${currentCourseSlug}/leccion/${currentLessonId}`);
+      document.title = `Lección ${currentLessonId} | FUDENSA`;
+    } else if (currentPage === "evaluation" && currentCourseSlug) {
+      // Evaluación: /curso/nombre-del-curso/evaluacion
+      window.history.replaceState(null, "", `#/curso/${currentCourseSlug}/evaluacion`);
+      document.title = `Evaluación | FUDENSA`;
+    } else if (currentPage === "checkout" && currentCourseSlug) {
+      // Checkout: /checkout/nombre-del-curso
+      window.history.replaceState(null, "", `#/checkout/${currentCourseSlug}`);
+      document.title = `Checkout | FUDENSA`;
+    } else if (currentPage === "admin") {
+      // Admin: /admin/panel
+      window.history.replaceState(null, "", "#/admin/panel");
+      document.title = "Panel de Administración | FUDENSA";
+    } else if (currentPage === "about") {
+      // Sobre nosotros: /sobre-nosotros
+      window.history.replaceState(null, "", "#/sobre-nosotros");
+      document.title = "Sobre Nosotros | FUDENSA";
+    } else if (currentPage === "contact") {
+      // Contacto: /contacto
+      window.history.replaceState(null, "", "#/contacto");
+      document.title = "Contacto | FUDENSA";
+    } else if (currentPage === "home") {
+      window.history.replaceState(null, "", "#/");
+      document.title = "FUDENSA - Formación Profesional en Salud Certificada";
+    } else {
+      // Páginas restantes
+      const pageNames: { [key in Page]: string } = {
+        home: "Inicio",
+        catalog: "Catálogo de Cursos",
+        course: "Detalle del Curso",
+        lesson: "Lección",
+        checkout: "Checkout",
+        profile: "Perfil",
+        admin: "Panel de Administración",
+        design: "Sistema de Diseño",
+        evaluation: "Evaluación",
+        about: "Sobre Nosotros",
+        contact: "Contacto"
+      };
+      document.title = `${pageNames[currentPage]} | FUDENSA`;
+    }
+  }, [currentPage, userData, currentCourseSlug, currentLessonId]);
+
+  // Cargar sesión de Supabase al iniciar
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // Obtener perfil completo
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name, email")
+            .eq("id", session.user.id)
+            .single();
+
+          let userData_: { email: string; name: string };
+          
+          if (profile) {
+            userData_ = {
+              email: profile.email || session.user.email || "",
+              name: profile.full_name || session.user.email?.split('@')[0] || "Usuario",
+            };
+          } else {
+            // Si no tiene perfil, usar los datos del auth
+            userData_ = {
+              email: session.user.email || "",
+              name: session.user.email?.split('@')[0] || "Usuario",
+            };
+          }
+          
+          setIsLoggedIn(true);
+          setUserData(userData_);
+          sessionStorage.setItem('user_session', JSON.stringify(userData_));
+        } else {
+          // No hay sesión, limpiar todo
+          setIsLoggedIn(false);
+          setUserData(null);
+          sessionStorage.removeItem('user_session');
+        }
+      } catch (error) {
+        console.error("Error cargando sesión:", error);
+        setIsLoggedIn(false);
+        setUserData(null);
+        sessionStorage.removeItem('user_session');
+      }
+    };
+
+    loadSession();
+
+    // Escuchar cambios de autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name, email")
+            .eq("id", session.user.id)
+            .single();
+
+          let userData_: { email: string; name: string };
+          
+          if (profile) {
+            userData_ = {
+              email: profile.email || session.user.email || "",
+              name: profile.full_name || session.user.email?.split('@')[0] || "Usuario",
+            };
+          } else {
+            userData_ = {
+              email: session.user.email || "",
+              name: session.user.email?.split('@')[0] || "Usuario",
+            };
+          }
+          
+          setIsLoggedIn(true);
+          setUserData(userData_);
+          sessionStorage.setItem('user_session', JSON.stringify(userData_));
+        } catch (error) {
+          console.log("Error cargando perfil:", error);
+          // Aunque falle el perfil, mantener la sesión autenticada
+          const userData_ = {
+            email: session.user.email || "",
+            name: session.user.email?.split('@')[0] || "Usuario",
+          };
+          setIsLoggedIn(true);
+          setUserData(userData_);
+          sessionStorage.setItem('user_session', JSON.stringify(userData_));
+        }
+      } else {
+        setIsLoggedIn(false);
+        setUserData(null);
+        sessionStorage.removeItem('user_session');
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
 
   // Scroll to top when page changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentPage]);
 
-  const handleNavigate = (page: string, courseId?: string) => {
+  const handleNavigate = (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => {
     setCurrentPage(page as Page);
     if (courseId) {
       setCurrentCourseId(courseId);
+    }
+    if (courseSlug) {
+      setCurrentCourseSlug(courseSlug);
+    }
+    if (lessonId) {
+      setCurrentLessonId(lessonId);
     }
   };
 
@@ -72,10 +236,42 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserData(null);
-    setCurrentPage("home");
+  const handleLogout = async () => {
+    try {
+      console.log("🚪 Iniciando cierre de sesión...");
+      
+      // Cerrar sesión en Supabase primero
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("❌ Error en Supabase signOut:", error);
+        throw error;
+      }
+      
+      console.log("✅ Sesión cerrada en Supabase");
+      
+      // Limpiar estados locales
+      setIsLoggedIn(false);
+      setUserData(null);
+      setCurrentPage("home");
+      
+      // Limpiar sessionStorage
+      sessionStorage.removeItem('user_session');
+      
+      console.log("✅ Estados y sessionStorage limpiados");
+      console.log("✅ Sesión cerrada completamente");
+      
+      toast.success("Sesión cerrada correctamente");
+    } catch (error) {
+      console.error("❌ Error al cerrar sesión:", error);
+      toast.error("Error al cerrar sesión");
+      
+      // Forzar limpieza aunque haya error
+      setIsLoggedIn(false);
+      setUserData(null);
+      sessionStorage.removeItem('user_session');
+      setCurrentPage("home");
+    }
   };
 
   // Admin, Lesson Player, and Evaluation have their own layouts
@@ -112,6 +308,7 @@ export default function App() {
       <AppNavbar 
         onNavigate={handleNavigate} 
         isLoggedIn={isLoggedIn}
+        currentUser={userData}
         onLogout={handleLogout}
         onLogin={handleLogin}
         currentPage={currentPage}
@@ -124,6 +321,7 @@ export default function App() {
         {currentPage === "catalog" && <CourseCatalog onNavigate={handleNavigate} />}
         {currentPage === "course" && (
           <CourseDetail 
+            courseId={currentCourseId}
             onNavigate={handleNavigate} 
             isLoggedIn={isLoggedIn}
             onAuthRequired={(page, courseId) => {
@@ -148,11 +346,10 @@ export default function App() {
       <AppFooter />
       
       {/* Quick Access Menu - Demo purposes */}
-      <div className="fixed bottom-6 right-6 z-[100]">
+      <div className="fixed bottom-6 right-6 z-100">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
-              size="lg"
               className="h-14 w-14 rounded-full shadow-lg hover:scale-105 transition-transform"
               aria-label="Menú de acceso rápido"
             >
@@ -165,7 +362,7 @@ export default function App() {
             sideOffset={5}
           >
             <DropdownMenuItem 
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                 e.preventDefault();
                 setIsLoggedIn(!isLoggedIn);
                 toast.success(
@@ -193,7 +390,7 @@ export default function App() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                 e.preventDefault();
                 handleNavigate("profile");
               }}
@@ -204,7 +401,7 @@ export default function App() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                 e.preventDefault();
                 handleNavigate("design");
               }}
@@ -214,7 +411,7 @@ export default function App() {
               Design System
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                 e.preventDefault();
                 handleNavigate("admin");
               }}
@@ -225,7 +422,7 @@ export default function App() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                 e.preventDefault();
                 handleNavigate("evaluation");
               }}

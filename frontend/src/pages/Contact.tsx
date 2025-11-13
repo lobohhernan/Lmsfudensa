@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { useState } from "react";
 
 interface ContactProps {

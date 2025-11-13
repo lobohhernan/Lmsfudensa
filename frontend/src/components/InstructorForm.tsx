@@ -6,7 +6,7 @@ import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import type { Instructor } from "../lib/data";
 
 interface InstructorFormProps {
@@ -162,7 +162,7 @@ export function InstructorForm({ instructor, onSave, onCancel }: InstructorFormP
                 <Label htmlFor="name">Nombre Completo *</Label>
                 <Input
                   id="name"
-                  placeholder="Dr. Juan Pérez"
+                  placeholder="Dr. Nombre Completo"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                 />
