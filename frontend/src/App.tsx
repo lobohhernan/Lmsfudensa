@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Palette, LayoutDashboard, Menu, X, Award, User, LogIn, LogOut } from "lucide-react";
+import { Palette, LayoutDashboard, Menu, Award, User, LogIn, LogOut } from "lucide-react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
 import { Home } from "./pages/Home";
@@ -152,7 +152,6 @@ export default function App() {
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
-              size="lg"
               className="h-14 w-14 rounded-full shadow-lg hover:scale-105 transition-transform"
               aria-label="Menú de acceso rápido"
             >
@@ -165,7 +164,7 @@ export default function App() {
             sideOffset={5}
           >
             <DropdownMenuItem 
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 setIsLoggedIn(!isLoggedIn);
                 toast.success(
@@ -193,7 +192,7 @@ export default function App() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 handleNavigate("profile");
               }}
@@ -204,7 +203,7 @@ export default function App() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 handleNavigate("design");
               }}
@@ -214,7 +213,7 @@ export default function App() {
               Design System
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 handleNavigate("admin");
               }}
@@ -225,7 +224,7 @@ export default function App() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 handleNavigate("evaluation");
               }}
