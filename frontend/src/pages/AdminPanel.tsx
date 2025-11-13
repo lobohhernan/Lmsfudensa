@@ -53,6 +53,7 @@ import { CourseForm } from "../components/CourseForm";
 import { InstructorForm } from "../components/InstructorForm";
 import { courses, saveCourses, instructors, saveInstructors, type FullCourse, type Instructor } from "../lib/data";
 import { toast } from "sonner@2.0.3";
+import logoHorizontal from "../assets/logo-horizontal.svg";
 import {
   Dialog,
   DialogContent,
@@ -330,12 +331,16 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const SidebarContent = () => (
     <>
       <div className="flex h-16 items-center border-b px-6">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1e467c]">
-            <span className="text-sm font-bold text-white">F</span>
-          </div>
-          <span className="font-bold text-[#0F172A]">FUDENSA Admin</span>
-        </div>
+        <button
+          onClick={() => onNavigate?.("home")}
+          className="flex items-center transition-transform hover:scale-105 w-full"
+        >
+          <img 
+            src={logoHorizontal} 
+            alt="FUDENSA" 
+            className="h-12 w-auto"
+          />
+        </button>
       </div>
       <nav className="space-y-1 p-4">
         {menuItems.map((item) => {
@@ -386,7 +391,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         {/* Header */}
         <header className="sticky top-0 z-10 border-b bg-white">
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="sm"
@@ -395,9 +400,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <h1 className="text-[#0F172A]">
-                {menuItems.find((m) => m.id === activeTab)?.label}
-              </h1>
             </div>
             <Button variant="outline" onClick={() => onNavigate?.("home")}>
               Ver Sitio Web

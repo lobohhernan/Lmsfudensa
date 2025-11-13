@@ -20,7 +20,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { toast } from "sonner";
-import logoIcon from "../assets/logo-ico.svg";
+import logoHorizontal from "../assets/logo-horizontal.svg";
 
 interface AppNavbarProps {
   onNavigate?: (page: string) => void;
@@ -104,7 +104,7 @@ export function AppNavbar({
                 className="flex items-center transition-transform hover:scale-105"
               >
                 <img 
-                  src={logoIcon} 
+                  src={logoHorizontal} 
                   alt="FUDENSA" 
                   className="h-10 w-auto brightness-0 invert sm:h-12"
                 />
