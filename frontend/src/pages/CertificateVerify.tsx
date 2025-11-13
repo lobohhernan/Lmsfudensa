@@ -102,7 +102,7 @@ export function CertificateVerify({ onNavigate }: CertificateVerifyProps) {
                   <User className="mt-1 h-5 w-5 flex-shrink-0 text-[#0B5FFF]" />
                   <div className="flex-1">
                     <p className="text-sm text-[#64748B]">Otorgado a</p>
-                    <p className="text-[#0F172A]">Juan Pérez</p>
+                    <p className="text-[#0F172A]">Datos del certificado</p>
                   </div>
                 </div>
 

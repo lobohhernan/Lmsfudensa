@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
 import { CourseCard } from "../components/CourseCard";
 import {
   Select,
@@ -11,77 +10,26 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Badge } from "../components/ui/badge";
+import { useCourses } from "../hooks/useCourses";
 
 interface CourseCatalogProps {
-  onNavigate?: (page: string, courseId?: string) => void;
+  onNavigate?: (page: string, courseId?: string, courseSlug?: string) => void;
 }
-
-const allCourses = [
-  {
-    id: "1",
-    title: "RCP Adultos AHA 2020 - Reanimación Cardiopulmonar",
-    image: "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400",
-    duration: "8 horas",
-    level: "Básico" as const,
-    certified: true,
-    students: 12450,
-    category: "RCP",
-  },
-  {
-    id: "2",
-    title: "RCP Neonatal - Soporte Vital Pediátrico Avanzado",
-    image: "https://images.unsplash.com/photo-1725870475677-7dc91efe9f93?w=400",
-    duration: "12 horas",
-    level: "Avanzado" as const,
-    certified: true,
-    students: 8320,
-    category: "RCP",
-  },
-  {
-    id: "3",
-    title: "Primeros Auxilios Básicos - Manejo de Emergencias",
-    image: "https://images.unsplash.com/photo-1622115585848-1d5b6e8af4e4?w=400",
-    duration: "6 horas",
-    level: "Básico" as const,
-    certified: true,
-    students: 15680,
-    category: "Primeros Auxilios",
-  },
-  {
-    id: "4",
-    title: "Emergencias Médicas - Atención Prehospitalaria",
-    image: "https://images.unsplash.com/photo-1644488483724-4daed4a30390?w=400",
-    duration: "10 horas",
-    level: "Intermedio" as const,
-    certified: true,
-    students: 9540,
-    category: "Emergencias",
-  },
-  {
-    id: "5",
-    title: "Certificación en Soporte Vital Cardiovascular",
-    image: "https://images.unsplash.com/photo-1722235623200-59966a71af50?w=400",
-    duration: "15 horas",
-    level: "Avanzado" as const,
-    certified: true,
-    students: 6720,
-    category: "RCP",
-  },
-  {
-    id: "6",
-    title: "Atención de Heridas y Quemaduras - Técnicas Avanzadas",
-    image: "https://images.unsplash.com/photo-1622115585848-1d5b6e8af4e4?w=400",
-    duration: "8 horas",
-    level: "Intermedio" as const,
-    certified: true,
-    students: 11230,
-    category: "Primeros Auxilios",
-  },
-];
 
 export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLevel, setSelectedLevel] = useState<string>("");
+  const { courses, loading } = useCourses();
+
+  // Filter courses
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch = course.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesLevel =
+      !selectedLevel || selectedLevel === "all" || course.level === selectedLevel;
+    return matchesSearch && matchesLevel;
+  });
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -161,53 +109,59 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
         {/* Main Content */}
         <div>
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-[#64748B]">{allCourses.length} cursos disponibles</p>
+            <p className="text-[#64748B]">
+              {loading ? (
+                <span className="text-gray-400">Cargando cursos...</span>
+              ) : filteredCourses.length === 0 ? (
+                <span className="text-gray-400">
+                  {courses.length === 0
+                    ? "No hay cursos disponibles aún"
+                    : "No se encontraron cursos con esos filtros"}
+                </span>
+              ) : (
+                `${filteredCourses.length} cursos disponibles`
+              )}
+            </p>
           </div>
           
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {allCourses.map((course) => (
-              <CourseCard
-                key={course.id}
-                {...course}
-                onClick={() => onNavigate?.("course", course.id)}
-              />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="mb-4 inline-block animate-spin">
+                  <div className="h-8 w-8 border-4 border-[#0B5FFF] border-r-transparent rounded-full"></div>
+                </div>
+                <p className="text-gray-500">Cargando cursos...</p>
+              </div>
+            </div>
+          ) : filteredCourses.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <p className="text-gray-500">
+                  {courses.length === 0
+                    ? "No hay cursos disponibles aún. Crea uno desde el Admin Panel."
+                    : "No se encontraron cursos con esos filtros"}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredCourses.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  id={course.id}
+                  title={course.title}
+                  image={course.image}
+                  duration={course.duration}
+                  level={course.level as "Básico" | "Intermedio" | "Avanzado"}
+                  certified={course.certified}
+                  students={course.students || 0}
+                  onClick={() => onNavigate?.("course", course.id, course.slug)}
+                />
+              ))}
+            </div>
+          )}
 
-          {/* Pagination */}
-          <div className="mt-8 flex justify-center gap-2">
-            <Button 
-              variant="outline" 
-              disabled
-              className="border-gray-300/50 bg-white/40 backdrop-blur-sm text-gray-400"
-            >
-              Anterior
-            </Button>
-            <Button 
-              variant="outline" 
-              className="border-[#0B5FFF]/30 bg-gradient-to-br from-[#0B5FFF] to-[#0B5FFF]/80 text-white backdrop-blur-sm shadow-[0_4px_12px_0_rgba(11,95,255,0.25)] hover:shadow-[0_6px_16px_0_rgba(11,95,255,0.35)] hover:from-[#0B5FFF]/90 hover:to-[#0B5FFF]/70"
-            >
-              1
-            </Button>
-            <Button 
-              variant="outline"
-              className="border-[#0B5FFF]/20 bg-white/60 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] hover:border-[#0B5FFF]/40 hover:bg-white/80 hover:shadow-[0_4px_12px_0_rgba(11,95,255,0.08)]"
-            >
-              2
-            </Button>
-            <Button 
-              variant="outline"
-              className="border-[#0B5FFF]/20 bg-white/60 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] hover:border-[#0B5FFF]/40 hover:bg-white/80 hover:shadow-[0_4px_12px_0_rgba(11,95,255,0.08)]"
-            >
-              3
-            </Button>
-            <Button 
-              variant="outline"
-              className="border-[#0B5FFF]/20 bg-white/60 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] hover:border-[#0B5FFF]/40 hover:bg-white/80 hover:shadow-[0_4px_12px_0_rgba(11,95,255,0.08)]"
-            >
-              Siguiente
-            </Button>
-          </div>
+          {/* Pagination - Removed for now */}
         </div>
       </div>
     </div>

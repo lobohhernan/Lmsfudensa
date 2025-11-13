@@ -32,6 +32,7 @@ interface AppNavbarProps {
   openRegisterModal?: boolean;
   onLoginModalChange?: (open: boolean) => void;
   onRegisterModalChange?: (open: boolean) => void;
+  currentUser?: { email: string; name: string } | null;
 }
 
 export function AppNavbar({ 
@@ -43,13 +44,15 @@ export function AppNavbar({
   openLoginModal,
   openRegisterModal,
   onLoginModalChange,
-  onRegisterModalChange
+  onRegisterModalChange,
+  currentUser = null
 }: AppNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [internalLoginOpen, setInternalLoginOpen] = useState(false);
   const [internalRegisterOpen, setInternalRegisterOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   // Use controlled state if provided, otherwise use internal state
   const loginOpen = openLoginModal !== undefined ? openLoginModal : internalLoginOpen;
@@ -69,6 +72,17 @@ export function AppNavbar({
     } else {
       setInternalRegisterOpen(open);
     }
+  };
+
+  // Calcular iniciales del usuario
+  const getUserInitials = () => {
+    if (!currentUser?.name) return "US";
+    return currentUser.name
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
   };
 
   // Páginas que necesitan navbar azul desde el inicio
@@ -141,10 +155,10 @@ export function AppNavbar({
                     <Button variant="ghost" className="flex items-center gap-2 rounded-lg text-white transition-all hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]">
                       <Avatar className="h-8 w-8 ring-2 ring-white/20">
                         <AvatarFallback className="bg-[#0B5FFF] text-white">
-                          JD
+                          {getUserInitials()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="hidden lg:inline">Juan Pérez</span>
+                      <span className="hidden lg:inline">{currentUser?.name || "Usuario"}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 border-white/10 bg-[#1e467c]/95 backdrop-blur-xl">
@@ -160,9 +174,22 @@ export function AppNavbar({
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem
-                      onClick={() => {
-                        onLogout?.();
-                        toast.success("Sesión cerrada correctamente");
+                      onClick={async () => {
+                        console.log("🔽 Click en Cerrar Sesión (Desktop)");
+                        try {
+                          // Cerrar sesión en Supabase
+                          console.log("Ejecutando supabase.auth.signOut()...");
+                          await supabase.auth.signOut();
+                          console.log("✅ signOut completado");
+                          
+                          // Llamar al callback de logout del padre
+                          console.log("Llamando a onLogout()...");
+                          onLogout?.();
+                          console.log("✅ onLogout() ejecutado");
+                        } catch (error) {
+                          console.error("❌ Error en logout:", error);
+                          toast.error("Error al cerrar sesión");
+                        }
                       }}
                       className="cursor-pointer text-red-300 hover:bg-red-500/20 hover:text-red-200"
                     >
@@ -252,10 +279,10 @@ export function AppNavbar({
                       <div className="flex items-center gap-3 rounded-xl border border-white/20 bg-white/8 backdrop-blur-sm px-4 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_2px_8px_0_rgba(0,0,0,0.1)]">
                         <Avatar className="h-9 w-9 ring-2 ring-white/30 ring-offset-2 ring-offset-[#1e467c]">
                           <AvatarFallback className="bg-[#0B5FFF] text-white">
-                            JD
+                            {getUserInitials()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-white">Juan Pérez</span>
+                        <span className="text-white">{currentUser?.name || "Usuario"}</span>
                       </div>
                       <Button
                         variant="ghost"
@@ -271,10 +298,25 @@ export function AppNavbar({
                       </Button>
                       <Button
                         variant="ghost"
-                        onClick={() => {
-                          onLogout?.();
-                          setMobileMenuOpen(false);
-                          toast.success("Sesión cerrada correctamente");
+                        onClick={async () => {
+                          console.log("🔽 Click en Cerrar Sesión (Mobile)");
+                          try {
+                            // Cerrar sesión en Supabase
+                            console.log("Ejecutando supabase.auth.signOut()...");
+                            await supabase.auth.signOut();
+                            console.log("✅ signOut completado");
+                            
+                            // Llamar al callback de logout
+                            console.log("Llamando a onLogout()...");
+                            onLogout?.();
+                            console.log("✅ onLogout() ejecutado");
+                            
+                            // Cerrar menú móvil
+                            setMobileMenuOpen(false);
+                          } catch (error) {
+                            console.error("❌ Error en logout:", error);
+                            toast.error("Error al cerrar sesión");
+                          }
                         }}
                         className="h-auto rounded-lg py-3 text-red-200 transition-all hover:bg-red-500/20 hover:text-red-100 active:scale-[0.98] w-full justify-start"
                       >
@@ -323,20 +365,56 @@ export function AppNavbar({
             {!isRegistering ? (
               <form 
                 className="space-y-4 pt-4"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const email = formData.get('login-email') as string;
-                  const password = formData.get('login-password') as string;
-                  
-                  if (email && password) {
-                    const name = email.split('@')[0];
-                    onLogin?.({ email, name });
+                  setIsLoggingIn(true);
+                  try {
+                    const formData = new FormData(e.currentTarget);
+                    const email = formData.get('login-email') as string;
+                    const password = formData.get('login-password') as string;
+                    
+                    if (!email || !password) {
+                      toast.error("Por favor completa todos los campos");
+                      setIsLoggingIn(false);
+                      return;
+                    }
+
+                    // Intentar login con Supabase
+                    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                      email,
+                      password,
+                    });
+
+                    if (authError) {
+                      toast.error("Email o contraseña incorrectos");
+                      setIsLoggingIn(false);
+                      return;
+                    }
+
+                    if (!authData.user) {
+                      toast.error("Error al iniciar sesión");
+                      setIsLoggingIn(false);
+                      return;
+                    }
+
+                    // Obtener perfil para conseguir nombre completo
+                    const { data: profile, error: profileError } = await supabase
+                      .from("profiles")
+                      .select("full_name, email")
+                      .eq("id", authData.user.id)
+                      .single();
+
+                    const userName = profile?.full_name || email.split('@')[0];
+
+                    onLogin?.({ email, name: userName });
                     setLoginOpen(false);
                     setIsRegistering(false);
-                    toast.success("Sesión iniciada correctamente");
-                  } else {
-                    toast.error("Por favor completa todos los campos");
+                    toast.success("Sesión iniciada correctamente. ¡Bienvenido!");
+                  } catch (error) {
+                    console.error("Error en login:", error);
+                    toast.error("Error al iniciar sesión");
+                  } finally {
+                    setIsLoggingIn(false);
                   }
                 }}
               >
@@ -431,31 +509,98 @@ export function AppNavbar({
             ) : (
               <form 
                 className="space-y-4 pt-4"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const name = formData.get('register-name') as string;
-                  const email = formData.get('register-email') as string;
-                  const password = formData.get('register-password') as string;
-                  const confirmPassword = formData.get('register-confirm') as string;
+                  setIsRegistering(true);
                   
-                  if (password !== confirmPassword) {
-                    toast.error("Las contraseñas no coinciden");
-                    return;
-                  }
-                  
-                  if (password.length < 6) {
-                    toast.error("La contraseña debe tener al menos 6 caracteres");
-                    return;
-                  }
-                  
-                  if (name && email && password) {
+                  try {
+                    const formData = new FormData(e.currentTarget);
+                    const name = formData.get('register-name') as string;
+                    const email = formData.get('register-email') as string;
+                    const password = formData.get('register-password') as string;
+                    const confirmPassword = formData.get('register-confirm') as string;
+                    
+                    if (password !== confirmPassword) {
+                      toast.error("Las contraseñas no coinciden");
+                      setIsRegistering(false);
+                      return;
+                    }
+                    
+                    if (password.length < 6) {
+                      toast.error("La contraseña debe tener al menos 6 caracteres");
+                      setIsRegistering(false);
+                      return;
+                    }
+                    
+                    if (!name || !email || !password) {
+                      toast.error("Por favor completa todos los campos");
+                      setIsRegistering(false);
+                      return;
+                    }
+
+                    // Registrar en Supabase Auth
+                    const { data: authData, error: authError } = await supabase.auth.signUp({
+                      email,
+                      password,
+                      options: {
+                        data: {
+                          full_name: name
+                        }
+                      }
+                    });
+
+                    if (authError) {
+                      toast.error("Error al registrar: " + authError.message);
+                      setIsRegistering(false);
+                      return;
+                    }
+
+                    if (!authData.user) {
+                      toast.error("Error al crear la cuenta");
+                      setIsRegistering(false);
+                      return;
+                    }
+
+                    // Crear perfil en tabla profiles
+                    const { error: profileError } = await supabase
+                      .from("profiles")
+                      .insert([{
+                        id: authData.user.id,
+                        email,
+                        full_name: name,
+                        role: "student",
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                      }]);
+
+                    if (profileError) {
+                      console.error("Error al crear perfil:", profileError);
+                      // No mostrar error si el perfil ya existe
+                      if (!profileError.message.includes("duplicate key")) {
+                        toast.error("Error al crear el perfil: " + profileError.message);
+                        setIsRegistering(false);
+                        return;
+                      }
+                    }
+
+                    // Auto-login después del registro exitoso
+                    await supabase.auth.signInWithPassword({
+                      email,
+                      password,
+                    });
+
+                    // Llamar onLogin para actualizar el estado en App
                     onLogin?.({ email, name });
+                    
+                    // Cerrar modal y resetear estado
                     setLoginOpen(false);
                     setIsRegistering(false);
-                    toast.success("Cuenta creada exitosamente");
-                  } else {
-                    toast.error("Por favor completa todos los campos");
+                    
+                    toast.success("¡Cuenta creada exitosamente! Bienvenido a FUDENSA");
+                  } catch (error) {
+                    console.error("Error en registro:", error);
+                    toast.error("Error al registrar la cuenta");
+                    setIsRegistering(false);
                   }
                 }}
               >

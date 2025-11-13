@@ -16,12 +16,12 @@ import {
   Mail,
   RefreshCw,
   CheckCircle,
-  XCircle,
   Menu,
   GraduationCap,
+  Loader2,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import {
   Table,
@@ -75,143 +75,6 @@ interface AdminPanelProps {
   onNavigate?: (page: string) => void;
 }
 
-const coursesData = [
-  {
-    id: 1,
-    title: "RCP Adultos AHA 2020",
-    category: "RCP",
-    level: "Básico",
-    students: 12450,
-    status: "Publicado",
-  },
-  {
-    id: 2,
-    title: "RCP Neonatal",
-    category: "RCP",
-    level: "Avanzado",
-    students: 8320,
-    status: "Publicado",
-  },
-  {
-    id: 3,
-    title: "Primeros Auxilios Básicos",
-    category: "Primeros Auxilios",
-    level: "Básico",
-    students: 15680,
-    status: "Publicado",
-  },
-  {
-    id: 4,
-    title: "Emergencias Médicas",
-    category: "Emergencias",
-    level: "Intermedio",
-    students: 0,
-    status: "Borrador",
-  },
-];
-
-const usersData = [
-  {
-    id: 1,
-    name: "Juan Pérez",
-    email: "juan.perez@email.com",
-    country: "Argentina",
-    courses: 3,
-    certificates: 2,
-    joined: "15/10/2025",
-  },
-  {
-    id: 2,
-    name: "María González",
-    email: "maria.g@email.com",
-    country: "Uruguay",
-    courses: 5,
-    certificates: 4,
-    joined: "10/10/2025",
-  },
-  {
-    id: 3,
-    name: "Carlos Rodríguez",
-    email: "carlos.r@email.com",
-    country: "México",
-    courses: 2,
-    certificates: 1,
-    joined: "05/10/2025",
-  },
-];
-
-const paymentsData = [
-  {
-    id: "PAY-001",
-    user: "Juan Pérez",
-    email: "juan.perez@email.com",
-    course: "RCP Adultos AHA 2020",
-    amount: "ARS 29.900",
-    status: "Pagado",
-    gateway: "Mercado Pago",
-    date: "28/10/2025",
-  },
-  {
-    id: "PAY-002",
-    user: "María González",
-    email: "maria.g@email.com",
-    course: "Primeros Auxilios",
-    amount: "ARS 24.900",
-    status: "Pagado",
-    gateway: "Mercado Pago",
-    date: "27/10/2025",
-  },
-  {
-    id: "PAY-003",
-    user: "Carlos Rodríguez",
-    email: "carlos.r@email.com",
-    course: "RCP Neonatal",
-    amount: "ARS 44.900",
-    status: "Pendiente",
-    gateway: "Mercado Pago",
-    date: "26/10/2025",
-  },
-  {
-    id: "PAY-004",
-    user: "Ana López",
-    email: "ana.lopez@email.com",
-    course: "Emergencias Médicas",
-    amount: "ARS 34.900",
-    status: "Pagado",
-    gateway: "Mercado Pago",
-    date: "25/10/2025",
-  },
-  {
-    id: "PAY-005",
-    user: "Luis Fernández",
-    email: "luis.f@email.com",
-    course: "Soporte Vital Cardiovascular",
-    amount: "ARS 49.900",
-    status: "Rechazado",
-    gateway: "Mercado Pago",
-    date: "24/10/2025",
-  },
-];
-
-const certificatesData = [
-  {
-    id: 1,
-    student: "Juan Pérez",
-    course: "RCP Adultos AHA 2020",
-    issueDate: "15/10/2025",
-    hash: "a7f8e9c2b4d6f1a3...",
-    status: "Activo",
-  },
-  {
-    id: 2,
-    student: "María González",
-    course: "Primeros Auxilios",
-    issueDate: "10/10/2025",
-    hash: "b8g9f0d3e5g2i4k6...",
-    status: "Activo",
-  },
-];
-
 export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<"dashboard" | "courses" | "instructors" | "users" | "payments" | "certificates">("dashboard");
   const [showCourseForm, setShowCourseForm] = useState(false);
@@ -227,26 +90,135 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [contactUser, setContactUser] = useState<{ name: string; email: string } | null>(null);
   const [contactMessage, setContactMessage] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+
+  // Datos de ejemplo para secciones no implementadas
+  const paymentsData: any[] = [];
+  const certificatesData: any[] = [];
+
+  // Cargar cursos desde Supabase
+  const loadCourses = async () => {
+    try {
+      const { data, error } = await supabase.from("courses").select("*");
+      if (error) throw error;
+      
+      setCourseList((data || []).map(course => ({
+        id: course.id,
+        title: course.title,
+        slug: course.slug,
+        description: course.description,
+        fullDescription: course.full_description,
+        image: course.image,
+        category: course.category,
+        price: course.price,
+        duration: course.duration,
+        level: course.level,
+        certified: course.certified,
+        students: course.students || 0,
+        rating: course.rating || 0,
+        reviews: course.reviews || 0,
+        instructorId: course.instructor_id,
+      })));
+    } catch (err: any) {
+      toast.error("Error al cargar cursos: " + err.message);
+      console.error(err);
+    }
+  };
+
+  // Cargar usuarios desde Supabase
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const { data, error } = await supabase.from("profiles").select("*");
+      if (error) throw error;
+      setUsersList(data || []);
+    } catch (err: any) {
+      toast.error("Error al cargar usuarios: " + err.message);
+      console.error(err);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Load courses and instructors from localStorage or use defaults
-    setCourseList(courses);
+    // Cargar cursos desde Supabase y instructores desde localStorage
+    loadCourses();
+    loadUsers();
     setInstructorList(instructors);
   }, []);
 
-  const handleSaveCourse = (course: FullCourse) => {
-    let updated: FullCourse[];
-    if (editingCourse) {
-      // Update existing course
-      updated = courseList.map((c) => (c.id === course.id ? course : c));
-    } else {
-      // Add new course
-      updated = [...courseList, course];
+  const handleSaveCourse = async (course: FullCourse) => {
+    try {
+      if (editingCourse) {
+        // Actualizar curso en Supabase
+        const { error } = await supabase
+          .from("courses")
+          .update({
+            title: course.title,
+            slug: course.slug,
+            description: course.description,
+            full_description: course.fullDescription,
+            image: course.image,
+            category: course.category,
+            price: course.price,
+            duration: course.duration,
+            level: course.level,
+            certified: course.certified,
+          })
+          .eq("id", course.id);
+        
+        if (error) {
+          toast.error("Error al actualizar el curso: " + error.message);
+          return;
+        }
+        toast.success("Curso actualizado exitosamente");
+      } else {
+        // Obtener ID del instructor admin
+        const { data: adminData, error: adminError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("full_name", "Dr. Test Instructor")
+          .single();
+        
+        if (adminError || !adminData) {
+          toast.error("No se pudo encontrar el instructor admin");
+          return;
+        }
+
+        // Crear nuevo curso en Supabase
+        const { error } = await supabase.from("courses").insert([{
+          title: course.title,
+          slug: course.slug,
+          description: course.description,
+          full_description: course.fullDescription,
+          image: course.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=1200",
+          category: course.category,
+          price: course.price,
+          duration: course.duration,
+          level: course.level,
+          certified: course.certified,
+          instructor_id: adminData.id,
+          students: 0,
+          rating: 0,
+          reviews: 0,
+        }]);
+        
+        if (error) {
+          toast.error("Error al crear el curso: " + error.message);
+          return;
+        }
+        toast.success("Curso creado exitosamente");
+      }
+
+      // Recargar la lista de cursos desde Supabase
+      await loadCourses();
+      setShowCourseForm(false);
+      setEditingCourse(undefined);
+    } catch (err) {
+      toast.error("Error al guardar el curso");
+      console.error(err);
     }
-    setCourseList(updated);
-    saveCourses(updated);
-    setShowCourseForm(false);
-    setEditingCourse(undefined);
   };
 
   const handleEditCourse = (course: FullCourse) => {
@@ -284,22 +256,37 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (courseToDelete) {
-      const updated = courseList.filter((c) => c.id !== courseToDelete);
-      setCourseList(updated);
-      saveCourses(updated);
-      toast.success("Curso eliminado exitosamente");
+  const confirmDelete = async () => {
+    try {
+      if (courseToDelete) {
+        // Eliminar curso de Supabase
+        const { error } = await supabase
+          .from("courses")
+          .delete()
+          .eq("id", courseToDelete);
+        
+        if (error) {
+          toast.error("Error al eliminar el curso: " + error.message);
+          return;
+        }
+        
+        toast.success("Curso eliminado exitosamente");
+        await loadCourses(); // Recargar lista
+      }
+      if (instructorToDelete) {
+        const updated = instructorList.filter((i) => i.id !== instructorToDelete);
+        setInstructorList(updated);
+        saveInstructors(updated);
+        toast.success("Instructor eliminado exitosamente");
+      }
+    } catch (err) {
+      toast.error("Error al eliminar");
+      console.error(err);
+    } finally {
+      setDeleteDialogOpen(false);
+      setCourseToDelete(null);
+      setInstructorToDelete(null);
     }
-    if (instructorToDelete) {
-      const updated = instructorList.filter((i) => i.id !== instructorToDelete);
-      setInstructorList(updated);
-      saveInstructors(updated);
-      toast.success("Instructor eliminado exitosamente");
-    }
-    setDeleteDialogOpen(false);
-    setCourseToDelete(null);
-    setInstructorToDelete(null);
   };
 
   const handleContactUser = (name: string, email: string) => {
@@ -626,7 +613,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         <TableCell className="text-[#0F172A]">{instructor.name}</TableCell>
                         <TableCell className="max-w-xs truncate">{instructor.title}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{instructor.rating} ⭐</Badge>
+                          <Badge variant="outline">{instructor.rating} ?</Badge>
                         </TableCell>
                         <TableCell>{instructor.students.toLocaleString()}</TableCell>
                         <TableCell>
@@ -702,66 +689,59 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       <TableHead>Nombre</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>País</TableHead>
-                      <TableHead>Cursos</TableHead>
-                      <TableHead>Certificados</TableHead>
-                      <TableHead>Fecha de Registro</TableHead>
+                      <TableHead>Teléfono</TableHead>
+                      <TableHead>Rol</TableHead>
+                      <TableHead>Registrado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {usersData.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="text-[#0F172A]">{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.country}</TableCell>
-                        <TableCell>{user.courses}</TableCell>
-                        <TableCell>{user.certificates}</TableCell>
-                        <TableCell>{user.joined}</TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => {
-                                onNavigate?.("profile");
-                                toast.info(`Viendo perfil de ${user.name}`);
-                              }}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Ver Perfil
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => {
-                                toast.info(`Editando usuario: ${user.name}`);
-                              }}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => {
-                                toast.info(`Certificados de ${user.name}: ${user.certificates}`);
-                              }}>
-                                <Award className="mr-2 h-4 w-4" />
-                                Ver Certificados
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleContactUser(user.name, user.email)}>
-                                <Mail className="mr-2 h-4 w-4" />
-                                Contactar Usuario
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                className="text-[#EF4444]"
-                                onClick={() => {
-                                  toast.error(`Usuario ${user.name} suspendido`);
-                                }}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Suspender
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                    {usersLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-4">
+                          <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : usersList.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                          No hay usuarios registrados aún
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      usersList.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="text-[#0F172A] font-medium">{user.full_name || "Sin nombre"}</TableCell>
+                          <TableCell className="text-sm">{user.email}</TableCell>
+                          <TableCell>{user.country || "-"}</TableCell>
+                          <TableCell>{user.phone || "-"}</TableCell>
+                          <TableCell>
+                            <Badge className={user.role === 'admin' ? 'bg-purple-100 text-purple-800' : user.role === 'instructor' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}>
+                              {user.role === 'admin' ? 'Administrador' : user.role === 'instructor' ? 'Instructor' : 'Estudiante'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">{new Date(user.created_at).toLocaleDateString('es-AR')}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => {
+                                  setContactUser({ name: user.full_name || user.email, email: user.email });
+                                  setContactDialogOpen(true);
+                                }}>
+                                  <Mail className="mr-2 h-4 w-4" />
+                                  Contactar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </Card>
@@ -970,7 +950,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           <DialogHeader>
             <DialogTitle>Contactar Usuario</DialogTitle>
             <DialogDescription>
-              Envía un mensaje a {contactUser?.name} ({contactUser?.email})
+              Env+�a un mensaje a {contactUser?.name} ({contactUser?.email})
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -979,14 +959,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               <Input
                 id="subject"
                 placeholder="Asunto del mensaje"
-                defaultValue="Información sobre tu pago"
+                defaultValue="Informaci+�n sobre tu pago"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="message">Mensaje</Label>
               <Textarea
                 id="message"
-                placeholder="Escribe tu mensaje aquí..."
+                placeholder="Escribe tu mensaje aqu+�..."
                 value={contactMessage}
                 onChange={(e) => setContactMessage(e.target.value)}
                 rows={6}
