@@ -37,7 +37,7 @@ import {
 import { courses, type EvaluationQuestion } from "../lib/data";
 import { CertificateTemplate, type CertificateData } from "../components/CertificateTemplate";
 import { generateCertificatePDF, generateCertificateId, formatCertificateDate, generateCertificatePreview } from "../utils/certificate";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 interface EvaluationProps {
   onNavigate?: (page: string) => void;
@@ -237,9 +237,11 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     // Generate certificate if passed
     if (passed) {
       const course = courses.find((c) => c.id === courseId);
+      
+      // TODO: Obtener datos reales del usuario autenticado
       const certData: CertificateData = {
-        studentName: "Juan Pérez", // TODO: Obtener del usuario logueado
-        dni: "12.345.678", // TODO: Obtener del usuario logueado
+        studentName: "Usuario", // Placeholder - cambiar por datos reales
+        dni: "", // Placeholder
         courseName: courseTitle || course?.title || "Curso Completado",
         courseHours: course?.duration || "40",
         issueDate: formatCertificateDate(),

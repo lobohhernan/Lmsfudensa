@@ -8,7 +8,7 @@ import { Progress } from "../components/ui/progress";
 import cprTrainingImage from "figma:asset/8a9e5cb5c2b30e2a7a391bdb4b195783e4af86a6.png";
 
 interface HomeProps {
-  onNavigate?: (page: string, courseId?: string) => void;
+  onNavigate?: (page: string, courseId?: string, courseSlug?: string) => void;
   isLoggedIn?: boolean;
 }
 
@@ -16,6 +16,7 @@ const featuredCourses = [
   {
     id: "1",
     title: "RCP Adultos AHA 2020 - Reanimación Cardiopulmonar",
+    slug: "rcp-adultos-aha-2020",
     image: "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjcHIlMjB0cmFpbmluZyUyMGR1bW15fGVufDF8fHx8MTc2MTg2MTMzMnww&ixlib=rb-4.1.0&q=80&w=1080",
     duration: "8 horas",
     level: "Básico" as const,
@@ -25,6 +26,7 @@ const featuredCourses = [
   {
     id: "2",
     title: "RCP Neonatal - Soporte Vital Pediátrico Avanzado",
+    slug: "rcp-neonatal-svpa",
     image: "https://images.unsplash.com/photo-1725870475677-7dc91efe9f93?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWRpY2FsJTIwdHJhaW5pbmclMjBlZHVjYXRpb258ZW58MXx8fHwxNzYxODU4NjgzfDA&ixlib=rb-4.1.0&q=80&w=1080",
     duration: "12 horas",
     level: "Avanzado" as const,
@@ -34,6 +36,7 @@ const featuredCourses = [
   {
     id: "3",
     title: "Primeros Auxilios Básicos - Manejo de Emergencias",
+    slug: "primeros-auxilios-basicos",
     image: "https://images.unsplash.com/photo-1622115585848-1d5b6e8af4e4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmaXJzdCUyMGFpZCUyMGNvdXJzZXxlbnwxfHx8fDE3NjE4NjEzMzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
     duration: "6 horas",
     level: "Básico" as const,
@@ -43,6 +46,7 @@ const featuredCourses = [
   {
     id: "4",
     title: "Emergencias Médicas - Atención Prehospitalaria",
+    slug: "emergencias-medicas-prehospitalaria",
     image: "https://images.unsplash.com/photo-1644488483724-4daed4a30390?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbWVyZ2VuY3klMjBtZWRpY2FsJTIwdHJhaW5pbmd8ZW58MXx8fHwxNzYxODYxMzMzfDA&ixlib=rb-4.1.0&q=80&w=1080",
     duration: "10 horas",
     level: "Intermedio" as const,
@@ -52,6 +56,7 @@ const featuredCourses = [
   {
     id: "5",
     title: "Certificación en Soporte Vital Cardiovascular",
+    slug: "soporte-vital-cardiovascular",
     image: "https://images.unsplash.com/photo-1722235623200-59966a71af50?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoZWFsdGhjYXJlJTIwY2VydGlmaWNhdGlvbnxlbnwxfHx8fDE3NjE4NjEzMzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
     duration: "15 horas",
     level: "Avanzado" as const,
@@ -299,7 +304,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
               <CourseCard
                 key={course.id}
                 {...course}
-                onClick={() => onNavigate?.("course", course.id)}
+                onClick={() => onNavigate?.("course", course.id, course.slug)}
               />
             ))}
           </div>
