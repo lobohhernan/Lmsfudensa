@@ -20,12 +20,12 @@ import type { FullCourse, CourseLesson, EvaluationQuestion } from "../lib/data";
 
 interface CourseFormProps {
   course?: FullCourse;
-  instructors: any[]; // Lista de instructores disponibles
+  teachers: any[]; // Lista de profesores disponibles
   onSave: (course: FullCourse) => void;
   onCancel: () => void;
 }
 
-export function CourseForm({ course, instructors, onSave, onCancel }: CourseFormProps) {
+export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<Partial<FullCourse>>(
@@ -343,19 +343,19 @@ export function CourseForm({ course, instructors, onSave, onCancel }: CourseForm
                     onValueChange={(value) => handleInputChange("instructorId", value)}
                   >
                     <SelectTrigger id="instructorId">
-                      <SelectValue placeholder="Selecciona un instructor" />
+                      <SelectValue placeholder="Selecciona un profesor" />
                     </SelectTrigger>
                     <SelectContent>
-                      {instructors.map((instructor) => (
-                        <SelectItem key={instructor.id} value={instructor.id}>
-                          {instructor.name}
+                      {teachers.map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.full_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {instructors.length === 0 && (
+                  {teachers.length === 0 && (
                     <p className="text-xs text-[#F59E0B]">
-                      ⚠️ No hay instructores disponibles. Crea uno primero en la sección de Instructores.
+                      ⚠️ No hay profesores disponibles. Crea uno primero en la sección de Profesores.
                     </p>
                   )}
                 </div>

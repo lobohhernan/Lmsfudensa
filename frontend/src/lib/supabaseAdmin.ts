@@ -46,6 +46,11 @@ export const supabaseAdmin = createClient(
     auth: {
       autoRefreshToken: false,
       persistSession: false
+    },
+    global: {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
+      }
     }
   }
 )

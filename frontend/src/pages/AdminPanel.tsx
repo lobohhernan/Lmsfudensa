@@ -50,12 +50,14 @@ import {
 import { Badge } from "../components/ui/badge";
 import { cn } from "../components/ui/utils";
 import { CourseForm } from "../components/CourseForm";
-import { InstructorForm } from "../components/InstructorForm";
-import { courses, saveCourses, instructors, saveInstructors, type FullCourse, type Instructor } from "../lib/data";
+import { type FullCourse } from "../lib/data";
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
 import { supabaseAdmin, isAdminClientConfigured, logAdminOperation } from "../lib/supabaseAdmin";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
+import { useTeachersRealtime } from "../hooks/useTeachers";
+import { TeacherForm } from "../components/TeacherForm";
+import type { Teacher } from "../hooks/useTeachers";
 import logoHorizontal from "../assets/logo-horizontal.svg";
 import {
   Dialog,
@@ -79,15 +81,15 @@ interface AdminPanelProps {
 }
 
 export function AdminPanel({ onNavigate }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "courses" | "instructors" | "users" | "payments" | "certificates">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "courses" | "teachers" | "users" | "payments" | "certificates">("dashboard");
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<FullCourse | undefined>();
-  const [showInstructorForm, setShowInstructorForm] = useState(false);
-  const [editingInstructor, setEditingInstructor] = useState<Instructor | undefined>();
-  const [instructorList, setInstructorList] = useState<Instructor[]>([]);
+  const [showTeacherForm, setShowTeacherForm] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | undefined>();
+  const [teacherQuery, setTeacherQuery] = useState<string>("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
-  const [instructorToDelete, setInstructorToDelete] = useState<string | null>(null);
+  const [teacherToDelete, setTeacherToDelete] = useState<string | null>(null);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactUser, setContactUser] = useState<{ name: string; email: string } | null>(null);
   const [contactMessage, setContactMessage] = useState("");
@@ -98,6 +100,22 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   // Use realtime hook for courses
   const { courses: realtimeCourses, loading: coursesLoading } = useCoursesRealtime();
+
+  // Use realtime hook for teachers
+  const { teachers: realtimeTeachers, loading: teachersLoading, refetch: refetchTeachers } = useTeachersRealtime();
+
+  // Search/filter state for teachers
+  const filteredTeachers = (() => {
+    const q = teacherQuery.trim().toLowerCase();
+    if (!q) return realtimeTeachers;
+    return realtimeTeachers.filter((t) => {
+      return (
+        (t.full_name || "").toLowerCase().includes(q) ||
+        (t.email || "").toLowerCase().includes(q) ||
+        ((t.specialization || "").toLowerCase().includes(q))
+      );
+    });
+  })();
 
   // Datos de ejemplo para secciones no implementadas
   const paymentsData: any[] = [];
@@ -148,10 +166,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   };
 
   useEffect(() => {
-    // Cargar usuarios e instructores desde localStorage
+    // Cargar usuarios desde Supabase
     loadUsers();
-    setInstructorList(instructors);
-    // Realtime courses are loaded via useCoursesRealtime hook
+    // Realtime courses and teachers are loaded via hooks
   }, []);
 
   const handleSaveCourse = async (course: FullCourse) => {
@@ -254,28 +271,83 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setDeleteDialogOpen(true);
   };
 
-  const handleSaveInstructor = (instructor: Instructor) => {
-    let updated: Instructor[];
-    if (editingInstructor) {
-      // Update existing instructor
-      updated = instructorList.map((i) => (i.id === instructor.id ? instructor : i));
-    } else {
-      // Add new instructor
-      updated = [...instructorList, instructor];
+  const handleSaveTeacher = async (teacher: Partial<Teacher>) => {
+    try {
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+      
+      if (editingTeacher) {
+        // Actualizar profesor en Supabase
+        logAdminOperation('UPDATE', 'teachers', { teacherId: teacher.id });
+        
+        const { error } = await client
+          .from("teachers")
+          .update({
+            full_name: teacher.full_name,
+            email: teacher.email,
+            bio: teacher.bio,
+            avatar_url: teacher.avatar_url,
+            specialization: teacher.specialization,
+            years_of_experience: teacher.years_of_experience,
+            rating: teacher.rating,
+            total_students: teacher.total_students,
+            total_courses: teacher.total_courses,
+            hourly_rate: teacher.hourly_rate,
+            is_active: teacher.is_active,
+          })
+          .eq("id", teacher.id);
+        
+        if (error) {
+          console.error("❌ Error UPDATE teacher:", error);
+          toast.error("Error al actualizar el profesor: " + error.message);
+          return;
+        }
+        toast.success("✅ Profesor actualizado exitosamente");
+        // Ensure latest data after update
+        try { await refetchTeachers(); } catch (e) { /* ignore */ }
+      } else {
+        // Crear nuevo profesor en Supabase
+        logAdminOperation('INSERT', 'teachers', { full_name: teacher.full_name });
+        
+        const { error } = await client.from("teachers").insert([{
+          full_name: teacher.full_name,
+          email: teacher.email,
+          bio: teacher.bio,
+          avatar_url: teacher.avatar_url,
+          specialization: teacher.specialization,
+          years_of_experience: teacher.years_of_experience,
+          rating: teacher.rating,
+          total_students: teacher.total_students,
+          total_courses: teacher.total_courses,
+          hourly_rate: teacher.hourly_rate,
+          is_active: teacher.is_active,
+        }]);
+        
+        if (error) {
+          console.error("❌ Error INSERT teacher:", error);
+          toast.error("Error al crear el profesor: " + error.message);
+          return;
+        }
+        toast.success("✅ Profesor creado exitosamente");
+        // Ensure latest data after insert
+        try { await refetchTeachers(); } catch (e) { /* ignore */ }
+      }
+
+      // No need to manually reload - realtime subscription will update the list automatically
+      setShowTeacherForm(false);
+      setEditingTeacher(undefined);
+    } catch (err) {
+      toast.error("Error al guardar el profesor");
+      console.error(err);
     }
-    setInstructorList(updated);
-    saveInstructors(updated);
-    setShowInstructorForm(false);
-    setEditingInstructor(undefined);
   };
 
-  const handleEditInstructor = (instructor: Instructor) => {
-    setEditingInstructor(instructor);
-    setShowInstructorForm(true);
+  const handleEditTeacher = (teacher: Teacher) => {
+    setEditingTeacher(teacher);
+    setShowTeacherForm(true);
   };
 
-  const handleDeleteInstructor = (instructorId: string) => {
-    setInstructorToDelete(instructorId);
+  const handleDeleteTeacher = (teacherId: string) => {
+    setTeacherToDelete(teacherId);
     setDeleteDialogOpen(true);
   };
 
@@ -301,11 +373,23 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         toast.success("✅ Curso eliminado exitosamente");
         // No need to reload - realtime subscription will update the list automatically
       }
-      if (instructorToDelete) {
-        const updated = instructorList.filter((i) => i.id !== instructorToDelete);
-        setInstructorList(updated);
-        saveInstructors(updated);
-        toast.success("Instructor eliminado exitosamente");
+      if (teacherToDelete) {
+        // Eliminar profesor de Supabase
+        logAdminOperation('DELETE', 'teachers', { teacherId: teacherToDelete });
+        
+        const { error } = await client
+          .from("teachers")
+          .delete()
+          .eq("id", teacherToDelete);
+        
+        if (error) {
+          console.error("❌ Error DELETE teacher:", error);
+          toast.error("Error al eliminar el profesor: " + error.message);
+          return;
+        }
+        
+        toast.success("✅ Profesor eliminado exitosamente");
+        // No need to reload - realtime subscription will update the list automatically
       }
     } catch (err) {
       toast.error("Error al eliminar");
@@ -313,7 +397,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     } finally {
       setDeleteDialogOpen(false);
       setCourseToDelete(null);
-      setInstructorToDelete(null);
+      setTeacherToDelete(null);
     }
   };
 
@@ -337,7 +421,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "courses", label: "Cursos", icon: BookOpen },
-    { id: "instructors", label: "Instructores", icon: GraduationCap },
+    { id: "teachers", label: "Profesores", icon: GraduationCap },
     { id: "users", label: "Usuarios", icon: Users },
     { id: "payments", label: "Pagos", icon: CreditCard },
     { id: "certificates", label: "Certificados", icon: Award },
@@ -599,7 +683,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               </Button>
               <CourseForm
                 course={editingCourse}
-                instructors={instructorList}
+                teachers={realtimeTeachers}
                 onSave={handleSaveCourse}
                 onCancel={() => {
                   setShowCourseForm(false);
@@ -609,17 +693,41 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             </div>
           )}
 
-          {/* Instructors */}
-          {activeTab === "instructors" && !showInstructorForm && (
+          
+
+          
+
+          {/* Teachers */}
+          {activeTab === "teachers" && !showTeacherForm && (
             <div className="space-y-6">
+              {!isAdminClientConfigured() && (
+                <Card>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-yellow-800">
+                        ⚠️ El cliente admin no está configurado. Las operaciones de creación/edición pueden ser bloqueadas por RLS.
+                        Agrega `VITE_SUPABASE_SERVICE_ROLE_KEY` en tu `.env.local` o usa el cliente admin.
+                      </div>
+                      <div>
+                        <Button variant="outline" onClick={() => window.open('https://app.supabase.com/', '_blank')}>Ir a Supabase</Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative flex-1 sm:max-w-md">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                  <Input placeholder="Buscar instructores..." className="pl-10" />
+                  <Input
+                    placeholder="Buscar profesores..."
+                    className="pl-10"
+                    value={teacherQuery}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTeacherQuery(e.target.value)}
+                  />
                 </div>
-                <Button onClick={() => setShowInstructorForm(true)}>
+                <Button onClick={() => setShowTeacherForm(true)}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Nuevo Instructor
+                  Nuevo Profesor
                 </Button>
               </div>
 
@@ -628,75 +736,105 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nombre</TableHead>
-                      <TableHead>Título</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Especialización</TableHead>
                       <TableHead>Valoración</TableHead>
                       <TableHead>Estudiantes</TableHead>
                       <TableHead>Cursos</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {instructorList.map((instructor) => (
-                      <TableRow key={instructor.id}>
-                        <TableCell className="text-[#0F172A]">{instructor.name}</TableCell>
-                        <TableCell className="max-w-xs truncate">{instructor.title}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{instructor.rating} ?</Badge>
-                        </TableCell>
-                        <TableCell>{instructor.students ? instructor.students.toLocaleString() : ""}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{instructor.courses} cursos</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditInstructor(instructor)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteInstructor(instructor.id)}
-                                className="text-[#EF4444]"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                    {teachersLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-4">
+                          <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : realtimeTeachers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                          No hay profesores registrados aún
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredTeachers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                          No se encontraron profesores para "{teacherQuery}"
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredTeachers.map((teacher) => (
+                        <TableRow key={teacher.id}>
+                          <TableCell className="text-[#0F172A] font-medium">{teacher.full_name}</TableCell>
+                          <TableCell className="text-sm">{teacher.email}</TableCell>
+                          <TableCell>{teacher.specialization || "-"}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{teacher.rating} ⭐</Badge>
+                          </TableCell>
+                          <TableCell>{teacher.total_students.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{teacher.total_courses} cursos</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {teacher.is_active ? (
+                              <Badge className="bg-green-100 text-green-800">Activo</Badge>
+                            ) : (
+                              <Badge className="bg-gray-100 text-gray-800">Inactivo</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditTeacher(teacher)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteTeacher(teacher.id)}
+                                  className="text-[#EF4444]"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Eliminar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </Card>
             </div>
           )}
 
-          {/* Instructor Form */}
-          {activeTab === "instructors" && showInstructorForm && (
+          {/* Teacher Form */}
+          {activeTab === "teachers" && showTeacherForm && (
             <div>
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setShowInstructorForm(false);
-                  setEditingInstructor(undefined);
+                  setShowTeacherForm(false);
+                  setEditingTeacher(undefined);
                 }}
                 className="mb-4"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Volver a la lista
               </Button>
-              <InstructorForm
-                instructor={editingInstructor}
-                onSave={handleSaveInstructor}
+              <TeacherForm
+                teacher={editingTeacher}
+                onSave={handleSaveTeacher}
                 onCancel={() => {
-                  setShowInstructorForm(false);
-                  setEditingInstructor(undefined);
+                  setShowTeacherForm(false);
+                  setEditingTeacher(undefined);
                 }}
               />
             </div>
@@ -966,7 +1104,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
               {courseToDelete && "Esta acción no se puede deshacer. Esto eliminará permanentemente el curso y todas sus lecciones y evaluaciones asociadas."}
-              {instructorToDelete && "Esta acción no se puede deshacer. Esto eliminará permanentemente el instructor. Los cursos asignados a este instructor mantendrán su referencia."}
+              {teacherToDelete && "Esta acción no se puede deshacer. Esto eliminará permanentemente el profesor y toda su información asociada."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

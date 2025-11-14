@@ -34,52 +34,21 @@ interface CacheEntry<T> {
 
 /**
  * Obtener datos del caché
- * Verifica si los datos son válidos (no expirados y versión correcta)
+ * DESACTIVADO: Siempre retorna null para forzar fetch desde Supabase
  */
 export function getCachedData<T>(key: string): T | null {
-  try {
-    const stored = localStorage.getItem(key)
-    if (!stored) {
-      console.log(`📦 Caché vacío para: ${key}`)
-      return null
-    }
-
-    const cached: CacheEntry<T> = JSON.parse(stored)
-    const storedVersion = localStorage.getItem(CACHE_KEYS.APP_VERSION)
-
-    // Verificar si la versión de la app cambió
-    if (storedVersion && storedVersion !== APP_VERSION) {
-      console.warn(`⚠️ Versión de app cambió. Limpiando caché para: ${key}`)
-      clearCache(key)
-      return null
-    }
-
-    // Verificar si el caché es válido (no está determinado el TTL aquí)
-    console.log(`✅ Caché válido para: ${key}`)
-    return cached.data
-  } catch (error) {
-    console.error(`❌ Error leyendo caché ${key}:`, error)
-    clearCache(key)
-    return null
-  }
+  // Cache desactivado - siempre retornar null para forzar fetch fresco
+  console.log(`🚫 Cache desactivado para: ${key} - fetchando desde servidor`)
+  return null
 }
 
 /**
  * Guardar datos en el caché con timestamp
+ * DESACTIVADO: No guarda nada en localStorage
  */
 export function setCachedData<T>(key: string, data: T): void {
-  try {
-    const cacheEntry: CacheEntry<T> = {
-      data,
-      timestamp: Date.now(),
-      version: APP_VERSION,
-    }
-    localStorage.setItem(key, JSON.stringify(cacheEntry))
-    localStorage.setItem(CACHE_KEYS.APP_VERSION, APP_VERSION)
-    console.log(`💾 Caché guardado para: ${key}`)
-  } catch (error) {
-    console.error(`❌ Error guardando caché ${key}:`, error)
-  }
+  // Cache desactivado - no guardar en localStorage
+  console.log(`🚫 Cache desactivado - no guardando: ${key}`)
 }
 
 /**
