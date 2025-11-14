@@ -13,7 +13,7 @@ interface Course {
   duration: string
   level: string
   certified: boolean
-  students: number
+  students?: number
   category: string
   rating: number
   reviews: number
@@ -39,7 +39,12 @@ export function useCourses() {
         .order('created_at', { ascending: false })
 
       if (queryError) throw queryError
-      setCourses(data || [])
+      // Convert students: 0 to undefined so CourseCard doesn't render the footer
+      const processedData = (data || []).map(course => ({
+        ...course,
+        students: course.students && course.students > 0 ? course.students : undefined
+      }))
+      setCourses(processedData)
       setError(null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error fetching courses'
@@ -73,7 +78,12 @@ export function useCourseDetail(courseId: string) {
         .single()
 
       if (queryError) throw queryError
-      setCourse(data)
+      // Convert students: 0 to undefined
+      const processedData = data ? {
+        ...data,
+        students: data.students && data.students > 0 ? data.students : undefined
+      } : null
+      setCourse(processedData)
       setError(null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error fetching course'
@@ -107,7 +117,12 @@ export function useCoursesByCategory(category: string) {
         .order('created_at', { ascending: false })
 
       if (queryError) throw queryError
-      setCourses(data || [])
+      // Convert students: 0 to undefined
+      const processedData = (data || []).map(course => ({
+        ...course,
+        students: course.students && course.students > 0 ? course.students : undefined
+      }))
+      setCourses(processedData)
       setError(null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error fetching courses'

@@ -69,9 +69,13 @@ export function CourseCard({
           </div>
         </div>
       </CardContent>
-      {students && (
-        <CardFooter className="border-t p-4 flex-shrink-0">
+      {students !== undefined && students !== null ? (
+        <CardFooter className="border-t p-4 shrink-0">
           <p className="text-sm text-[#64748B]">{students.toLocaleString()} estudiantes</p>
+        </CardFooter>
+      ) : (
+        <CardFooter className="border-t p-4 shrink-0 bg-linear-to-r from-[#F8FAFC] to-[#F1F5F9]">
+          <p className="text-sm text-[#94A3B8] italic">Sin estudiantes aún</p>
         </CardFooter>
       )}
     </Card>

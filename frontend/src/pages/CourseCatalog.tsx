@@ -154,7 +154,7 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
                   duration={course.duration}
                   level={course.level as "Básico" | "Intermedio" | "Avanzado"}
                   certified={course.certified}
-                  students={course.students || 0}
+                  students={course.students}
                   onClick={() => onNavigate?.("course", course.id, course.slug)}
                 />
               ))}
