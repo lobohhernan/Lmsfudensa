@@ -19,6 +19,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Faltan variables de entorno de Supabase. Verifica que .env.local existe y contiene VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate'
+    }
+  }
+})
 
 console.log('✅ Cliente Supabase inicializado correctamente')

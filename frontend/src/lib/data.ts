@@ -60,26 +60,7 @@ export interface FullCourse {
   learningOutcomes?: string[];
 }
 
-// Initialize instructors from localStorage or use defaults
-const getStoredInstructors = (): Instructor[] => {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("fudensa_instructors");
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        console.error("Error parsing stored instructors:", e);
-      }
-    }
-  }
-  return defaultInstructors;
-};
-
-export const saveInstructors = (instructors: Instructor[]) => {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("fudensa_instructors", JSON.stringify(instructors));
-  }
-};
+// Instructors removed - migrated to Teachers table in Supabase
 
 // Initialize courses from localStorage or use defaults
 const getStoredCourses = (): FullCourse[] => {
@@ -102,74 +83,7 @@ export const saveCourses = (courses: FullCourse[]) => {
   }
 };
 
-const defaultInstructors: Instructor[] = [
-  {
-    id: "1",
-    name: "Dr. Carlos Mendoza",
-    title: "Médico Emergentólogo • Instructor AHA",
-    biography: "Médico especialista en emergencias con más de 15 años de experiencia en atención de urgencias y emergencias médicas. Instructor certificado de la American Heart Association (AHA) con amplia trayectoria en la formación de profesionales de la salud en técnicas de soporte vital básico y avanzado.",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Carlos",
-    rating: 4.9,
-    students: 25430,
-    courses: 12,
-    credentials: [
-      {
-        title: "Médico Especialista en Emergentología",
-        institution: "Universidad de Buenos Aires",
-        year: "2008"
-      },
-      {
-        title: "Instructor AHA - BLS/ACLS",
-        institution: "American Heart Association",
-        year: "2010"
-      },
-      {
-        title: "Coordinador de Formación en Soporte Vital",
-        institution: "Hospital General de Agudos",
-        year: "2015"
-      }
-    ],
-    experience: [
-      "+15 años en servicio de emergencias hospitalarias",
-      "+10,000 horas de capacitación en técnicas de RCP y soporte vital",
-      "+25,000 profesionales formados en protocolos AHA",
-      "Participación en actualización de protocolos de emergencia nacional"
-    ]
-  },
-  {
-    id: "2",
-    name: "Dra. Ana Martínez",
-    title: "Neonatóloga • Especialista en Cuidados Intensivos Pediátricos",
-    biography: "Especialista en neonatología y cuidados intensivos pediátricos con más de 12 años de experiencia. Certificada en soporte vital avanzado pediátrico y neonatal, con enfoque en la enseñanza de técnicas de reanimación neonatal.",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Ana",
-    rating: 4.8,
-    students: 18920,
-    courses: 8,
-    credentials: [
-      {
-        title: "Médica Especialista en Neonatología",
-        institution: "Universidad Nacional de Córdoba",
-        year: "2011"
-      },
-      {
-        title: "Especialista en Cuidados Intensivos Pediátricos",
-        institution: "Hospital Garrahan",
-        year: "2013"
-      },
-      {
-        title: "Instructora PALS/NRP",
-        institution: "American Heart Association",
-        year: "2014"
-      }
-    ],
-    experience: [
-      "+12 años en unidades de cuidados intensivos neonatales",
-      "+8,000 horas de capacitación en soporte vital pediátrico",
-      "+18,000 profesionales formados",
-      "Investigadora en protocolos de reanimación neonatal"
-    ]
-  }
-];
+// Instructors data removed - migrated to Teachers table in Supabase
 
 const defaultCourses: FullCourse[] = [
   {
@@ -305,7 +219,7 @@ const defaultCourses: FullCourse[] = [
   },
 ];
 
-export let instructors = getStoredInstructors();
+// Instructors removed - migrated to Teachers table in Supabase
 export let courses = getStoredCourses();
 
 export type Course = FullCourse;
