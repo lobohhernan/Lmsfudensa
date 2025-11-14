@@ -1,78 +1,17 @@
 import { ArrowRight, Award, CheckCircle, MessageCircle, Star, Play, Clock } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { CourseCard } from "../components/CourseCard";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardContent } from "../components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { Progress } from "../components/ui/progress";
 import cprTrainingImage from "../assets/section-home.png";
+import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
 
 interface HomeProps {
   onNavigate?: (page: string, courseId?: string, courseSlug?: string) => void;
   isLoggedIn?: boolean;
 }
-
-const featuredCourses = [
-  {
-    id: "1",
-    title: "RCP Adultos AHA 2020 - Reanimación Cardiopulmonar",
-    slug: "rcp-adultos-aha-2020",
-    image: "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjcHIlMjB0cmFpbmluZyUyMGR1bW15fGVufDF8fHx8MTc2MTg2MTMzMnww&ixlib=rb-4.1.0&q=80&w=1080",
-    duration: "8 horas",
-    level: "Básico" as const,
-    certified: true,
-    students: 12450,
-  },
-  {
-    id: "2",
-    title: "RCP Neonatal - Soporte Vital Pediátrico Avanzado",
-    slug: "rcp-neonatal-svpa",
-    image: "https://images.unsplash.com/photo-1725870475677-7dc91efe9f93?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWRpY2FsJTIwdHJhaW5pbmclMjBlZHVjYXRpb258ZW58MXx8fHwxNzYxODU4NjgzfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    duration: "12 horas",
-    level: "Avanzado" as const,
-    certified: true,
-    students: 8320,
-  },
-  {
-    id: "3",
-    title: "Primeros Auxilios Básicos - Manejo de Emergencias",
-    slug: "primeros-auxilios-basicos",
-    image: "https://images.unsplash.com/photo-1622115585848-1d5b6e8af4e4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmaXJzdCUyMGFpZCUyMGNvdXJzZXxlbnwxfHx8fDE3NjE4NjEzMzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    duration: "6 horas",
-    level: "Básico" as const,
-    certified: true,
-    students: 15680,
-  },
-  {
-    id: "4",
-    title: "Emergencias Médicas - Atención Prehospitalaria",
-    slug: "emergencias-medicas-prehospitalaria",
-    image: "https://images.unsplash.com/photo-1644488483724-4daed4a30390?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbWVyZ2VuY3klMjBtZWRpY2FsJTIwdHJhaW5pbmd8ZW58MXx8fHwxNzYxODYxMzMzfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    duration: "10 horas",
-    level: "Intermedio" as const,
-    certified: true,
-    students: 9540,
-  },
-  {
-    id: "5",
-    title: "Certificación en Soporte Vital Cardiovascular",
-    slug: "soporte-vital-cardiovascular",
-    image: "https://images.unsplash.com/photo-1722235623200-59966a71af50?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoZWFsdGhjYXJlJTIwY2VydGlmaWNhdGlvbnxlbnwxfHx8fDE3NjE4NjEzMzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    duration: "15 horas",
-    level: "Avanzado" as const,
-    certified: true,
-    students: 6720,
-  },
-  {
-    id: "6",
-    title: "Atención de Heridas y Quemaduras - Técnicas Avanzadas",
-    image: "https://images.unsplash.com/photo-1622115585848-1d5b6e8af4e4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmaXJzdCUyMGFpZCUyMGNvdXJzZXxlbnwxfHx8fDE3NjE4NjEzMzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    duration: "8 horas",
-    level: "Intermedio" as const,
-    certified: true,
-    students: 11230,
-  },
-];
 
 const coursesInProgress = [
   {
@@ -120,6 +59,20 @@ const testimonials = [
 ];
 
 export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
+  const { courses: allCourses } = useCoursesRealtime();
+  
+  // Mostrar los primeros 6 cursos en la sección destacada
+  const displayCourses = allCourses.slice(0, 6).map(course => ({
+    id: course.id,
+    title: course.title,
+    slug: course.slug,
+    image: course.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=1200",
+    duration: course.duration || "8 horas",
+    level: (course.level || "Básico") as "Básico" | "Intermedio" | "Avanzado",
+    certified: course.certified || false,
+    students: course.students,
+  }));
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Hero Section */}
@@ -300,13 +253,19 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredCourses.map((course) => (
-              <CourseCard
-                key={course.id}
-                {...course}
-                onClick={() => onNavigate?.("course", course.id, course.slug)}
-              />
-            ))}
+            {displayCourses.length > 0 ? (
+              displayCourses.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  {...course}
+                  onClick={() => onNavigate?.("course", course.id, course.slug)}
+                />
+              ))
+            ) : (
+              <div className="col-span-full py-12 text-center text-[#64748B]">
+                Cargando cursos...
+              </div>
+            )}
           </div>
 
           <div className="mt-6 sm:hidden">

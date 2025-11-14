@@ -50,6 +50,7 @@ import {
 import { Badge } from "../components/ui/badge";
 import { cn } from "../components/ui/utils";
 import { CourseForm } from "../components/CourseForm";
+import { CourseCard } from "../components/CourseCard";
 import { type FullCourse } from "../lib/data";
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
@@ -629,65 +630,50 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 </Button>
               </div>
 
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Título</TableHead>
-                      <TableHead>Categoría</TableHead>
-                      <TableHead>Nivel</TableHead>
-                      <TableHead>Estudiantes</TableHead>
-                      <TableHead>Lecciones</TableHead>
-                      <TableHead>Evaluación</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {courseList.map((course) => (
-                      <TableRow key={course.id}>
-                        <TableCell className="text-[#0F172A]">{course.title}</TableCell>
-                        <TableCell>{course.category}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{course.level}</Badge>
-                        </TableCell>
-                        <TableCell>{course.students ? course.students.toLocaleString() : ""}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {course.lessons?.length || 0} lecciones
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {course.evaluation?.length || 0} preguntas
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditCourse(course)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteCourse(course.id)}
-                                className="text-[#EF4444]"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Card>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {courseList.length > 0 ? (
+                  courseList.map((course) => (
+                    <div key={course.id} className="relative group">
+                      <CourseCard
+                        id={course.id}
+                        title={course.title}
+                        image={course.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=1200"}
+                        duration={course.duration || "4 semanas"}
+                        level={course.level as "Básico" | "Intermedio" | "Avanzado"}
+                        certified={course.certified || false}
+                        students={course.students}
+                        onClick={() => handleEditCourse(course)}
+                      />
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="bg-white/80 backdrop-blur-sm hover:bg-white">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditCourse(course)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteCourse(course.id)}
+                              className="text-[#EF4444]"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full flex items-center justify-center py-12">
+                    <p className="text-[#64748B]">No hay cursos disponibles. Crea uno para comenzar.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

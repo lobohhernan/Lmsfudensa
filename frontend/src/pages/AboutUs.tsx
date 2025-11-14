@@ -198,7 +198,7 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
                   </div>
                   <h3 className="text-xl font-semibold">Impacto</h3>
                   <p className="text-pretty text-sm text-muted-foreground">
-                    Mejora continua de la atención sanitaria a través de la capacitación
+                    Mejora continua de la atención sanitaria a través de la capacitación en la salud
                   </p>
                 </CardContent>
               </Card>

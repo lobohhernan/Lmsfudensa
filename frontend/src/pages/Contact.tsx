@@ -13,6 +13,7 @@ import {
 } from "../components/ui/select";
 import { toast } from "sonner";
 import { useState } from "react";
+import { supabase } from "../lib/supabase";
 
 interface ContactProps {
   onNavigate?: (page: string) => void;
@@ -26,21 +27,49 @@ export function Contact({ onNavigate }: ContactProps) {
     subject: "",
     message: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simular envío del formulario
-    toast.success("Mensaje enviado correctamente", {
-      description: "Nos pondremos en contacto contigo en las próximas 24-48 horas.",
-    });
-    // Resetear formulario
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      subject: "",
-      message: "",
-    });
+    setIsLoading(true);
+
+    try {
+      // Guardar mensaje en Supabase
+      const { error } = await supabase
+        .from("contact_messages")
+        .insert([
+          {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            subject: formData.subject,
+            message: formData.message,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+
+      if (error) throw error;
+
+      toast.success("¡Mensaje enviado correctamente!", {
+        description: "Nos pondremos en contacto contigo a la brevedad.",
+      });
+
+      // Resetear formulario
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        subject: "",
+        message: "",
+      });
+    } catch (error: any) {
+      console.error("Error al enviar mensaje:", error);
+      toast.error("Error al enviar el mensaje", {
+        description: "Intenta de nuevo más tarde",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -79,8 +108,9 @@ export function Contact({ onNavigate }: ContactProps) {
                 </div>
                 <h3 className="mb-4 text-lg">Email</h3>
                 <div className="space-y-1">
-                  <p className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors">info@fudensa.com.ar</p>
-                  <p className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors">soporte@fudensa.com.ar</p>
+                  <a href="mailto:fudensa.fundacion@gmail.com" className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors block">
+                    fudensa.fundacion@gmail.com
+                  </a>
                 </div>
               </Card>
             </div>
@@ -95,8 +125,12 @@ export function Contact({ onNavigate }: ContactProps) {
                 </div>
                 <h3 className="mb-4 text-lg">Teléfono</h3>
                 <div className="space-y-1">
-                  <p className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors">+54 11 4567-8900</p>
-                  <p className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors">WhatsApp: +54 9 11 4567-8900</p>
+                  <a href="https://wa.me/543815537057" target="_blank" rel="noopener noreferrer" className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors block">
+                    +54 9 3815 53-7057
+                  </a>
+                  <a href="https://wa.me/543815537057" target="_blank" rel="noopener noreferrer" className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors block">
+                    WhatsApp: +54 9 3815 53-7057
+                  </a>
                 </div>
               </Card>
             </div>
@@ -218,9 +252,14 @@ export function Contact({ onNavigate }: ContactProps) {
                   </div>
 
                   <div className="flex justify-center">
-                    <Button type="submit" size="lg" className="min-w-[250px] h-12">
+                    <Button 
+                      type="submit" 
+                      size="lg" 
+                      className="min-w-[250px] h-12"
+                      disabled={isLoading}
+                    >
                       <Send className="mr-2 h-5 w-5" />
-                      Enviar Mensaje
+                      {isLoading ? "Enviando..." : "Enviar Mensaje"}
                     </Button>
                   </div>
                 </form>
