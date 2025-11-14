@@ -97,6 +97,12 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [usersList, setUsersList] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeCourses: 0,
+    certificatesIssued: 0,
+    monthlyRevenue: 0,
+  });
 
   // Use realtime hook for courses
   const { courses: realtimeCourses, loading: coursesLoading } = useCoursesRealtime();
@@ -170,6 +176,24 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     loadUsers();
     // Realtime courses and teachers are loaded via hooks
   }, []);
+
+  // Calcular estadísticas en tiempo real
+  useEffect(() => {
+    const totalStudents = usersList.length;
+    const activeCourses = realtimeCourses.length;
+    
+    // Calcular ingresos del mes (suma de precios de cursos activos)
+    const monthlyRevenue = realtimeCourses.reduce((sum, course) => {
+      return sum + (course.price || 0);
+    }, 0);
+
+    setStats({
+      totalStudents,
+      activeCourses,
+      certificatesIssued: 18450, // TODO: calcular desde tabla de certificados
+      monthlyRevenue,
+    });
+  }, [usersList, realtimeCourses]);
 
   const handleSaveCourse = async (course: FullCourse) => {
     try {
@@ -526,7 +550,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 bg-white/20 flex-1">
-                    <div className="text-4xl">52,340</div>
+                    <div className="text-4xl">{stats.totalStudents.toLocaleString()}</div>
                     <p className="text-sm text-[#64748B]">+12% desde el mes pasado</p>
                   </CardContent>
                 </Card>
@@ -545,7 +569,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 bg-white/20 flex-1">
-                    <div className="text-4xl">24</div>
+                    <div className="text-4xl">{stats.activeCourses}</div>
                     <p className="text-sm text-[#64748B]">3 en borrador</p>
                   </CardContent>
                 </Card>
@@ -564,7 +588,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 bg-white/20 flex-1">
-                    <div className="text-4xl">18,450</div>
+                    <div className="text-4xl">{stats.certificatesIssued.toLocaleString()}</div>
                     <p className="text-sm text-[#64748B]">+245 esta semana</p>
                   </CardContent>
                 </Card>
@@ -583,7 +607,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 bg-white/20 flex-1">
-                    <div className="text-4xl">ARS $1.890.000</div>
+                    <div className="text-4xl">ARS ${(stats.monthlyRevenue).toLocaleString()}</div>
                     <p className="text-sm text-[#64748B]">+8% desde el mes pasado</p>
                   </CardContent>
                 </Card>
