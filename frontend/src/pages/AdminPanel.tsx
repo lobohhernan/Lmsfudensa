@@ -57,6 +57,7 @@ import { supabase } from "../lib/supabase";
 import { supabaseAdmin, isAdminClientConfigured, logAdminOperation } from "../lib/supabaseAdmin";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
 import { useTeachersRealtime } from "../hooks/useTeachers";
+import { useCertificatesRealtime } from "../hooks/useCertificates";
 import { TeacherForm } from "../components/TeacherForm";
 import type { Teacher } from "../hooks/useTeachers";
 import logoHorizontal from "../assets/logo-horizontal.svg";
@@ -106,10 +107,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   });
 
   // Use realtime hook for courses
-  const { courses: realtimeCourses, loading: coursesLoading } = useCoursesRealtime();
+  const { courses: realtimeCourses, loading: coursesLoading, refetch: refetchCourses } = useCoursesRealtime();
 
   // Use realtime hook for teachers
   const { teachers: realtimeTeachers, loading: teachersLoading, refetch: refetchTeachers } = useTeachersRealtime();
+
+  // Use realtime hook for certificates
+  const { certificates: realtimeCertificates, loading: certificatesLoading, error: certificatesError } = useCertificatesRealtime();
 
   // Search/filter state for teachers
   const filteredTeachers = (() => {
@@ -126,7 +130,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   // Datos de ejemplo para secciones no implementadas
   const paymentsData: any[] = [];
-  const certificatesData: any[] = [];
 
   // Map realtime courses to component state
   const courseList = realtimeCourses.map(course => ({
@@ -191,10 +194,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setStats({
       totalStudents,
       activeCourses,
-      certificatesIssued: 18450, // TODO: calcular desde tabla de certificados
+      certificatesIssued: realtimeCertificates.filter(c => c.status === 'active').length,
       monthlyRevenue,
     });
-  }, [usersList, realtimeCourses]);
+  }, [usersList, realtimeCourses, realtimeCertificates]);
 
   const handleSaveCourse = async (course: FullCourse) => {
     try {
@@ -275,6 +278,37 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           return;
         }
         toast.success("✅ Curso creado exitosamente");
+      }
+
+      // Guardar evaluaciones del curso
+      if (course.evaluation && course.evaluation.length > 0) {
+        try {
+          // Eliminar evaluaciones existentes del curso
+          await client.from("evaluations").delete().eq("course_id", course.id);
+
+          // Insertar nuevas evaluaciones
+          const evaluationsToInsert = course.evaluation.map((q, index) => ({
+            course_id: course.id,
+            question_order: index + 1,
+            question: q.question,
+            options: JSON.stringify(q.options),
+            correct_answer: q.correctAnswer,
+            explanation: q.explanation || null,
+          }));
+
+          const { error: evalError } = await client
+            .from("evaluations")
+            .insert(evaluationsToInsert);
+
+          if (evalError) {
+            console.error("❌ Error guardando evaluaciones:", evalError);
+            toast.warning("Curso guardado, pero error al guardar evaluaciones");
+          } else {
+            console.log(`✅ ${evaluationsToInsert.length} evaluaciones guardadas`);
+          }
+        } catch (evalErr) {
+          console.error("Error guardando evaluaciones:", evalErr);
+        }
       }
 
       // No need to manually reload - realtime subscription will update the list automatically
@@ -942,33 +976,17 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Fecha</TableHead>
                       <TableHead>Usuario</TableHead>
                       <TableHead>Curso</TableHead>
                       <TableHead>Monto</TableHead>
-                      <TableHead>Gateway</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Fecha</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paymentsData.map((payment) => (
                       <TableRow key={payment.id}>
-                        <TableCell className="font-mono text-xs">{payment.id}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="text-[#0F172A]">{payment.user}</span>
-                            <span className="text-xs text-[#64748B]">{payment.email}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{payment.course}</TableCell>
-                        <TableCell className="font-semibold text-[#0F172A]">{payment.amount}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="border-[#55a5c7] text-[#55a5c7]">
-                            {payment.gateway}
-                          </Badge>
-                        </TableCell>
                         <TableCell>
                           <Badge
                             variant={payment.status === "Pagado" ? "default" : "secondary"}
@@ -984,6 +1002,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           </Badge>
                         </TableCell>
                         <TableCell>{payment.date}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-[#0F172A]">{payment.user}</span>
+                            <span className="text-xs text-[#64748B]">{payment.email}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{payment.course}</TableCell>
+                        <TableCell className="font-semibold text-[#0F172A]">{payment.amount}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1060,45 +1086,81 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Fecha de Emisión</TableHead>
                       <TableHead>Estudiante</TableHead>
                       <TableHead>Curso</TableHead>
-                      <TableHead>Fecha de Emisión</TableHead>
                       <TableHead>Hash</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {certificatesData.map((cert) => (
-                      <TableRow key={cert.id}>
-                        <TableCell className="text-[#0F172A]">{cert.student}</TableCell>
-                        <TableCell>{cert.course}</TableCell>
-                        <TableCell>{cert.issueDate}</TableCell>
-                        <TableCell className="font-mono text-xs">{cert.hash}</TableCell>
-                        <TableCell>
-                          <Badge className="bg-[#55a5c7] text-white">{cert.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Download className="mr-2 h-4 w-4" />
-                                Descargar PDF
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-[#EF4444]">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Revocar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                    {certificatesLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#55a5c7]" />
+                          <p className="text-sm text-[#64748B] mt-2">Cargando certificados...</p>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : certificatesError ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-[#EF4444]">
+                          Error: {certificatesError}
+                        </TableCell>
+                      </TableRow>
+                    ) : realtimeCertificates.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-[#64748B]">
+                          No hay certificados emitidos aún
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      realtimeCertificates.map((cert) => (
+                        <TableRow key={cert.id}>
+                          <TableCell>{new Date(cert.issue_date).toLocaleDateString("es-AR")}</TableCell>
+                          <TableCell className="text-[#0F172A]">{cert.student_name}</TableCell>
+                          <TableCell>{cert.course_title}</TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {cert.hash.substring(0, 16)}...
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              className={cn(
+                                cert.status === 'active' && "bg-[#55a5c7] text-white",
+                                cert.status === 'voided' && "bg-[#EF4444] text-white",
+                                cert.status === 'expired' && "bg-[#64748B] text-white"
+                              )}
+                            >
+                              {cert.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  disabled={!cert.pdf_url}
+                                  onClick={() => {
+                                    if (cert.pdf_url) window.open(cert.pdf_url, '_blank');
+                                  }}
+                                >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Descargar PDF
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-[#EF4444]">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Revocar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </Card>
@@ -1168,4 +1230,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       </Dialog>
     </div>
   );
+}
+async function generateHash() {
+  const data = `${Date.now()}-${Math.random()}-${crypto.randomUUID()}`;
+  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
+  return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }

@@ -37,135 +37,14 @@ import {
 import { courses, type EvaluationQuestion } from "../lib/data";
 import { CertificateTemplate, type CertificateData } from "../components/CertificateTemplate";
 import { generateCertificatePDF, generateCertificateId, formatCertificateDate, generateCertificatePreview } from "../utils/certificate";
+import { issueCertificate } from "../utils/issueCertificate";
+import { supabase } from "../lib/supabase";
 import { toast } from "sonner";
 
 interface EvaluationProps {
   onNavigate?: (page: string) => void;
   courseId?: string;
 }
-
-const defaultEvaluationData: EvaluationQuestion[] = [
-  {
-    id: 1,
-    question: "¿Cuál es la profundidad correcta de las compresiones torácicas en un adulto durante la RCP?",
-    options: [
-      "Al menos 3 cm",
-      "Al menos 5 cm",
-      "Al menos 7 cm",
-      "Al menos 10 cm",
-    ],
-    correctAnswer: 1,
-    explanation: "Las compresiones torácicas en adultos deben tener una profundidad de al menos 5 cm según las guías AHA 2020.",
-  },
-  {
-    id: 2,
-    question: "¿Cuál es la frecuencia recomendada de compresiones torácicas por minuto?",
-    options: [
-      "60-80 compresiones por minuto",
-      "80-100 compresiones por minuto",
-      "100-120 compresiones por minuto",
-      "120-140 compresiones por minuto",
-    ],
-    correctAnswer: 2,
-    explanation: "La frecuencia óptima es de 100-120 compresiones por minuto para mantener un flujo sanguíneo efectivo.",
-  },
-  {
-    id: 3,
-    question: "¿Cuál es la relación correcta de compresiones-ventilaciones en RCP de un solo reanimador en adultos?",
-    options: [
-      "15:2",
-      "30:2",
-      "15:1",
-      "30:1",
-    ],
-    correctAnswer: 1,
-    explanation: "La relación recomendada es de 30 compresiones seguidas de 2 ventilaciones en adultos.",
-  },
-  {
-    id: 4,
-    question: "¿Qué debe hacer PRIMERO al encontrar a una persona inconsciente?",
-    options: [
-      "Iniciar compresiones torácicas inmediatamente",
-      "Verificar la escena por seguridad y verificar respuesta",
-      "Dar dos ventilaciones de rescate",
-      "Buscar un DEA",
-    ],
-    correctAnswer: 1,
-    explanation: "Siempre debe verificar primero que la escena sea segura y luego verificar la respuesta de la víctima.",
-  },
-  {
-    id: 5,
-    question: "¿Cuándo debe activarse el sistema de emergencias médicas?",
-    options: [
-      "Después de 5 minutos de RCP",
-      "Inmediatamente después de verificar que la persona no responde y no respira normalmente",
-      "Solo si tiene un DEA disponible",
-      "Después de dar las primeras ventilaciones",
-    ],
-    correctAnswer: 1,
-    explanation: "Debe activar el sistema de emergencias inmediatamente después de confirmar que la víctima necesita ayuda.",
-  },
-  {
-    id: 6,
-    question: "¿Qué significa DEA?",
-    options: [
-      "Dispositivo Eléctrico Automático",
-      "Desfibrilador Externo Automático",
-      "Detector de Emergencias Avanzado",
-      "Dispositivo de Emergencia Ambulatoria",
-    ],
-    correctAnswer: 1,
-    explanation: "DEA significa Desfibrilador Externo Automático, un dispositivo que analiza el ritmo cardíaco y puede administrar una descarga eléctrica si es necesario.",
-  },
-  {
-    id: 7,
-    question: "¿En qué posición debe colocarse a una persona inconsciente que respira normalmente?",
-    options: [
-      "Boca arriba con las piernas elevadas",
-      "Posición lateral de seguridad",
-      "Sentado con la cabeza hacia adelante",
-      "Boca abajo",
-    ],
-    correctAnswer: 1,
-    explanation: "La posición lateral de seguridad ayuda a mantener las vías respiratorias abiertas y previene la aspiración.",
-  },
-  {
-    id: 8,
-    question: "¿Cuál es el primer paso para ayudar a una persona que se está atragantando y aún puede toser?",
-    options: [
-      "Realizar compresiones abdominales inmediatamente",
-      "Golpes en la espalda",
-      "Animar a la persona a seguir tosiendo",
-      "Realizar barrido digital en la boca",
-    ],
-    correctAnswer: 2,
-    explanation: "Si la persona puede toser, debe animársele a continuar tosiendo ya que es el mecanismo más efectivo para despejar la obstrucción.",
-  },
-  {
-    id: 9,
-    question: "¿Qué debe verificar antes de usar un DEA en una víctima?",
-    options: [
-      "Que la víctima esté completamente seca y no sobre metal",
-      "Que tenga el pulso débil",
-      "Que haya pasado al menos 10 minutos desde el colapso",
-      "Que haya más de 3 personas presentes",
-    ],
-    correctAnswer: 0,
-    explanation: "Es fundamental que la víctima esté seca y no sobre una superficie metálica para evitar que la descarga se conduzca incorrectamente.",
-  },
-  {
-    id: 10,
-    question: "¿Hasta cuándo debe continuar la RCP?",
-    options: [
-      "Hasta que llegue ayuda calificada, la víctima se recupere, o esté demasiado exhausto para continuar",
-      "Solo durante 5 minutos",
-      "Hasta que llegue el DEA",
-      "Hasta completar 10 ciclos de compresiones",
-    ],
-    correctAnswer: 0,
-    explanation: "La RCP debe continuar hasta que llegue ayuda profesional, la víctima muestre signos de recuperación, o el reanimador esté demasiado exhausto para continuar de manera efectiva.",
-  },
-];
 
 export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -180,19 +59,61 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showCertificatePreview, setShowCertificatePreview] = useState(false);
   const [certificatePreviewUrl, setCertificatePreviewUrl] = useState<string>("");
+  const [certificateHash, setCertificateHash] = useState<string>("");
   const certificateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Load evaluation questions for the specific course
-    const course = courses.find((c) => c.id === courseId);
-    if (course && course.evaluation && course.evaluation.length > 0) {
-      setEvaluationData(course.evaluation);
-      setCourseTitle(course.title);
-    } else {
-      // Fallback to default evaluation if course doesn't have one
-      setEvaluationData(defaultEvaluationData);
-      setCourseTitle("RCP Adultos AHA 2020");
-    }
+    // Cargar evaluación desde Supabase
+    const loadEvaluation = async () => {
+      try {
+        // Obtener título del curso
+        const { data: courseData, error: courseError } = await supabase
+          .from("courses")
+          .select("title")
+          .eq("id", courseId)
+          .single();
+
+        if (courseError) throw courseError;
+        setCourseTitle(courseData?.title || "Curso");
+
+        // Obtener preguntas de evaluación desde la tabla evaluations
+        const { data: evaluationQuestions, error: evalError } = await supabase
+          .from("evaluations")
+          .select("*")
+          .eq("course_id", courseId)
+          .order("question_order", { ascending: true });
+
+        if (evalError) {
+          console.error("Error cargando evaluación:", evalError);
+          toast.error("Error al cargar la evaluación");
+          return;
+        }
+
+        if (evaluationQuestions && evaluationQuestions.length > 0) {
+          // Convertir formato de DB a formato del componente
+          const formattedQuestions: EvaluationQuestion[] = evaluationQuestions.map((q) => ({
+            id: q.question_order,
+            question: q.question,
+            options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
+            correctAnswer: q.correct_answer,
+            explanation: q.explanation || "",
+          }));
+          setEvaluationData(formattedQuestions);
+        } else {
+          // No hay evaluación para este curso
+          toast.warning("Este curso no tiene evaluación configurada");
+          setEvaluationData([]);
+        }
+      } catch (error: any) {
+        console.error("Error en loadEvaluation:", error);
+        toast.error("Error al cargar evaluación: " + error.message);
+        // No hay evaluación disponible - mostrar mensaje
+        setEvaluationData([]);
+        setCourseTitle("Curso");
+      }
+    };
+
+    loadEvaluation();
   }, [courseId]);
 
   const totalQuestions = evaluationData.length;
@@ -226,7 +147,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     }
   };
 
-  const confirmSubmit = () => {
+  const confirmSubmit = async () => {
     setShowSubmitDialog(false);
     setIsSubmitted(true);
     
@@ -238,16 +159,69 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     if (passed) {
       const course = courses.find((c) => c.id === courseId);
       
-      // TODO: Obtener datos reales del usuario autenticado
-      const certData: CertificateData = {
-        studentName: "Usuario", // Placeholder - cambiar por datos reales
-        dni: "", // Placeholder
-        courseName: courseTitle || course?.title || "Curso Completado",
-        courseHours: course?.duration || "40",
-        issueDate: formatCertificateDate(),
-        certificateId: generateCertificateId(),
-      };
-      setCertificateData(certData);
+      try {
+        // Obtener usuario autenticado
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          toast.error("No se pudo identificar al usuario");
+          return;
+        }
+
+        // Obtener datos completos del perfil
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .single();
+
+        const studentName = profile?.full_name || user.email?.split("@")[0] || "Usuario";
+        
+        // Emitir certificado en la base de datos
+        const certificate = await issueCertificate({
+          studentId: user.id,
+          courseId: courseId,
+          studentName: studentName,
+          courseTitle: courseTitle || course?.title || "Curso Completado",
+          grade: score.percentage,
+          completionDate: new Date().toISOString().split("T")[0],
+        });
+
+        // Guardar hash para mostrar al usuario
+        setCertificateHash(certificate.hash);
+        
+        toast.success("¡Certificado emitido exitosamente!", {
+          description: `Hash: ${certificate.hash.substring(0, 16)}...`,
+        });
+
+        // Preparar datos para el certificado PDF
+        const certData: CertificateData = {
+          studentName: studentName,
+          dni: "", // Opcional
+          courseName: courseTitle || course?.title || "Curso Completado",
+          courseHours: course?.duration || "40",
+          issueDate: formatCertificateDate(),
+          certificateId: certificate.hash.substring(0, 12).toUpperCase(),
+        };
+        setCertificateData(certData);
+      } catch (error: any) {
+        console.error("Error emitiendo certificado:", error);
+        toast.error("Error al emitir el certificado", {
+          description: error.message || "Intenta nuevamente",
+        });
+        
+        // Fallback: generar certificado local sin guardar en DB
+        const course = courses.find((c) => c.id === courseId);
+        const certData: CertificateData = {
+          studentName: "Usuario",
+          dni: "",
+          courseName: courseTitle || course?.title || "Curso Completado",
+          courseHours: course?.duration || "40",
+          issueDate: formatCertificateDate(),
+          certificateId: generateCertificateId(),
+        };
+        setCertificateData(certData);
+      }
     }
   };
 
@@ -434,6 +408,13 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    {certificateHash && (
+                      <div className="rounded-lg bg-[#F8FAFC] p-4 border border-[#E2E8F0]">
+                        <p className="text-xs text-[#64748B] mb-1">Hash de Verificación</p>
+                        <p className="text-sm font-mono text-[#0F172A] break-all">{certificateHash}</p>
+                        <p className="text-xs text-[#64748B] mt-2">Este hash único verifica la autenticidad de tu certificado</p>
+                      </div>
+                    )}
                     <Button 
                       onClick={handleViewCertificate}
                       variant="outline"
