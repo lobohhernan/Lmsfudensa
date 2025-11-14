@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, Award, Check, ChevronRight, ShieldCheck, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
@@ -23,6 +23,7 @@ import {
   BreadcrumbSeparator,
 } from "../components/ui/breadcrumb";
 import { Badge } from "../components/ui/badge";
+import { supabase } from "../lib/supabase";
 
 interface CheckoutProps {
   onNavigate?: (page: string) => void;
@@ -36,14 +37,47 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
   const [paymentMethod, setPaymentMethod] = useState("mercadopago");
   const [couponCode, setCouponCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [courseData, setCourseData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const prices: Record<string, number> = {
-    AR: 29900,
-    UY: 29900,
-    MX: 29900,
-    CO: 29900,
-    US: 29900,
-  };
+  // Cargar datos del curso desde Supabase
+  useEffect(() => {
+    if (!courseId) {
+      setError("No se proporcionó ID del curso");
+      setLoading(false);
+      return;
+    }
+
+    const loadCourseData = async () => {
+      try {
+        setLoading(true);
+        console.log("Cargando curso en checkout con ID:", courseId);
+        
+        const { data: course, error: courseError } = await supabase
+          .from("courses")
+          .select("*")
+          .eq("id", courseId)
+          .single();
+
+        if (courseError) {
+          console.error("Error al cargar curso:", courseError);
+          throw courseError;
+        }
+        
+        console.log("Curso cargado en checkout:", course);
+        setCourseData(course);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error cargando curso:", err);
+        setError(err.message || "Error al cargar los datos del curso");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCourseData();
+  }, [courseId]);
 
   const currencies: Record<string, string> = {
     AR: "ARS",
@@ -53,7 +87,7 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
     US: "ARS",
   };
 
-  const price = prices[country] || prices.US;
+  const price = courseData?.price || 0;
   const currency = currencies[country] || currencies.US;
 
   const handlePayment = () => {
@@ -67,6 +101,32 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
       onNavigate?.("lesson");
     }, 2000);
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0B5FFF]" />
+          <p className="text-[#64748B]">Cargando información del curso...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !courseData) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error || "Curso no encontrado"}</p>
+          <Button onClick={() => onNavigate?.("catalog")}>
+            Volver al catálogo
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (step === 3) {
     return (
@@ -94,11 +154,11 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
                   Este certifica que has completado exitosamente
                 </p>
                 <h3 className="mb-6 text-[#0F172A]">
-                  RCP Adultos AHA 2020 - Reanimación Cardiopulmonar
+                  {courseData?.title || "Curso"}
                 </h3>
                 <div className="mb-6 space-y-2 text-sm text-[#64748B]">
-                  <p>Duración: 8 horas</p>
-                  <p>Fecha de emisión: 30 de Octubre, 2025</p>
+                  <p>Duración: {courseData?.duration || "N/A"}</p>
+                  <p>Fecha de emisión: {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                   <p className="font-mono">
                     Hash: a7f8e9c2b4d6f1a3c5e7b9d2f4a6c8e0
                   </p>
@@ -202,22 +262,24 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex gap-4">
-                      <div className="h-20 w-32 flex-shrink-0 overflow-hidden rounded-lg bg-[#E2E8F0]">
+                      <div className="h-20 w-32 shrink-0 overflow-hidden rounded-lg bg-[#E2E8F0]">
                         <img
-                          src="https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=200"
-                          alt="Curso"
+                          src={courseData?.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=200"}
+                          alt={courseData?.title || "Curso"}
                           className="h-full w-full object-cover"
                         />
                       </div>
                       <div>
                         <h3 className="mb-1 text-[#0F172A]">
-                          RCP Adultos AHA 2020 - Reanimación Cardiopulmonar
+                          {courseData?.title || "Curso"}
                         </h3>
-                        <p className="text-sm text-[#64748B]">8 horas • Nivel Básico</p>
-                        <Badge className="mt-2 bg-[#22C55E] text-white">
-                          <Award className="mr-1 h-3 w-3" />
-                          Certificado Incluido
-                        </Badge>
+                        <p className="text-sm text-[#64748B]">{courseData?.duration || "N/A"} • Nivel {courseData?.level || "N/A"}</p>
+                        {courseData?.certified && (
+                          <Badge className="mt-2 bg-[#22C55E] text-white">
+                            <Award className="mr-1 h-3 w-3" />
+                            Certificado Incluido
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </CardContent>
