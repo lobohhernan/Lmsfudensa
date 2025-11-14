@@ -55,6 +55,7 @@ import { courses, saveCourses, instructors, saveInstructors, type FullCourse, ty
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
 import { supabaseAdmin, isAdminClientConfigured, logAdminOperation } from "../lib/supabaseAdmin";
+import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
 import logoHorizontal from "../assets/logo-horizontal.svg";
 import {
   Dialog,
@@ -81,7 +82,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<"dashboard" | "courses" | "instructors" | "users" | "payments" | "certificates">("dashboard");
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<FullCourse | undefined>();
-  const [courseList, setCourseList] = useState<FullCourse[]>([]);
   const [showInstructorForm, setShowInstructorForm] = useState(false);
   const [editingInstructor, setEditingInstructor] = useState<Instructor | undefined>();
   const [instructorList, setInstructorList] = useState<Instructor[]>([]);
@@ -96,49 +96,31 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
 
+  // Use realtime hook for courses
+  const { courses: realtimeCourses, loading: coursesLoading } = useCoursesRealtime();
+
   // Datos de ejemplo para secciones no implementadas
   const paymentsData: any[] = [];
   const certificatesData: any[] = [];
 
-  // Cargar cursos desde Supabase usando cliente admin
-  const loadCourses = async () => {
-    try {
-      console.log("🔄 Iniciando carga de cursos...");
-      
-      // Usar supabaseAdmin si está configurado, sino usar supabase regular
-      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
-      const { data, error } = await client.from("courses").select("*");
-      
-      if (error) {
-        console.error("❌ Supabase error al cargar cursos:", error);
-        throw error;
-      }
-      
-      logAdminOperation('SELECT', 'courses', { count: data?.length });
-      console.log("✅ Cursos cargados:", data?.length);
-      
-      setCourseList((data || []).map(course => ({
-        id: course.id,
-        title: course.title,
-        slug: course.slug,
-        description: course.description,
-        fullDescription: course.full_description,
-        image: course.image,
-        category: course.category,
-        price: course.price,
-        duration: course.duration,
-        level: course.level,
-        certified: course.certified,
-        students: course.students ?? undefined,
-        rating: course.rating || 0,
-        reviews: course.reviews || 0,
-        instructorId: course.instructor_id,
-      })));
-    } catch (err: any) {
-      toast.error("Error al cargar cursos: " + err.message);
-      console.error("Error completo al cargar cursos:", err);
-    }
-  };
+  // Map realtime courses to component state
+  const courseList = realtimeCourses.map(course => ({
+    id: course.id,
+    title: course.title,
+    slug: course.slug,
+    description: course.description,
+    fullDescription: course.full_description,
+    image: course.image,
+    category: course.category,
+    price: course.price,
+    duration: course.duration,
+    level: course.level,
+    certified: course.certified,
+    students: course.students ?? undefined,
+    rating: course.rating || 0,
+    reviews: course.reviews || 0,
+    instructorId: course.instructor_id,
+  }));
 
   // Cargar usuarios desde Supabase
   const loadUsers = async () => {
@@ -166,10 +148,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   };
 
   useEffect(() => {
-    // Cargar cursos desde Supabase y instructores desde localStorage
-    loadCourses();
+    // Cargar usuarios e instructores desde localStorage
     loadUsers();
     setInstructorList(instructors);
+    // Realtime courses are loaded via useCoursesRealtime hook
   }, []);
 
   const handleSaveCourse = async (course: FullCourse) => {
@@ -253,8 +235,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         toast.success("✅ Curso creado exitosamente");
       }
 
-      // Recargar la lista de cursos desde Supabase
-      await loadCourses();
+      // No need to manually reload - realtime subscription will update the list automatically
       setShowCourseForm(false);
       setEditingCourse(undefined);
     } catch (err) {
@@ -318,7 +299,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         }
         
         toast.success("✅ Curso eliminado exitosamente");
-        await loadCourses(); // Recargar lista
+        // No need to reload - realtime subscription will update the list automatically
       }
       if (instructorToDelete) {
         const updated = instructorList.filter((i) => i.id !== instructorToDelete);
