@@ -129,7 +129,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         duration: course.duration,
         level: course.level,
         certified: course.certified,
-        students: course.students || 0,
+        students: course.students ?? undefined,
         rating: course.rating || 0,
         reviews: course.reviews || 0,
         instructorId: course.instructor_id,
@@ -240,7 +240,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           level: course.level,
           certified: course.certified,
           instructor_id: instructorId,
-          students: 0,
+          students: null,
           rating: 0,
           reviews: 0,
         }]);
@@ -561,7 +561,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         <TableCell>
                           <Badge variant="outline">{course.level}</Badge>
                         </TableCell>
-                        <TableCell>{course.students.toLocaleString()}</TableCell>
+                        <TableCell>{course.students ? course.students.toLocaleString() : ""}</TableCell>
                         <TableCell>
                           <Badge variant="secondary">
                             {course.lessons?.length || 0} lecciones
@@ -662,7 +662,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         <TableCell>
                           <Badge variant="outline">{instructor.rating} ?</Badge>
                         </TableCell>
-                        <TableCell>{instructor.students.toLocaleString()}</TableCell>
+                        <TableCell>{instructor.students ? instructor.students.toLocaleString() : ""}</TableCell>
                         <TableCell>
                           <Badge variant="secondary">{instructor.courses} cursos</Badge>
                         </TableCell>
