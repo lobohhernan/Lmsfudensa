@@ -54,6 +54,7 @@ import { InstructorForm } from "../components/InstructorForm";
 import { courses, saveCourses, instructors, saveInstructors, type FullCourse, type Instructor } from "../lib/data";
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
+import { supabaseAdmin, isAdminClientConfigured, logAdminOperation } from "../lib/supabaseAdmin";
 import logoHorizontal from "../assets/logo-horizontal.svg";
 import {
   Dialog,
@@ -99,18 +100,22 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const paymentsData: any[] = [];
   const certificatesData: any[] = [];
 
-  // Cargar cursos desde Supabase
+  // Cargar cursos desde Supabase usando cliente admin
   const loadCourses = async () => {
     try {
-      console.log("Iniciando carga de cursos...");
-      const { data, error } = await supabase.from("courses").select("*");
+      console.log("🔄 Iniciando carga de cursos...");
+      
+      // Usar supabaseAdmin si está configurado, sino usar supabase regular
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+      const { data, error } = await client.from("courses").select("*");
       
       if (error) {
-        console.error("Supabase error al cargar cursos:", error);
+        console.error("❌ Supabase error al cargar cursos:", error);
         throw error;
       }
       
-      console.log("Cursos cargados:", data?.length);
+      logAdminOperation('SELECT', 'courses', { count: data?.length });
+      console.log("✅ Cursos cargados:", data?.length);
       
       setCourseList((data || []).map(course => ({
         id: course.id,
@@ -169,9 +174,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   const handleSaveCourse = async (course: FullCourse) => {
     try {
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+      
       if (editingCourse) {
         // Actualizar curso en Supabase
-        const { error } = await supabase
+        logAdminOperation('UPDATE', 'courses', { courseId: course.id });
+        
+        const { error } = await client
           .from("courses")
           .update({
             title: course.title,
@@ -188,25 +197,38 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           .eq("id", course.id);
         
         if (error) {
+          console.error("❌ Error UPDATE:", error);
           toast.error("Error al actualizar el curso: " + error.message);
           return;
         }
-        toast.success("Curso actualizado exitosamente");
+        toast.success("✅ Curso actualizado exitosamente");
       } else {
         // Obtener ID del instructor admin
-        const { data: adminData, error: adminError } = await supabase
+        const { data: adminData, error: adminError } = await client
           .from("profiles")
           .select("id")
           .eq("full_name", "Dr. Test Instructor")
           .single();
         
+        let instructorId: string;
+        
         if (adminError || !adminData) {
-          toast.error("No se pudo encontrar el instructor admin");
-          return;
+          console.warn("⚠️ No se encontró instructor, usando primer profile disponible");
+          // Fallback: usar primer profile disponible
+          const { data: firstProfile } = await client.from("profiles").select("id").limit(1).single();
+          if (!firstProfile) {
+            toast.error("No hay perfiles en la base de datos");
+            return;
+          }
+          instructorId = firstProfile.id;
+        } else {
+          instructorId = adminData.id;
         }
 
         // Crear nuevo curso en Supabase
-        const { error } = await supabase.from("courses").insert([{
+        logAdminOperation('INSERT', 'courses', { title: course.title });
+        
+        const { error } = await client.from("courses").insert([{
           title: course.title,
           slug: course.slug,
           description: course.description,
@@ -217,17 +239,18 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           duration: course.duration,
           level: course.level,
           certified: course.certified,
-          instructor_id: adminData.id,
+          instructor_id: instructorId,
           students: 0,
           rating: 0,
           reviews: 0,
         }]);
         
         if (error) {
+          console.error("❌ Error INSERT:", error);
           toast.error("Error al crear el curso: " + error.message);
           return;
         }
-        toast.success("Curso creado exitosamente");
+        toast.success("✅ Curso creado exitosamente");
       }
 
       // Recargar la lista de cursos desde Supabase
@@ -277,19 +300,24 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   const confirmDelete = async () => {
     try {
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+      
       if (courseToDelete) {
         // Eliminar curso de Supabase
-        const { error } = await supabase
+        logAdminOperation('DELETE', 'courses', { courseId: courseToDelete });
+        
+        const { error } = await client
           .from("courses")
           .delete()
           .eq("id", courseToDelete);
         
         if (error) {
+          console.error("❌ Error DELETE:", error);
           toast.error("Error al eliminar el curso: " + error.message);
           return;
         }
         
-        toast.success("Curso eliminado exitosamente");
+        toast.success("✅ Curso eliminado exitosamente");
         await loadCourses(); // Recargar lista
       }
       if (instructorToDelete) {
