@@ -14,7 +14,6 @@ import {
 import { toast } from "sonner";
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
-import { sendEmailViaSendGrid } from "../lib/sendgrid";
 
 interface ContactProps {
   onNavigate?: (page: string) => void;
@@ -35,7 +34,7 @@ export function Contact({ onNavigate }: ContactProps) {
     setIsLoading(true);
 
     try {
-      // 1. Guardar mensaje en Supabase
+      // Guardar mensaje en Supabase
       const { error } = await supabase
         .from("contact_messages")
         .insert([
@@ -51,36 +50,11 @@ export function Contact({ onNavigate }: ContactProps) {
 
       if (error) throw error;
 
-      // 2. Enviar email a FUDENSA via SendGrid
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Nuevo Mensaje de Contacto</h2>
-          <p><strong>Nombre:</strong> ${formData.name}</p>
-          <p><strong>Email:</strong> ${formData.email}</p>
-          <p><strong>Teléfono:</strong> ${formData.phone || "No proporcionado"}</p>
-          <p><strong>Asunto:</strong> ${formData.subject}</p>
-          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-          <h3>Mensaje:</h3>
-          <p style="white-space: pre-wrap; line-height: 1.6;">${formData.message}</p>
-          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-          <p style="color: #999; font-size: 12px;">Recibido: ${new Date().toLocaleString("es-AR")}</p>
-        </div>
-      `;
-
-      await sendEmailViaSendGrid(
-        "fudensa.fundacion@gmail.com",
-        `Nuevo mensaje de contacto: ${formData.subject}`,
-        emailHtml,
-        "noreply@fudensa.com",
-        "FUDENSA",
-        formData.email
-      );
-
       toast.success("¡Mensaje enviado correctamente!", {
         description: "Nos pondremos en contacto contigo a la brevedad.",
       });
 
-      // 3. Resetear formulario
+      // Resetear formulario
       setFormData({
         name: "",
         email: "",

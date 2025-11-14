@@ -1,4 +1,4 @@
-// Service for sending emails via Supabase Edge Function
+// Service for sending emails via Resend (simpler and more reliable)
 export async function sendEmailViaSendGrid(
   to: string,
   subject: string,
@@ -7,33 +7,31 @@ export async function sendEmailViaSendGrid(
   fromName?: string,
   replyTo?: string
 ) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Supabase configuration not found");
+  // Use Resend API directly from frontend
+  const resendApiKey = "re_NzV8Kfr7SMVPVR4F9TgkpJe9Z3Nb2nKpm";
+  
+  if (!resendApiKey) {
+    throw new Error("Resend API key not configured");
   }
 
-  const functionUrl = `${supabaseUrl}/functions/v1/send_contact_email`;
-
-  const response = await fetch(functionUrl, {
+  const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${supabaseAnonKey}`,
+      Authorization: `Bearer ${resendApiKey}`,
     },
     body: JSON.stringify({
-      name: "", // Will be extracted from email context
-      email: to,
-      phone: "",
+      from: "noreply@fudensa.com",
+      to: to,
       subject: subject,
-      message: htmlContent,
+      html: htmlContent,
+      reply_to: replyTo,
     }),
   });
 
   if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(`Email service error: ${response.status} - ${errorData}`);
+    const errorData = await response.json();
+    throw new Error(`Resend error: ${JSON.stringify(errorData)}`);
   }
 
   return response;

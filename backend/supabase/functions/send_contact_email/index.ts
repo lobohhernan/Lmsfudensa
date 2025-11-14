@@ -1,3 +1,5 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -56,7 +58,7 @@ async function sendEmailViaSendGrid(
   return response;
 }
 
-export const handler = async (req: Request) => {
+serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -108,7 +110,7 @@ export const handler = async (req: Request) => {
         status: 200,
       }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Error sending email:", errorMessage);
     return new Response(
@@ -121,5 +123,5 @@ export const handler = async (req: Request) => {
       }
     );
   }
-};
+});
 
