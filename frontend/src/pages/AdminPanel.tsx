@@ -86,6 +86,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [editingCourse, setEditingCourse] = useState<FullCourse | undefined>();
   const [showTeacherForm, setShowTeacherForm] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | undefined>();
+  const [teacherQuery, setTeacherQuery] = useState<string>("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
   const [teacherToDelete, setTeacherToDelete] = useState<string | null>(null);
@@ -101,7 +102,20 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const { courses: realtimeCourses, loading: coursesLoading } = useCoursesRealtime();
 
   // Use realtime hook for teachers
-  const { teachers: realtimeTeachers, loading: teachersLoading } = useTeachersRealtime();
+  const { teachers: realtimeTeachers, loading: teachersLoading, refetch: refetchTeachers } = useTeachersRealtime();
+
+  // Search/filter state for teachers
+  const filteredTeachers = (() => {
+    const q = teacherQuery.trim().toLowerCase();
+    if (!q) return realtimeTeachers;
+    return realtimeTeachers.filter((t) => {
+      return (
+        (t.full_name || "").toLowerCase().includes(q) ||
+        (t.email || "").toLowerCase().includes(q) ||
+        ((t.specialization || "").toLowerCase().includes(q))
+      );
+    });
+  })();
 
   // Datos de ejemplo para secciones no implementadas
   const paymentsData: any[] = [];
@@ -288,6 +302,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           return;
         }
         toast.success("✅ Profesor actualizado exitosamente");
+        // Ensure latest data after update
+        try { await refetchTeachers(); } catch (e) { /* ignore */ }
       } else {
         // Crear nuevo profesor en Supabase
         logAdminOperation('INSERT', 'teachers', { full_name: teacher.full_name });
@@ -312,6 +328,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           return;
         }
         toast.success("✅ Profesor creado exitosamente");
+        // Ensure latest data after insert
+        try { await refetchTeachers(); } catch (e) { /* ignore */ }
       }
 
       // No need to manually reload - realtime subscription will update the list automatically
@@ -675,116 +693,37 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             </div>
           )}
 
-          {/* Teachers */}
-          {activeTab === "teachers" && !showTeacherForm && (
-            <div className="space-y-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative flex-1 sm:max-w-md">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                  <Input placeholder="Buscar profesores..." className="pl-10" />
-                </div>
-                <Button onClick={() => setShowTeacherForm(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nuevo Profesor
-                </Button>
-              </div>
+          
 
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Especialización</TableHead>
-                      <TableHead>Experiencia</TableHead>
-                      <TableHead>Valoración</TableHead>
-                      <TableHead>Estudiantes</TableHead>
-                      <TableHead>Cursos</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {realtimeTeachers.map((teacher) => (
-                      <TableRow key={teacher.id}>
-                        <TableCell className="text-[#0F172A] font-medium">{teacher.full_name}</TableCell>
-                        <TableCell className="text-sm">{teacher.email}</TableCell>
-                        <TableCell>{teacher.specialization || "-"}</TableCell>
-                        <TableCell>{teacher.years_of_experience} años</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{teacher.rating}/5</Badge>
-                        </TableCell>
-                        <TableCell>{teacher.total_students.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{teacher.total_courses} cursos</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={teacher.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                            {teacher.is_active ? 'Activo' : 'Inactivo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditTeacher(teacher)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteTeacher(teacher.id)}
-                                className="text-[#EF4444]"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Card>
-            </div>
-          )}
-
-          {/* Teacher Form */}
-          {activeTab === "teachers" && showTeacherForm && (
-            <div>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setShowTeacherForm(false);
-                  setEditingTeacher(undefined);
-                }}
-                className="mb-4"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Volver a la lista
-              </Button>
-              <TeacherForm
-                teacher={editingTeacher}
-                onSave={handleSaveTeacher}
-                onCancel={() => {
-                  setShowTeacherForm(false);
-                  setEditingTeacher(undefined);
-                }}
-              />
-            </div>
-          )}
+          
 
           {/* Teachers */}
           {activeTab === "teachers" && !showTeacherForm && (
             <div className="space-y-6">
+              {!isAdminClientConfigured() && (
+                <Card>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-yellow-800">
+                        ⚠️ El cliente admin no está configurado. Las operaciones de creación/edición pueden ser bloqueadas por RLS.
+                        Agrega `VITE_SUPABASE_SERVICE_ROLE_KEY` en tu `.env.local` o usa el cliente admin.
+                      </div>
+                      <div>
+                        <Button variant="outline" onClick={() => window.open('https://app.supabase.com/', '_blank')}>Ir a Supabase</Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative flex-1 sm:max-w-md">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                  <Input placeholder="Buscar profesores..." className="pl-10" />
+                  <Input
+                    placeholder="Buscar profesores..."
+                    className="pl-10"
+                    value={teacherQuery}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTeacherQuery(e.target.value)}
+                  />
                 </div>
                 <Button onClick={() => setShowTeacherForm(true)}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -819,8 +758,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           No hay profesores registrados aún
                         </TableCell>
                       </TableRow>
+                    ) : filteredTeachers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                          No se encontraron profesores para "{teacherQuery}"
+                        </TableCell>
+                      </TableRow>
                     ) : (
-                      realtimeTeachers.map((teacher) => (
+                      filteredTeachers.map((teacher) => (
                         <TableRow key={teacher.id}>
                           <TableCell className="text-[#0F172A] font-medium">{teacher.full_name}</TableCell>
                           <TableCell className="text-sm">{teacher.email}</TableCell>

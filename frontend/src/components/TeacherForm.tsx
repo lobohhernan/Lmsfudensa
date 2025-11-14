@@ -43,12 +43,8 @@ export function TeacherForm({ teacher, onSave, onCancel }: TeacherFormProps) {
       return;
     }
 
+    // Call onSave and let the parent (AdminPanel) show success/error toasts
     onSave(formData);
-    toast.success(
-      teacher
-        ? "Maestro actualizado exitosamente"
-        : "Maestro creado exitosamente"
-    );
   };
 
   return (
