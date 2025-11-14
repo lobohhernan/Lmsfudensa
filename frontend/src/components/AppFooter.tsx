@@ -122,8 +122,8 @@ export function AppFooter() {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
-                  WhatsApp: +54 11 1234-5678
+                <a href="https://wa.me/543815537057" target="_blank" rel="noopener noreferrer" className="text-[#64748B] hover:text-[#1e467c]">
+                  WhatsApp: +54 9 3815 53-7057
                 </a>
               </li>
             </ul>
