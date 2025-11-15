@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Clock, BarChart3, Award } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
@@ -14,7 +15,7 @@ export interface CourseCardProps {
   onClick?: () => void;
 }
 
-export function CourseCard({
+export const CourseCard = memo(function CourseCard({
   title,
   image,
   duration,
@@ -43,6 +44,7 @@ export function CourseCard({
             src={image}
             alt={title}
             className="h-full w-full object-cover"
+            loading="lazy"
           />
           {certified && (
             <div className="absolute right-3 top-3">
@@ -80,4 +82,4 @@ export function CourseCard({
       )}
     </Card>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { Search, Menu, X, User, LogOut, UserCircle } from "lucide-react";
+import { Menu, X, LogOut, UserCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -43,35 +43,28 @@ export function AppNavbar({
   onLogin,
   currentPage = "home",
   openLoginModal,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   openRegisterModal,
   onLoginModalChange,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onRegisterModalChange,
   currentUser = null
 }: AppNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [internalLoginOpen, setInternalLoginOpen] = useState(false);
-  const [internalRegisterOpen, setInternalRegisterOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  // Used for loading state during login
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   // Use controlled state if provided, otherwise use internal state
   const loginOpen = openLoginModal !== undefined ? openLoginModal : internalLoginOpen;
-  const registerOpen = openRegisterModal !== undefined ? openRegisterModal : internalRegisterOpen;
   
   const setLoginOpen = (open: boolean) => {
     if (onLoginModalChange) {
       onLoginModalChange(open);
     } else {
       setInternalLoginOpen(open);
-    }
-  };
-  
-  const setRegisterOpen = (open: boolean) => {
-    if (onRegisterModalChange) {
-      onRegisterModalChange(open);
-    } else {
-      setInternalRegisterOpen(open);
     }
   };
 
@@ -399,7 +392,7 @@ export function AppNavbar({
                     }
 
                     // Obtener perfil para conseguir nombre completo
-                    const { data: profile, error: profileError } = await supabase
+                    const { data: profile } = await supabase
                       .from("profiles")
                       .select("full_name, email")
                       .eq("id", authData.user.id)

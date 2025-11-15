@@ -107,7 +107,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   });
 
   // Use realtime hook for courses
-  const { courses: realtimeCourses, loading: coursesLoading, refetch: refetchCourses } = useCoursesRealtime();
+  const { courses: realtimeCourses, loading: coursesLoading } = useCoursesRealtime();
 
   // Use realtime hook for teachers
   const { teachers: realtimeTeachers, loading: teachersLoading, refetch: refetchTeachers } = useTeachersRealtime();
@@ -676,7 +676,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         level={course.level as "Básico" | "Intermedio" | "Avanzado"}
                         certified={course.certified || false}
                         students={course.students}
-                        onClick={() => handleEditCourse(course)}
+                        onClick={() => handleEditCourse(course as FullCourse)}
                       />
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <DropdownMenu>
@@ -686,7 +686,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditCourse(course)}>
+                            <DropdownMenuItem onClick={() => handleEditCourse(course as FullCourse)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
@@ -1230,9 +1230,4 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       </Dialog>
     </div>
   );
-}
-async function generateHash() {
-  const data = `${Date.now()}-${Math.random()}-${crypto.randomUUID()}`;
-  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
-  return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }

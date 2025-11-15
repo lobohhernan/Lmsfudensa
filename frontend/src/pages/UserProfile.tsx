@@ -71,21 +71,45 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
         setUserProfile(profile);
       }
 
-      // Cargar cursos del usuario
-      const { data: courses, error: coursesError } = await supabase
-        .from("courses")
-        .select("*")
-        .limit(3);
+      // Cargar cursos inscritos del usuario desde enrollments
+      const { data: enrollments, error: enrollmentsError } = await supabase
+        .from("enrollments")
+        .select(`
+          id,
+          course_id,
+          progress,
+          last_accessed_at,
+          courses (
+            id,
+            title,
+            image,
+            slug
+          )
+        `)
+        .eq("user_id", user.id)
+        .order('last_accessed_at', { ascending: false });
 
-      if (!coursesError && courses) {
-        const mappedCourses = courses.map((course: any, index: number) => ({
-          id: course.id,
-          title: course.title,
-          progress: [75, 45, 20][index] || 0,
-          lastAccessed: ["Ayer", "Hace 3 días", "Hace 1 semana"][index] || "Nunca",
-          image: course.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400",
-        }));
+      if (!enrollmentsError && enrollments) {
+        const mappedCourses = enrollments
+          .filter((enrollment: any) => enrollment.courses) // Solo cursos válidos
+          .map((enrollment: any) => ({
+            id: enrollment.courses.id,
+            title: enrollment.courses.title,
+            slug: enrollment.courses.slug,
+            progress: enrollment.progress || 0,
+            lastAccessed: enrollment.last_accessed_at 
+              ? new Date(enrollment.last_accessed_at).toLocaleDateString('es-ES', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })
+              : "Nunca",
+            image: enrollment.courses.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400",
+          }));
         setUserCourses(mappedCourses);
+      } else {
+        console.log("Error cargando enrollments o sin cursos:", enrollmentsError);
+        setUserCourses([]);
       }
     } catch (err) {
       console.error("Error cargando datos:", err);
