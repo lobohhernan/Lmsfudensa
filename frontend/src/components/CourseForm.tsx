@@ -198,7 +198,7 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
       duration: formData.duration || "0 horas",
       level: formData.level || "Básico",
       certified: formData.certified ?? true,
-      students: formData.students ?? 0,
+      students: formData.students ?? undefined,
       category: formData.category,
       rating: formData.rating || 0,
       reviews: formData.reviews || 0,
@@ -302,7 +302,7 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
                   <Label htmlFor="level">Nivel</Label>
                   <Select
                     value={formData.level}
-                    onValueChange={(value: string) => handleInputChange("level", value)}
+                    onValueChange={(value) => handleInputChange("level", value)}
                   >
                     <SelectTrigger id="level">
                       <SelectValue />
@@ -340,7 +340,7 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
                   <Label htmlFor="instructorId">Instructor</Label>
                   <Select
                     value={formData.instructorId}
-                    onValueChange={(value: string) => handleInputChange("instructorId", value)}
+                    onValueChange={(value) => handleInputChange("instructorId", value)}
                   >
                     <SelectTrigger id="instructorId">
                       <SelectValue placeholder="Selecciona un profesor" />
@@ -536,7 +536,7 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
                           <Label>Tipo</Label>
                           <Select
                             value={lesson.type}
-                            onValueChange={(value: string) => updateLesson(index, "type", value)}
+                            onValueChange={(value) => updateLesson(index, "type", value)}
                           >
                             <SelectTrigger>
                               <SelectValue />

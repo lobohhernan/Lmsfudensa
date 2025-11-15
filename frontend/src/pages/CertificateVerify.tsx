@@ -11,7 +11,7 @@ interface CertificateVerifyProps {
   onNavigate?: (page: string) => void;
 }
 
-export function CertificateVerify() {
+export function CertificateVerify({ onNavigate }: CertificateVerifyProps) {
   const [hash, setHash] = useState("");
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "valid" | "invalid">("idle");
 
