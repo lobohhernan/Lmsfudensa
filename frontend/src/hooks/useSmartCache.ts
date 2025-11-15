@@ -11,8 +11,12 @@
 
 import { useEffect, useState } from 'react'
 import {
+  getCachedData,
+  setCachedData,
+  isCacheExpired,
   CACHE_KEYS,
   onDataChange,
+  notifyDataChange,
   syncData,
 } from './cacheManager'
 
