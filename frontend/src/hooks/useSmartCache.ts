@@ -18,7 +18,7 @@ import {
   onDataChange,
   notifyDataChange,
   syncData,
-} from './cacheManager'
+} from '../lib/cacheManager'
 
 interface UseSmartCacheOptions<T> {
   cacheKey: string

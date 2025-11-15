@@ -107,7 +107,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   });
 
   // Use realtime hook for courses
-  const { courses: realtimeCourses, loading: coursesLoading, refetch: refetchCourses } = useCoursesRealtime();
+  const { courses: realtimeCourses } = useCoursesRealtime();
 
   // Use realtime hook for teachers
   const { teachers: realtimeTeachers, loading: teachersLoading, refetch: refetchTeachers } = useTeachersRealtime();

@@ -43,9 +43,7 @@ export function AppNavbar({
   onLogin,
   currentPage = "home",
   openLoginModal,
-  openRegisterModal,
   onLoginModalChange,
-  onRegisterModalChange,
   currentUser = null
 }: AppNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -53,7 +51,8 @@ export function AppNavbar({
   const [internalRegisterOpen, setInternalRegisterOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  // Used for loading state during login (setter only)
+  const [, setIsLoggingIn] = useState(false);
   
   // Use controlled state if provided, otherwise use internal state
   const loginOpen = openLoginModal !== undefined ? openLoginModal : internalLoginOpen;

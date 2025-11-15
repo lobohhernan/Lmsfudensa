@@ -398,30 +398,32 @@ export default function App() {
       />
       
       <main className="flex-1">
-        {currentPage === "home" && <Home onNavigate={handleNavigate} isLoggedIn={isLoggedIn} />}
-        {currentPage === "catalog" && <CourseCatalog onNavigate={handleNavigate} />}
-        {currentPage === "course" && (
-          <CourseDetail 
-            courseId={currentCourseId}
-            onNavigate={handleNavigate} 
-            isLoggedIn={isLoggedIn}
-            onAuthRequired={(page, courseId) => {
-              setPendingNavigation({ page, courseId });
-              setShowAuthModal(true);
-            }}
-          />
-        )}
-        {currentPage === "checkout" && (
-          <Checkout 
-            onNavigate={handleNavigate}
-            courseId={currentCourseId}
-            userData={userData}
-          />
-        )}
-        {currentPage === "profile" && <UserProfile onNavigate={handleNavigate} />}
-        {currentPage === "design" && <DesignSystem />}
-        {currentPage === "about" && <AboutUs onNavigate={handleNavigate} />}
-        {currentPage === "contact" && <Contact onNavigate={handleNavigate} />}
+        <Suspense fallback={<PageLoader />}>
+          {currentPage === "home" && <Home onNavigate={handleNavigate} isLoggedIn={isLoggedIn} />}
+          {currentPage === "catalog" && <CourseCatalog onNavigate={handleNavigate} />}
+          {currentPage === "course" && (
+            <CourseDetail 
+              courseId={currentCourseId}
+              onNavigate={handleNavigate} 
+              isLoggedIn={isLoggedIn}
+              onAuthRequired={(page, courseId) => {
+                setPendingNavigation({ page, courseId });
+                setShowAuthModal(true);
+              }}
+            />
+          )}
+          {currentPage === "checkout" && (
+            <Checkout 
+              onNavigate={handleNavigate}
+              courseId={currentCourseId}
+              userData={userData}
+            />
+          )}
+          {currentPage === "profile" && <UserProfile onNavigate={handleNavigate} />}
+          {currentPage === "design" && <DesignSystem />}
+          {currentPage === "about" && <AboutUs onNavigate={handleNavigate} />}
+          {currentPage === "contact" && <Contact />}
+        </Suspense>
       </main>
 
       <AppFooter />

@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, CheckCircle, MessageSquare, Award, List, Youtube, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Award, List, Youtube, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
 import { LessonList, Lesson } from "../components/LessonList";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Textarea } from "../components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+// Avatar imports removed (unused)
 
 interface LessonPlayerProps {
   onNavigate?: (page: string) => void;
@@ -20,24 +18,7 @@ interface LessonWithYoutube extends Lesson {
   youtubeId?: string;
 }
 
-const comments = [
-  {
-    id: 1,
-    author: "María López",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maria2",
-    time: "Hace 2 horas",
-    content: "Excelente explicación, muy clara y concisa. Gracias!",
-    replies: 2,
-  },
-  {
-    id: 2,
-    author: "Carlos Mendez",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Carlos2",
-    time: "Hace 5 horas",
-    content: "Una pregunta: ¿cuántas compresiones por minuto se recomiendan?",
-    replies: 1,
-  },
-];
+// comments placeholder removed (unused)
 
 export function LessonPlayer({ onNavigate, courseId, lessonId }: LessonPlayerProps) {
   const [lessons, setLessons] = useState<LessonWithYoutube[]>([]);
