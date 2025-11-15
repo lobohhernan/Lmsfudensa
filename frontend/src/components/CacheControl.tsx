@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   clearAllCache,
-  clearCache,
   checkForNewVersion,
   CACHE_KEYS,
   APP_VERSION,

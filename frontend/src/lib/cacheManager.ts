@@ -46,7 +46,7 @@ export function getCachedData<T>(key: string): T | null {
  * Guardar datos en el caché con timestamp
  * DESACTIVADO: No guarda nada en localStorage
  */
-export function setCachedData<T>(key: string, data: T): void {
+export function setCachedData<T>(key: string, _data: T): void {
   // Cache desactivado - no guardar en localStorage
   console.log(`🚫 Cache desactivado - no guardando: ${key}`)
 }

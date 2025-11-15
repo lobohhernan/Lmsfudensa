@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { PlayCircle, FileText, CheckCircle2, Lock } from "lucide-react";
 import { cn } from "./ui/utils";
 
@@ -16,7 +17,7 @@ interface LessonListProps {
   onLessonClick?: (lessonId: string) => void;
 }
 
-export function LessonList({
+export const LessonList = memo(function LessonList({
   lessons,
   currentLessonId,
   onLessonClick,
@@ -72,4 +73,4 @@ export function LessonList({
       ))}
     </div>
   );
-}
+});

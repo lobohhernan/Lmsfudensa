@@ -1,4 +1,4 @@
-import { Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
+import { Facebook, Instagram, Linkedin, Youtube } from "lucide-react";
 import logoVertical from "../assets/logo-vertical.svg";
 
 export function AppFooter() {

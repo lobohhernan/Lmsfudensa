@@ -1,24 +1,25 @@
-import { useState, useEffect } from "react";
-import { Palette, LayoutDashboard, Menu, Award, User, LogIn, LogOut } from "lucide-react";
+import { useState, useEffect, lazy, Suspense } from "react";
+import { Palette, LayoutDashboard, Menu, Award, User, Loader2 } from "lucide-react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
 import { Home } from "./pages/Home";
-import { CourseCatalog } from "./pages/CourseCatalog";
-import { CourseDetail } from "./pages/CourseDetail";
-import { LessonPlayer } from "./pages/LessonPlayer";
-import { Checkout } from "./pages/Checkout";
-import { UserProfile } from "./pages/UserProfile";
-import { AdminPanel } from "./pages/AdminPanel";
-import { DesignSystem } from "./pages/DesignSystem";
-import { Evaluation } from "./pages/Evaluation";
-import { AboutUs } from "./pages/AboutUs";
-import { Contact } from "./pages/Contact";
 import { Toaster } from "./components/ui/sonner";
+
+// Lazy load pages for code-splitting
+const CourseCatalog = lazy(() => import("./pages/CourseCatalog").then(m => ({ default: m.CourseCatalog })));
+const CourseDetail = lazy(() => import("./pages/CourseDetail").then(m => ({ default: m.CourseDetail })));
+const LessonPlayer = lazy(() => import("./pages/LessonPlayer").then(m => ({ default: m.LessonPlayer })));
+const Checkout = lazy(() => import("./pages/Checkout").then(m => ({ default: m.Checkout })));
+const UserProfile = lazy(() => import("./pages/UserProfile").then(m => ({ default: m.UserProfile })));
+const AdminPanel = lazy(() => import("./pages/AdminPanel").then(m => ({ default: m.AdminPanel })));
+const DesignSystem = lazy(() => import("./pages/DesignSystem").then(m => ({ default: m.DesignSystem })));
+const Evaluation = lazy(() => import("./pages/Evaluation").then(m => ({ default: m.Evaluation })));
+const AboutUs = lazy(() => import("./pages/AboutUs").then(m => ({ default: m.AboutUs })));
+const Contact = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
 import { toast } from "sonner";
 import { Button } from "./components/ui/button";
 import { supabase } from "./lib/supabase";
 import { initCacheManager } from "./lib/cacheManager";
-import { debugSupabaseSession, clearSupabaseSession } from "./utils/debugSupabase";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -107,6 +108,18 @@ function parseRouteFromHash(): {
   }
 
   return { page: 'home' };
+}
+
+// Loading fallback component
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0B5FFF]" />
+        <p className="text-[#64748B]">Cargando...</p>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -289,16 +302,38 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentPage]);
 
+  // Recuperar courseId y lessonId de localStorage si la página es lesson y no hay IDs
+  useEffect(() => {
+    if (currentPage === 'lesson') {
+      if (!currentCourseId) {
+        const savedCourseId = localStorage.getItem('current_course_id');
+        if (savedCourseId) {
+          setCurrentCourseId(savedCourseId);
+        }
+      }
+      if (!currentLessonId) {
+        const savedLessonId = localStorage.getItem('current_lesson_id');
+        if (savedLessonId) {
+          setCurrentLessonId(savedLessonId);
+        }
+      }
+    }
+  }, [currentPage, currentCourseId, currentLessonId]);
+
   const handleNavigate = (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => {
     setCurrentPage(page as Page);
     if (courseId) {
       setCurrentCourseId(courseId);
+      // Persistir courseId en localStorage para recuperación tras recarga
+      localStorage.setItem('current_course_id', courseId);
     }
     if (courseSlug) {
       setCurrentCourseSlug(courseSlug);
     }
     if (lessonId) {
       setCurrentLessonId(lessonId);
+      // Persistir lessonId en localStorage para recuperación tras recarga
+      localStorage.setItem('current_lesson_id', lessonId);
     }
   };
 
@@ -354,32 +389,47 @@ export default function App() {
   // Admin, Lesson Player, and Evaluation have their own layouts
   if (currentPage === "admin") {
     return (
-      <>
+      <Suspense fallback={<PageLoader />}>
         <AdminPanel onNavigate={handleNavigate} />
         <Toaster />
-      </>
+      </Suspense>
     );
   }
 
   if (currentPage === "lesson") {
     return (
-      <>
-        <LessonPlayer 
-          onNavigate={handleNavigate} 
-          courseId={currentCourseId}
-          lessonId={currentLessonId}
-        />
-        <Toaster />
-      </>
+      <div className="flex min-h-screen flex-col">
+        <AppNavbar 
+            onNavigate={handleNavigate} 
+            isLoggedIn={isLoggedIn}
+            currentUser={userData}
+            onLogout={handleLogout}
+            onLogin={handleLogin}
+            currentPage={currentPage}
+            openLoginModal={showAuthModal}
+            onLoginModalChange={setShowAuthModal}
+          />
+
+          <main className="flex-1">
+            <LessonPlayer 
+              onNavigate={handleNavigate} 
+              courseId={currentCourseId}
+              lessonId={currentLessonId}
+            />
+          </main>
+
+          <AppFooter />
+          <Toaster />
+      </div>
     );
   }
 
   if (currentPage === "evaluation") {
     return (
-      <>
+      <Suspense fallback={<PageLoader />}>
         <Evaluation onNavigate={handleNavigate} />
         <Toaster />
-      </>
+      </Suspense>
     );
   }
 
@@ -398,35 +448,37 @@ export default function App() {
       />
       
       <main className="flex-1">
-        {currentPage === "home" && <Home onNavigate={handleNavigate} isLoggedIn={isLoggedIn} />}
-        {currentPage === "catalog" && <CourseCatalog onNavigate={handleNavigate} />}
-        {currentPage === "course" && (
-          <CourseDetail 
-            courseId={currentCourseId}
-            onNavigate={handleNavigate} 
-            isLoggedIn={isLoggedIn}
-            onAuthRequired={(page, courseId) => {
-              setPendingNavigation({ page, courseId });
-              setShowAuthModal(true);
-            }}
-          />
-        )}
-        {currentPage === "checkout" && (
-          <Checkout 
-            onNavigate={handleNavigate}
-            courseId={currentCourseId}
-            userData={userData}
-          />
-        )}
-        {currentPage === "profile" && <UserProfile onNavigate={handleNavigate} />}
-        {currentPage === "design" && <DesignSystem />}
-        {currentPage === "about" && <AboutUs onNavigate={handleNavigate} />}
-        {currentPage === "contact" && <Contact onNavigate={handleNavigate} />}
+        <Suspense fallback={<PageLoader />}>
+          {currentPage === "home" && <Home onNavigate={handleNavigate} isLoggedIn={isLoggedIn} />}
+          {currentPage === "catalog" && <CourseCatalog onNavigate={handleNavigate} />}
+          {currentPage === "course" && (
+            <CourseDetail 
+              courseId={currentCourseId}
+              onNavigate={handleNavigate} 
+              isLoggedIn={isLoggedIn}
+              onAuthRequired={(page, courseId) => {
+                setPendingNavigation({ page, courseId });
+                setShowAuthModal(true);
+              }}
+            />
+          )}
+          {currentPage === "checkout" && (
+            <Checkout 
+              onNavigate={handleNavigate}
+              courseId={currentCourseId}
+              userData={userData}
+            />
+          )}
+          {currentPage === "profile" && <UserProfile onNavigate={handleNavigate} />}
+          {currentPage === "design" && <DesignSystem />}
+          {currentPage === "about" && <AboutUs onNavigate={handleNavigate} />}
+          {currentPage === "contact" && <Contact onNavigate={handleNavigate} />}
+        </Suspense>
       </main>
 
       <AppFooter />
       
-      {/* Quick Access Menu - Demo purposes */}
+      {/* Quick Access Menu */}
       <div className="fixed bottom-6 right-6 z-100">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
@@ -442,34 +494,6 @@ export default function App() {
             className="w-56"
             sideOffset={5}
           >
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                setIsLoggedIn(!isLoggedIn);
-                toast.success(
-                  isLoggedIn 
-                    ? "Vista de visitante activada" 
-                    : "Vista de usuario autenticado activada"
-                );
-                if (!isLoggedIn) {
-                  handleNavigate("home");
-                }
-              }}
-              className="cursor-pointer"
-            >
-              {isLoggedIn ? (
-                <>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Ver como Visitante
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Ver como Usuario Autenticado
-                </>
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
@@ -500,41 +524,6 @@ export default function App() {
             >
               <LayoutDashboard className="mr-2 h-4 w-4" />
               Panel Admin
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={async (e: React.MouseEvent) => {
-                e.preventDefault();
-                try {
-                  // Ejecutar debug de Supabase en la pestaña normal
-                  // Muestra resultados en consola del navegador
-                  await debugSupabaseSession();
-                  toast.success("Debug Supabase ejecutado (ver consola)");
-                } catch (err) {
-                  console.error("Error ejecutando debugSupabaseSession:", err);
-                  toast.error("Error ejecutando debug");
-                }
-              }}
-              className="cursor-pointer"
-            >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-              Debug Supabase
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async (e: React.MouseEvent) => {
-                e.preventDefault();
-                try {
-                  await clearSupabaseSession();
-                  toast.success("Sesión local limpiada");
-                } catch (err) {
-                  console.error("Error clearSupabaseSession:", err);
-                  toast.error("Error limpiando sesión");
-                }
-              }}
-              className="cursor-pointer"
-            >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M9 6v12M15 6v12"/></svg>
-              Limpiar Sesión Supabase
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
