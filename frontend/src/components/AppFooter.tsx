@@ -168,23 +168,16 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
             <h3 className="mb-4 text-[#0F172A]">Soporte</h3>
             <ul className="space-y-3">
               <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
+                <button
+                  onClick={() => onNavigate?.("contact")}
+                  className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                >
                   Centro de Ayuda
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
-                  Términos de Uso
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
-                  Privacidad
-                </a>
+                </button>
               </li>
               <li>
                 <a href="https://wa.me/543815537057" target="_blank" rel="noopener noreferrer" className="text-[#64748B] hover:text-[#1e467c]">
-                  WhatsApp: +54 9 3815 53-7057
+                  WhatsApp
                 </a>
               </li>
             </ul>
