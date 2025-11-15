@@ -43,7 +43,9 @@ export function AppNavbar({
   onLogin,
   currentPage = "home",
   openLoginModal,
+  openRegisterModal,
   onLoginModalChange,
+  onRegisterModalChange,
   currentUser = null
 }: AppNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

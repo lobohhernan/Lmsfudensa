@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Palette, LayoutDashboard, Menu, Award, User, LogIn, LogOut } from "lucide-react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
+import { PageLoader } from "./components/PageLoader";
 import { Home } from "./pages/Home";
 import { CourseCatalog } from "./pages/CourseCatalog";
 import { CourseDetail } from "./pages/CourseDetail";
