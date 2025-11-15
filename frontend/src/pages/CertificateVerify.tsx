@@ -7,10 +7,6 @@ import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert";
 
-interface CertificateVerifyProps {
-  onNavigate?: (page: string) => void;
-}
-
 export function CertificateVerify() {
   const [hash, setHash] = useState("");
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "valid" | "invalid">("idle");

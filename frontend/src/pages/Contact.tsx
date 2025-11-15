@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin, MessageSquare, Clock, Send } from "lucide-react";
+import { Mail, Phone, Clock, Send } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
@@ -15,11 +15,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 
-interface ContactProps {
-  onNavigate?: (page: string) => void;
-}
-
-export function Contact({ onNavigate }: ContactProps) {
+export function Contact() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",

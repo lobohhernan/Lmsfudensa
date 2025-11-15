@@ -43,19 +43,15 @@ export function AppNavbar({
   onLogin,
   currentPage = "home",
   openLoginModal,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  openRegisterModal,
   onLoginModalChange,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onRegisterModalChange,
   currentUser = null
 }: AppNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [internalLoginOpen, setInternalLoginOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-  // Used for loading state during login
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  // Used for loading state during login (setter only)
+  const [, setIsLoggingIn] = useState(false);
   
   // Use controlled state if provided, otherwise use internal state
   const loginOpen = openLoginModal !== undefined ? openLoginModal : internalLoginOpen;

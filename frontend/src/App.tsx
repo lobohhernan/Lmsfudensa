@@ -472,7 +472,7 @@ export default function App() {
           {currentPage === "profile" && <UserProfile onNavigate={handleNavigate} />}
           {currentPage === "design" && <DesignSystem />}
           {currentPage === "about" && <AboutUs onNavigate={handleNavigate} />}
-          {currentPage === "contact" && <Contact onNavigate={handleNavigate} />}
+          {currentPage === "contact" && <Contact />}
         </Suspense>
       </main>
 
