@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, CheckCircle, MessageSquare, Award, List, Youtube } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight, CheckCircle, MessageSquare, Award, List, Youtube, Loader2 } from "lucide-react";
+import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
 import { LessonList, Lesson } from "../components/LessonList";
@@ -10,23 +11,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 
 interface LessonPlayerProps {
   onNavigate?: (page: string) => void;
+  courseId?: string;
+  lessonId?: string;
 }
 
 // Extendemos el tipo Lesson para incluir youtubeId
 interface LessonWithYoutube extends Lesson {
   youtubeId?: string;
 }
-
-const lessons: LessonWithYoutube[] = [
-  { id: "1", title: "Introducción a RCP", duration: "15 min", type: "video", completed: true, locked: false, youtubeId: "dQw4w9WgXcQ" },
-  { id: "2", title: "Anatomía del sistema cardiovascular", duration: "20 min", type: "video", completed: true, locked: false, youtubeId: "dQw4w9WgXcQ" },
-  { id: "3", title: "Reconocimiento de paro cardíaco", duration: "18 min", type: "video", completed: false, locked: false, youtubeId: "dQw4w9WgXcQ" },
-  { id: "4", title: "Compresiones torácicas efectivas", duration: "25 min", type: "video", completed: false, locked: false, youtubeId: "dQw4w9WgXcQ" },
-  { id: "5", title: "Ventilaciones de rescate", duration: "22 min", type: "video", completed: false, locked: true, youtubeId: "dQw4w9WgXcQ" },
-  { id: "6", title: "Uso del DEA", duration: "30 min", type: "video", completed: false, locked: true, youtubeId: "dQw4w9WgXcQ" },
-  { id: "7", title: "RCP en casos especiales", duration: "20 min", type: "video", completed: false, locked: true, youtubeId: "dQw4w9WgXcQ" },
-  { id: "8", title: "Evaluación de conocimientos", duration: "30 min", type: "quiz", completed: false, locked: true },
-];
 
 const comments = [
   {
@@ -47,13 +39,99 @@ const comments = [
   },
 ];
 
-export function LessonPlayer({ onNavigate }: LessonPlayerProps) {
-  const [currentLesson, setCurrentLesson] = useState("3");
+export function LessonPlayer({ onNavigate, courseId, lessonId }: LessonPlayerProps) {
+  const [lessons, setLessons] = useState<LessonWithYoutube[]>([]);
+  const [courseData, setCourseData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentLesson, setCurrentLesson] = useState(lessonId || "1");
   const [showSidebar, setShowSidebar] = useState(false);
+
+  // Cargar curso y lecciones desde Supabase
+  useEffect(() => {
+    if (!courseId) {
+      setError("No se proporcionó ID del curso");
+      setLoading(false);
+      return;
+    }
+
+    const loadData = async () => {
+      try {
+        setLoading(true);
+
+        // Cargar curso
+        const { data: course, error: courseError } = await supabase
+          .from("courses")
+          .select("*")
+          .eq("id", courseId)
+          .single();
+
+        if (courseError) throw courseError;
+        setCourseData(course);
+
+        // Cargar lecciones
+        const { data: lessonsData, error: lessonsError } = await supabase
+          .from("lessons")
+          .select("*")
+          .eq("course_id", courseId)
+          .order("order_index", { ascending: true });
+
+        if (lessonsError) throw lessonsError;
+
+        // Mapear a formato esperado
+        const mappedLessons: LessonWithYoutube[] = (lessonsData || []).map((lesson: any) => ({
+          id: lesson.id,
+          title: lesson.title,
+          duration: lesson.duration || "N/A",
+          type: lesson.type || "video",
+          completed: lesson.completed || false,
+          locked: lesson.locked || false,
+          youtubeId: lesson.youtube_id || null,
+        }));
+
+        setLessons(mappedLessons);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error cargando datos:", err);
+        setError(err.message || "Error al cargar el curso");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [courseId]);
+
   const currentLessonData = lessons.find((l) => l.id === currentLesson);
   const currentIndex = lessons.findIndex((l) => l.id === currentLesson);
   const completedCount = lessons.filter((l) => l.completed).length;
-  const courseProgress = (completedCount / lessons.length) * 100;
+  const courseProgress = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="text-center">
+          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#0B5FFF]" />
+          <p className="text-[#64748B]">Cargando lección...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !courseData) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="text-center">
+          <p className="mb-4 text-red-500">{error || "Curso no encontrado"}</p>
+          <Button onClick={() => onNavigate?.("catalog")}>
+            Volver al catálogo
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col bg-[#F8FAFC]">
@@ -89,7 +167,7 @@ export function LessonPlayer({ onNavigate }: LessonPlayerProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* Video Player Area */}
         <div className="flex flex-1 flex-col overflow-y-auto">
-          <div className="mx-auto w-full max-w-5xl p-4 lg:p-6 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="mx-auto w-full max-w-5xl p-4 lg:p-6">
             {/* Video Player */}
             <div className="relative mb-6 overflow-hidden rounded-lg bg-black shadow-2xl">
               <div className="relative aspect-video">

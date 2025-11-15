@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Button } from "./components/ui/button";
 import { supabase } from "./lib/supabase";
 import { initCacheManager } from "./lib/cacheManager";
+import { debugSupabaseSession, clearSupabaseSession } from "./utils/debugSupabase";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,11 +40,83 @@ type Page =
   | "about"
   | "contact";
 
+// Función para parsear la ruta desde el hash
+function parseRouteFromHash(): {
+  page: Page;
+  courseId?: string;
+  courseSlug?: string;
+  lessonId?: string;
+} {
+  const hash = window.location.hash.slice(1); // Quita el #
+  const parts = hash.split('/').filter(Boolean);
+
+  if (!parts.length || parts[0] === '') {
+    return { page: 'home' };
+  }
+
+  // Rutas específicas
+  if (parts[0] === 'cursos') {
+    return { page: 'catalog' };
+  }
+
+  if (parts[0] === 'curso' && parts[1]) {
+    const courseSlug = parts[1];
+    
+    if (parts[2] === 'leccion' && parts[3]) {
+      return {
+        page: 'lesson',
+        courseSlug,
+        lessonId: parts[3],
+      };
+    }
+    
+    if (parts[2] === 'evaluacion') {
+      return {
+        page: 'evaluation',
+        courseSlug,
+      };
+    }
+    
+    return {
+      page: 'course',
+      courseSlug,
+    };
+  }
+
+  if (parts[0] === 'checkout' && parts[1]) {
+    return {
+      page: 'checkout',
+      courseSlug: parts[1],
+    };
+  }
+
+  if (parts[0] === 'perfil') {
+    return { page: 'profile' };
+  }
+
+  if (parts[0] === 'admin') {
+    return { page: 'admin' };
+  }
+
+  if (parts[0] === 'sobre-nosotros') {
+    return { page: 'about' };
+  }
+
+  if (parts[0] === 'contacto') {
+    return { page: 'contact' };
+  }
+
+  return { page: 'home' };
+}
+
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<Page>("home");
-  const [currentCourseId, setCurrentCourseId] = useState<string | undefined>();
-  const [currentCourseSlug, setCurrentCourseSlug] = useState<string | undefined>();
-  const [currentLessonId, setCurrentLessonId] = useState<string | undefined>();
+  // Hidratar estado inicial desde URL hash
+  const initialRoute = parseRouteFromHash();
+  
+  const [currentPage, setCurrentPage] = useState<Page>(initialRoute.page);
+  const [currentCourseId, setCurrentCourseId] = useState<string | undefined>(initialRoute.courseId);
+  const [currentCourseSlug, setCurrentCourseSlug] = useState<string | undefined>(initialRoute.courseSlug);
+  const [currentLessonId, setCurrentLessonId] = useState<string | undefined>(initialRoute.lessonId);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState<{ email: string; name: string } | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
@@ -291,7 +364,11 @@ export default function App() {
   if (currentPage === "lesson") {
     return (
       <>
-        <LessonPlayer onNavigate={handleNavigate} />
+        <LessonPlayer 
+          onNavigate={handleNavigate} 
+          courseId={currentCourseId}
+          lessonId={currentLessonId}
+        />
         <Toaster />
       </>
     );
@@ -423,6 +500,41 @@ export default function App() {
             >
               <LayoutDashboard className="mr-2 h-4 w-4" />
               Panel Admin
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={async (e: React.MouseEvent) => {
+                e.preventDefault();
+                try {
+                  // Ejecutar debug de Supabase en la pestaña normal
+                  // Muestra resultados en consola del navegador
+                  await debugSupabaseSession();
+                  toast.success("Debug Supabase ejecutado (ver consola)");
+                } catch (err) {
+                  console.error("Error ejecutando debugSupabaseSession:", err);
+                  toast.error("Error ejecutando debug");
+                }
+              }}
+              className="cursor-pointer"
+            >
+              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              Debug Supabase
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async (e: React.MouseEvent) => {
+                e.preventDefault();
+                try {
+                  await clearSupabaseSession();
+                  toast.success("Sesión local limpiada");
+                } catch (err) {
+                  console.error("Error clearSupabaseSession:", err);
+                  toast.error("Error limpiando sesión");
+                }
+              }}
+              className="cursor-pointer"
+            >
+              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M9 6v12M15 6v12"/></svg>
+              Limpiar Sesión Supabase
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
