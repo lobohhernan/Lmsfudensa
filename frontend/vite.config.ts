@@ -70,7 +70,7 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    outDir: 'build',
+    outDir: 'dist',
     rollupOptions: {
       output: {
         // Force unique hashes for all chunks to prevent cache issues
