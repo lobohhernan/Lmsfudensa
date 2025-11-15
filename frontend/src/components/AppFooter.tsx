@@ -1,7 +1,66 @@
 import { Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
+import { useEffect, useState } from "react";
 import logoVertical from "../assets/logo-vertical.svg";
+import { supabase } from "../lib/supabase";
 
-export function AppFooter() {
+interface Course {
+  id: string;
+  title: string;
+}
+
+interface AppFooterProps {
+  onNavigate?: (page: string, courseId?: string) => void;
+}
+
+export function AppFooter({ onNavigate }: AppFooterProps) {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("courses")
+          .select("id, title")
+          .limit(10)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        
+        // Reordenar cursos según especificación
+        const courseOrder = ["Neonatal", "Pediátrico", "Adultos", "padres"];
+        const sortedCourses = [...(data || [])].sort((a, b) => {
+          const aIndex = courseOrder.findIndex(course => a.title.includes(course));
+          const bIndex = courseOrder.findIndex(course => b.title.includes(course));
+          return aIndex - bIndex;
+        }).slice(0, 4);
+        
+        setCourses(sortedCourses);
+      } catch (error) {
+        console.error("Error cargando cursos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCourses();
+
+    // Suscribirse a cambios en tiempo real
+    const subscription = supabase
+      .channel("courses")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "courses" },
+        () => {
+          loadCourses();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
   return (
     <footer className="relative border-t border-[#1e467c]/10 bg-gradient-to-b from-white to-[#1e467c]/5 backdrop-blur-sm">
       {/* Glass effect top highlight */}
@@ -52,31 +111,32 @@ export function AppFooter() {
           <div>
             <h3 className="mb-4 text-[#0F172A]">Cursos</h3>
             <ul className="space-y-3">
-              <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
-                  RCP Adultos AHA 2020
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
-                  RCP Neonatal
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
-                  Primeros Auxilios Básicos
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
-                  Emergencias Médicas
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
-                  Ver Todos los Cursos
-                </a>
-              </li>
+              {loading ? (
+                <li className="text-[#64748B] text-sm">Cargando cursos...</li>
+              ) : courses.length > 0 ? (
+                <>
+                  {courses.map((course) => (
+                    <li key={course.id}>
+                      <button 
+                        onClick={() => onNavigate?.("course", course.id)}
+                        className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                      >
+                        {course.title}
+                      </button>
+                    </li>
+                  ))}
+                  <li>
+                    <button
+                      onClick={() => onNavigate?.("catalog")}
+                      className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                    >
+                      Ver Todos los Cursos
+                    </button>
+                  </li>
+                </>
+              ) : (
+                <li className="text-[#64748B] text-sm">No hay cursos disponibles</li>
+              )}
             </ul>
           </div>
 
@@ -85,19 +145,20 @@ export function AppFooter() {
             <h3 className="mb-4 text-[#0F172A]">Plataforma</h3>
             <ul className="space-y-3">
               <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
+                <button
+                  onClick={() => onNavigate?.("about")}
+                  className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                >
                   Sobre Nosotros
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
+                <button
+                  onClick={() => onNavigate?.("contact")}
+                  className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                >
                   Contacto
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-[#64748B] hover:text-[#1e467c]">
-                  Mi Perfil
-                </a>
+                </button>
               </li>
             </ul>
           </div>
