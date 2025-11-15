@@ -24,6 +24,7 @@ import {
 } from "../components/ui/breadcrumb";
 import { Badge } from "../components/ui/badge";
 import { supabase } from "../lib/supabase";
+import { isUserEnrolled, enrollUser } from "../lib/enrollments";
 
 interface CheckoutProps {
   onNavigate?: (page: string) => void;
@@ -79,6 +80,32 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
     loadCourseData();
   }, [courseId]);
 
+  // Verificar si el usuario ya está inscrito
+  useEffect(() => {
+    if (!courseId || !userData) return;
+
+    const checkEnrollment = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const enrolled = await isUserEnrolled(user.id, courseId);
+        if (enrolled) {
+          toast.info("Ya estás inscrito en este curso", {
+            description: "Te redirigiremos a la lección",
+          });
+          setTimeout(() => {
+            onNavigate?.("lesson");
+          }, 1500);
+        }
+      } catch (err) {
+        console.error("Error verificando inscripción:", err);
+      }
+    };
+
+    checkEnrollment();
+  }, [courseId, userData, onNavigate]);
+
   const currencies: Record<string, string> = {
     AR: "ARS",
     UY: "ARS",
@@ -92,13 +119,39 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
 
   const handlePayment = () => {
     setIsProcessing(true);
-    
+
     // Simular procesamiento de pago
     setTimeout(() => {
-      toast.success("¡Pago procesado exitosamente!");
-      setIsProcessing(false);
-      // Ir directamente al reproductor de lecciones
-      onNavigate?.("lesson");
+      (async () => {
+        try {
+          toast.success("¡Pago procesado exitosamente!");
+
+          // Intentar inscribir al usuario en el curso
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user && courseId) {
+            const res = await enrollUser(user.id, courseId);
+            if (res.success) {
+              console.log("Usuario inscrito correctamente en el curso");
+            } else {
+              console.warn("No se pudo inscribir automáticamente:", res.error);
+            }
+          } else {
+            console.warn("No hay usuario autenticado o courseId no disponible para inscribir");
+          }
+
+          setIsProcessing(false);
+          // Mostrar pantalla de confirmación
+          setStep(3);
+          // Después de unos segundos, redirigir al reproductor de lecciones
+          setTimeout(() => {
+            onNavigate?.("lesson");
+          }, 1800);
+        } catch (err) {
+          console.error("Error durante el flujo de pago/inscripción:", err);
+          toast.error("Ocurrió un error procesando la inscripción");
+          setIsProcessing(false);
+        }
+      })();
     }, 2000);
   };
 
