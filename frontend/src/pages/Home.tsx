@@ -304,9 +304,9 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                 <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-[#16A34A]/30 bg-[#16A34A]/20 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                   <Award className="h-8 w-8 text-[#16A34A]" />
                 </div>
-                <h3 className="text-[#0F172A] min-h-[2rem] flex items-center">Certificados Verificables</h3>
+                <h3 className="text-[#0F172A] min-h-[2rem] flex items-center">Cursos Certificados</h3>
                 <p className="text-[#64748B] flex-1">
-                  Obtén certificaciones reconocidas internacionalmente con verificación blockchain
+                  Obtén certificaciones avaladas para sumar a tu perfil profesional
                 </p>
               </CardContent>
             </Card>
