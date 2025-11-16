@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { debug, error as logError } from '@/lib/logger'
 
 interface Course {
   id: string
@@ -38,7 +37,7 @@ export function useCoursesRealtime() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'courses' },
         (payload) => {
-          debug('📡 Realtime event:', payload.eventType, payload.new || payload.old)
+          console.log('📡 Realtime event:', payload.eventType, payload.new || payload.old)
 
           if (payload.eventType === 'INSERT') {
             // Add new course
@@ -71,11 +70,20 @@ export function useCoursesRealtime() {
 
   const fetchCourses = async () => {
     try {
+      console.log('🔍 [useCoursesRealtime] Iniciando fetch de cursos...')
       setLoading(true)
       const { data, error: queryError } = await supabase
         .from('courses')
         .select('*')
         .order('created_at', { ascending: false })
+
+      console.log('📦 [useCoursesRealtime] Respuesta:', {
+        count: data?.length || 0,
+        hasError: !!queryError,
+        errorMsg: queryError?.message || null,
+        firstCourse: data?.[0]?.title || 'N/A',
+        sampleData: data?.slice(0, 1)
+      })
 
       if (queryError) throw queryError
 
@@ -87,13 +95,15 @@ export function useCoursesRealtime() {
             ? course.students
             : undefined,
       }))
+      
+      console.log(`✅ [useCoursesRealtime] ${processedData.length} cursos cargados correctamente`)
       setCourses(processedData)
       setError(null)
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Error fetching courses'
+      console.error('❌ [useCoursesRealtime] Error fetching courses:', err)
       setError(message)
-      logError('Error fetching courses:', err)
     } finally {
       setLoading(false)
     }

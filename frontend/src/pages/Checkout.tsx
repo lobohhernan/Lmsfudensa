@@ -28,10 +28,12 @@ import { isUserEnrolled, enrollUser } from "../lib/enrollments";
 interface CheckoutProps {
   onNavigate?: (page: string) => void;
   courseId?: string;
+  courseSlug?: string;
   userData?: { email: string; name: string } | null;
+  isInitializing?: boolean;
 }
 
-export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
+export function Checkout({ onNavigate, courseId, courseSlug, userData, isInitializing = false }: CheckoutProps) {
   const [step, setStep] = useState(1);
   const [country, setCountry] = useState("AR");
   // paymentMethod removed (not used)
@@ -39,6 +41,39 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [courseData, setCourseData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  console.log('🛒 [Checkout] Props:', { courseId, courseSlug, hasUserData: !!userData, isInitializing });
+
+  // Mostrar loader mientras se inicializa la sesión
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-[#1e467c] mx-auto mb-4" />
+          <p className="text-lg text-gray-600">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si no hay courseId NI courseSlug, mostrar error
+  if (!courseId && !courseSlug) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600">Error</CardTitle>
+            <CardDescription>No se proporcionó información del curso</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => onNavigate?.("catalog")} className="w-full">
+              Volver al Catálogo
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   const [error, setError] = useState<string | null>(null);
 
   // Cargar datos del curso desde Supabase

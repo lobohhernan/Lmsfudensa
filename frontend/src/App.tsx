@@ -124,6 +124,7 @@ export default function App() {
   const [currentCourseSlug, setCurrentCourseSlug] = useState<string | undefined>(initialRoute.courseSlug);
   const [currentLessonId, setCurrentLessonId] = useState<string | undefined>(initialRoute.lessonId);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true); // Estado de carga inicial
   const [userData, setUserData] = useState<{ email: string; name: string } | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -205,55 +206,92 @@ export default function App() {
 
     const loadSession = async () => {
       try {
+        console.log('🔐 [App] Cargando sesión...')
+        
+        // Verificar si hay tokens en localStorage antes de hacer la petición
+        const hasStoredSession = localStorage.getItem('sb-lgqzmqfnjcnquwkqkgpy-auth-token')
+        
+        if (!hasStoredSession) {
+          // No hay sesión guardada, terminar inmediatamente
+          console.log('⚠️ [App] No hay tokens en localStorage, saltando verificación')
+          setIsLoggedIn(false)
+          setUserData(null)
+          sessionStorage.removeItem('user_session')
+          setIsInitializing(false)
+          return
+        }
+        
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
         
         if (session?.user) {
-          // Obtener perfil completo
-          const { data: profile } = await supabase
+          console.log('🔐 [App] Usuario autenticado, consultando perfil...')
+          
+          // Obtener perfil completo con TIMEOUT de 2 segundos
+          const profilePromise = supabase
             .from("profiles")
             .select("full_name, email")
             .eq("id", session.user.id)
             .single();
+          
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout profiles')), 2000)
+          );
+          
+          let profile = null;
+          let profileError = null;
+          
+          try {
+            const result = await Promise.race([profilePromise, timeoutPromise]) as any;
+            profile = result.data;
+            profileError = result.error;
+          } catch (err: any) {
+            console.warn('⚠️ [App] Timeout o error en profiles:', err.message);
+            profileError = err;
+          }
+          
+          console.log('🔐 [App] Respuesta profiles:', { hasProfile: !!profile, error: profileError?.message });
 
           let userData_: { email: string; name: string };
           
           if (profile) {
+            console.log('✅ [App] Perfil encontrado:', profile.full_name)
             userData_ = {
               email: profile.email || session.user.email || "",
               name: profile.full_name || session.user.email?.split('@')[0] || "Usuario",
             };
           } else {
-            // Si no tiene perfil, usar los datos del auth
+            // Si no tiene perfil, usar los datos del auth (esto es OK)
+            console.log('⚠️ [App] No hay perfil en DB, usando datos de auth')
             userData_ = {
               email: session.user.email || "",
               name: session.user.email?.split('@')[0] || "Usuario",
             };
           }
           
+          console.log('✅ [App] Login exitoso:', userData_.email)
           setIsLoggedIn(true);
           setUserData(userData_);
           sessionStorage.setItem('user_session', JSON.stringify(userData_));
-        } else {
-          // No hay sesión inmediata — esperar un poco por si la rehidratación llega
-          // (algunos entornos pueden rehidratar storage de forma asíncrona)
+          setIsInitializing(false); // Marcar inicialización completa
           clearAuthTimeout()
-          authTimeoutRef.current = window.setTimeout(() => {
-            setIsLoggedIn(false)
-            setUserData(null)
-            sessionStorage.removeItem('user_session')
-            authTimeoutRef.current = null
-          }, 800)
-        }
-      } catch (error) {
-        logError("Error cargando sesión:", error);
-        // En caso de error, marcar como no autenticado después de corto retraso
-        clearAuthTimeout()
-        authTimeoutRef.current = window.setTimeout(() => {
+        } else {
+          // No hay sesión válida — terminar rápido
+          console.log('⚠️ [App] No hay sesión válida, finalizando...')
           setIsLoggedIn(false)
           setUserData(null)
           sessionStorage.removeItem('user_session')
-          authTimeoutRef.current = null
-        }, 800)
+          setIsInitializing(false)
+          clearAuthTimeout()
+        }
+      } catch (error) {
+        logError("Error cargando sesión:", error);
+        // En caso de error, marcar como no autenticado inmediatamente
+        setIsLoggedIn(false)
+        setUserData(null)
+        sessionStorage.removeItem('user_session')
+        setIsInitializing(false)
+        clearAuthTimeout()
       }
     };
 
@@ -261,6 +299,7 @@ export default function App() {
 
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('🔄 [App] Auth state change:', _event, { hasSession: !!session })
       // Si llegó alguna actualización de auth, cancelar el timeout de no-auth
       if (authTimeoutRef.current) {
         clearTimeout(authTimeoutRef.current)
@@ -268,11 +307,19 @@ export default function App() {
       }
       if (session?.user) {
         try {
-          const { data: profile } = await supabase
+          // Timeout en onAuthStateChange también
+          const profilePromise = supabase
             .from("profiles")
             .select("full_name, email")
             .eq("id", session.user.id)
             .single();
+          
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout profiles')), 2000)
+          );
+          
+          const result = await Promise.race([profilePromise, timeoutPromise]) as any;
+          const profile = result?.data;
 
           let userData_: { email: string; name: string };
           
@@ -385,6 +432,18 @@ export default function App() {
     }
   };
 
+  // Mostrar loader mientras se inicializa la sesión
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-white border-t-transparent mb-4"></div>
+          <p className="text-white text-lg font-medium">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Admin, Lesson Player, and Evaluation have their own layouts
   if (currentPage === "admin") {
     return (
@@ -478,8 +537,9 @@ export default function App() {
           {currentPage === "checkout" && (
             <Checkout 
               onNavigate={handleNavigate}
-              courseId={currentCourseId}
+              courseSlug={currentCourseSlug}
               userData={userData}
+              isInitializing={isInitializing}
             />
           )}
           {currentPage === "profile" && <UserProfile onNavigate={handleNavigate} />}

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Auth - FUDENSA</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e467c 0%, #2c5a9e 100%);
+      color: white;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    h1 {
+      margin-bottom: 30px;
+      text-align: center;
+      font-size: 2.5rem;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    .section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    h2 {
+      margin-bottom: 15px;
+      color: #22C55E;
+      font-size: 1.5rem;
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px;
+      margin: 8px 0;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      word-break: break-all;
+    }
+    .key {
+      font-weight: bold;
+      color: #60A5FA;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .value {
+      color: #FCD34D;
+      flex-grow: 1;
+      text-align: right;
+    }
+    .btn {
+      background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      margin: 10px 5px;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+      transition: all 0.3s;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    .btn-danger:hover {
+      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+    }
+    .status {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .status-ok {
+      background: rgba(34, 197, 94, 0.2);
+      border: 2px solid #22C55E;
+      color: #22C55E;
+    }
+    .status-error {
+      background: rgba(239, 68, 68, 0.2);
+      border: 2px solid #EF4444;
+      color: #EF4444;
+    }
+    .status-warning {
+      background: rgba(251, 191, 36, 0.2);
+      border: 2px solid #FBBF24;
+      color: #FBBF24;
+    }
+    code {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .empty {
+      color: #94A3B8;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Debug Auth - FUDENSA</h1>
+    
+    <div class="section">
+      <h2>📊 Estado del localStorage</h2>
+      <div id="storage-status"></div>
+      <div id="storage-items"></div>
+    </div>
+
+    <div class="section">
+      <h2>🔐 Keys de Supabase Auth</h2>
+      <div id="auth-keys"></div>
+    </div>
+
+    <div class="section">
+      <h2>💾 Datos de Sesión</h2>
+      <div id="session-data"></div>
+    </div>
+
+    <div class="section">
+      <h2>⚙️ Acciones</h2>
+      <button class="btn" onclick="refreshDebug()">🔄 Actualizar</button>
+      <button class="btn btn-danger" onclick="clearAllAuth()">🗑️ Limpiar Auth (localStorage)</button>
+      <button class="btn btn-danger" onclick="clearAllStorage()">💣 Limpiar TODO</button>
+      <button class="btn" onclick="window.location.href='/'">🏠 Volver al inicio</button>
+    </div>
+  </div>
+
+  <script>
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    function getStorageSize() {
+      let total = 0;
+      for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          total += localStorage[key].length + key.length;
+        }
+      }
+      return total * 2; // Aproximado (UTF-16)
+    }
+
+    function refreshDebug() {
+      // Estado del localStorage
+      const storageSize = getStorageSize();
+      const itemCount = localStorage.length;
+      const statusDiv = document.getElementById('storage-status');
+      
+      let statusClass = 'status-ok';
+      let statusText = `✅ localStorage: ${itemCount} items (${formatBytes(storageSize)})`;
+      
+      if (storageSize > 5 * 1024 * 1024) {
+        statusClass = 'status-warning';
+        statusText = `⚠️ localStorage grande: ${itemCount} items (${formatBytes(storageSize)})`;
+      }
+      if (storageSize > 10 * 1024 * 1024) {
+        statusClass = 'status-error';
+        statusText = `❌ localStorage excesivo: ${itemCount} items (${formatBytes(storageSize)})`;
+      }
+      
+      statusDiv.innerHTML = `<div class="status ${statusClass}">${statusText}</div>`;
+
+      // Items del localStorage
+      const storageDiv = document.getElementById('storage-items');
+      let html = '';
+      
+      if (localStorage.length === 0) {
+        html = '<div class="empty">No hay items en localStorage</div>';
+      } else {
+        const items = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          const value = localStorage.getItem(key);
+          const size = (key.length + value.length) * 2;
+          items.push({ key, value, size });
+        }
+        
+        items.sort((a, b) => b.size - a.size);
+        
+        items.forEach(item => {
+          const displayValue = item.value.length > 50 
+            ? item.value.substring(0, 50) + '...' 
+            : item.value;
+          html += `
+            <div class="item">
+              <span class="key">${item.key}</span>
+              <span class="value">${formatBytes(item.size)}</span>
+            </div>
+          `;
+        });
+      }
+      
+      storageDiv.innerHTML = html;
+
+      // Keys de Supabase Auth
+      const authKeysDiv = document.getElementById('auth-keys');
+      const authKeys = Object.keys(localStorage).filter(key => 
+        key.includes('supabase') || key.includes('sb-')
+      );
+      
+      if (authKeys.length === 0) {
+        authKeysDiv.innerHTML = '<div class="empty">❌ No se encontraron keys de autenticación</div>';
+      } else {
+        let authHtml = `<div class="status status-ok">✅ ${authKeys.length} keys de autenticación encontradas</div>`;
+        authKeys.forEach(key => {
+          const value = localStorage.getItem(key);
+          let displayValue = value;
+          
+          try {
+            const parsed = JSON.parse(value);
+            if (parsed.access_token) {
+              displayValue = `Token: ${parsed.access_token.substring(0, 20)}...`;
+            }
+            if (parsed.expires_at) {
+              const expiresDate = new Date(parsed.expires_at * 1000);
+              const now = new Date();
+              const isExpired = expiresDate < now;
+              displayValue += ` | Expira: ${expiresDate.toLocaleString()} ${isExpired ? '❌ EXPIRADO' : '✅'}`;
+            }
+          } catch (e) {
+            if (value.length > 100) {
+              displayValue = value.substring(0, 100) + '...';
+            }
+          }
+          
+          authHtml += `
+            <div class="item">
+              <span class="key">${key}</span>
+              <span class="value">${displayValue}</span>
+            </div>
+          `;
+        });
+        authKeysDiv.innerHTML = authHtml;
+      }
+
+      // Datos de sesión (sessionStorage)
+      const sessionDiv = document.getElementById('session-data');
+      const userSession = sessionStorage.getItem('user_session');
+      
+      if (!userSession) {
+        sessionDiv.innerHTML = '<div class="empty">No hay sesión en sessionStorage</div>';
+      } else {
+        try {
+          const session = JSON.parse(userSession);
+          sessionDiv.innerHTML = `
+            <div class="status status-ok">✅ Sesión encontrada</div>
+            <div class="item">
+              <span class="key">Email:</span>
+              <span class="value">${session.email || 'N/A'}</span>
+            </div>
+            <div class="item">
+              <span class="key">Nombre:</span>
+              <span class="value">${session.name || 'N/A'}</span>
+            </div>
+          `;
+        } catch (e) {
+          sessionDiv.innerHTML = '<div class="status status-error">❌ Error al parsear sesión</div>';
+        }
+      }
+    }
+
+    function clearAllAuth() {
+      if (!confirm('¿Estás seguro de que quieres limpiar todos los datos de autenticación?')) {
+        return;
+      }
+      
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.includes('supabase') || key.includes('sb-')) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      sessionStorage.removeItem('user_session');
+      
+      alert(`✅ Se eliminaron ${keysToRemove.length} keys de autenticación`);
+      refreshDebug();
+    }
+
+    function clearAllStorage() {
+      if (!confirm('⚠️ ADVERTENCIA: Esto borrará TODO el localStorage y sessionStorage. ¿Continuar?')) {
+        return;
+      }
+      
+      const count = localStorage.length;
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      alert(`✅ Se eliminaron ${count} items del localStorage`);
+      refreshDebug();
+    }
+
+    // Cargar al inicio
+    refreshDebug();
+
+    // Auto-refresh cada 5 segundos
+    setInterval(refreshDebug, 5000);
+  </script>
+</body>
+</html>

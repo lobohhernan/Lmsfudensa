@@ -59,7 +59,9 @@ const testimonials = [
 ];
 
 export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
-  const { courses: allCourses } = useCoursesRealtime();
+  const { courses: allCourses, loading, error } = useCoursesRealtime();
+  
+  console.log('🏠 [Home] Renderizando:', { coursesCount: allCourses.length, loading, error, isLoggedIn })
   
   // Mostrar los primeros 6 cursos en la sección destacada
   const displayCourses = allCourses.slice(0, 6).map(course => ({
@@ -253,19 +255,36 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {displayCourses.length > 0 ? (
-              displayCourses.map((course) => (
-                <CourseCard
-                  key={course.id}
-                  {...course}
-                  onClick={() => onNavigate?.("course", course.id, course.slug)}
-                />
-              ))
-            ) : (
-              <div className="col-span-full py-12 text-center text-[#64748B]">
-                Cargando cursos...
+            {loading && (
+              <div className="col-span-full text-center py-12">
+                <div className="inline-flex items-center gap-3 text-[#1e467c]">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#1e467c]/30 border-t-[#1e467c]"></div>
+                  <span className="text-lg font-medium">Cargando cursos...</span>
+                </div>
               </div>
             )}
+            {error && (
+              <div className="col-span-full text-center py-12">
+                <div className="rounded-lg bg-red-50 border border-red-200 p-6 text-red-700">
+                  <p className="font-semibold mb-2">Error al cargar cursos</p>
+                  <p className="text-sm">{error}</p>
+                  <p className="text-xs mt-3 text-red-600">Verifica que las políticas RLS estén aplicadas en Supabase</p>
+                </div>
+              </div>
+            )}
+            {!loading && !error && displayCourses.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <p className="text-gray-500 text-lg">No hay cursos disponibles</p>
+                <p className="text-sm text-gray-400 mt-2">Puede que las políticas RLS estén bloqueando el acceso</p>
+              </div>
+            )}
+            {!loading && !error && displayCourses.length > 0 && displayCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                {...course}
+                onClick={() => onNavigate?.("course", course.id, course.slug)}
+              />
+            ))}
           </div>
 
           <div className="mt-6 sm:hidden">
