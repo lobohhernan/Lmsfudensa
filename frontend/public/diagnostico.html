@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico - LMS Fudensa</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    .container {
+      background: #252526;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #3e3e42;
+    }
+    h1 { color: #0B5FFF; margin-bottom: 20px; }
+    h2 { color: #4FC3F7; margin-top: 20px; border-bottom: 1px solid #3e3e42; padding-bottom: 10px; }
+    .section {
+      margin: 15px 0;
+      padding: 15px;
+      background: #1e1e1e;
+      border-left: 3px solid #0B5FFF;
+    }
+    .success { border-left-color: #4EC9B0; }
+    .error { border-left-color: #F48771; }
+    .warning { border-left-color: #DCD7A0; }
+    .info { border-left-color: #569CD6; }
+    button {
+      background: #0B5FFF;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #094acc;
+    }
+    button.danger {
+      background: #F48771;
+    }
+    button.danger:hover {
+      background: #e06060;
+    }
+    code {
+      background: #1e1e1e;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: block;
+      margin: 5px 0;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+    .status-ok { color: #4EC9B0; }
+    .status-err { color: #F48771; }
+    .status-warn { color: #DCD7A0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Diagnóstico Supabase - LMS Fudensa</h1>
+    
+    <button onclick="runDiagnostics()">▶️ Ejecutar Diagnóstico Completo</button>
+    <button onclick="clearAllAndReload()" class="danger">🗑️ Limpiar Todo y Recargar</button>
+    <button onclick="location.reload()">🔄 Recargar Página</button>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const log = (title, content, type = 'info') => {
+      const output = document.getElementById('output');
+      const section = document.createElement('div');
+      section.className = `section ${type}`;
+      section.innerHTML = `<strong>${title}</strong><code>${JSON.stringify(content, null, 2)}</code>`;
+      output.appendChild(section);
+    };
+
+    async function runDiagnostics() {
+      document.getElementById('output').innerHTML = '';
+      
+      log('⏱️ Timestamp', new Date().toISOString());
+      
+      // 1. Verificar localStorage
+      log('📦 LocalStorage Size', {
+        itemCount: localStorage.length,
+        estimatedSize: new Blob(Object.values(localStorage)).size + ' bytes',
+        keys: Object.keys(localStorage).slice(0, 10) // Primeras 10 keys
+      }, 'info');
+
+      // 2. Verificar sessionStorage
+      log('📦 SessionStorage Size', {
+        itemCount: sessionStorage.length,
+        estimatedSize: new Blob(Object.values(sessionStorage)).size + ' bytes',
+        keys: Object.keys(sessionStorage).slice(0, 10)
+      }, 'info');
+
+      // 3. Verificar cookies
+      log('🍪 Cookies', {
+        count: document.cookie.split(';').length,
+        cookies: document.cookie.slice(0, 200)
+      }, 'info');
+
+      // 4. Verificar variables de entorno
+      try {
+        const scriptContent = `
+          console.log('Checking env vars from App.tsx');
+        `;
+        log('🔧 Environment Variables', {
+          nodeEnv: typeof process !== 'undefined' ? process.env.NODE_ENV : 'N/A',
+          viteEnv: typeof import.meta !== 'undefined' ? 'available' : 'N/A'
+        }, 'info');
+      } catch (e) {
+        log('⚠️ Env Check Error', e.message, 'warning');
+      }
+
+      // 5. Verificar si Supabase cargó
+      try {
+        // Esperar un momento para que la app cargue
+        await new Promise(r => setTimeout(r, 1000));
+        
+        if (window.__SUPABASE_CLIENT__) {
+          const session = await window.__SUPABASE_CLIENT__.auth.getSession();
+          log('✅ Supabase Session', {
+            hasSession: !!session.data.session,
+            user: session.data.session?.user?.email || 'anonymous',
+            timestamp: new Date().toISOString()
+          }, session.data.session ? 'success' : 'warning');
+        } else {
+          log('⚠️ Supabase Client', 'No está disponible en window.__SUPABASE_CLIENT__', 'warning');
+        }
+      } catch (e) {
+        log('❌ Supabase Check Error', e.message, 'error');
+      }
+
+      // 6. Verificar Network
+      log('🌐 Network Check', {
+        online: navigator.onLine,
+        userAgent: navigator.userAgent.slice(0, 100) + '...'
+      }, navigator.onLine ? 'success' : 'error');
+
+      // 7. Verificar cookies de Supabase
+      const supabaseCookies = document.cookie.split(';').filter(c => c.includes('sb-') || c.includes('supabase'));
+      log('🔐 Supabase Cookies Detectadas', {
+        count: supabaseCookies.length,
+        cookies: supabaseCookies
+      }, supabaseCookies.length > 0 ? 'success' : 'warning');
+
+      // 8. Comparar modo normal vs incógnito
+      log('🔍 Modo de Navegación', {
+        description: 'Compara esto en modo normal vs incógnito',
+        localStorageWorks: testStorage('localStorage'),
+        sessionStorageWorks: testStorage('sessionStorage'),
+        cookiesWorks: !!document.cookie
+      }, 'info');
+
+      log('✅ Diagnóstico Completado', new Date().toISOString(), 'success');
+    }
+
+    function testStorage(type) {
+      try {
+        const test = '__test__';
+        const obj = type === 'localStorage' ? window.localStorage : window.sessionStorage;
+        obj.setItem(test, test);
+        const result = obj.getItem(test) === test;
+        obj.removeItem(test);
+        return result;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function clearAllAndReload() {
+      if (confirm('Esto borrará TODOS los datos del navegador. ¿Continuar?')) {
+        // Clear localStorage
+        localStorage.clear();
+        
+        // Clear sessionStorage
+        sessionStorage.clear();
+        
+        // Clear cookies
+        document.cookie.split(";").forEach(c => {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+
+        // Clear service workers
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            registrations.forEach(reg => reg.unregister());
+            setTimeout(() => window.location.href = '/', 1000);
+          });
+        } else {
+          window.location.href = '/';
+        }
+      }
+    }
+
+    // Run on load
+    window.addEventListener('load', () => {
+      log('🚀 Página Cargada', 'Ejecuta el diagnóstico para ver detalles', 'success');
+    });
+  </script>
+</body>
+</html>

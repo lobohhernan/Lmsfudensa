@@ -12,10 +12,8 @@ const storageKey = typeof supabaseStorageKeyEnv === 'string' && supabaseStorageK
   : 'lmsfudensa.supabase.auth'
 
 // Detectar entorno navegador de forma segura (no usar para storage ahora)
-// const isBrowser = typeof window !== 'undefined'
 // En desarrollo y para funcionalidad pública (lectura de cursos), NO usar storage persistente
-// Esto evita problemas con cache corrupto. La sesión se recarga de Supabase cada vez (es rápido)
-const storage = undefined // Desactivar storage para evitar cache corrupto - Supabase puede recuperar sesión del servidor
+// Esto evita problemas con cache corrupto. Cada carga es fresca desde el servidor
 
 // Debug: verificar que las variables se cargaron correctamente (ocultar parte de la key)
 debug('🔧 Supabase Config:', {
@@ -34,15 +32,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // Key usada para almacenar la sesión de auth en localStorage
+    // Key usada para almacenar la sesión de auth
     storageKey,
-    // Use window.localStorage en el navegador para persistencia de sesión
-    // En entornos no-browser no se pasa storage (permanece undefined)
-    storage,
-    // Persistir sesión entre recargas
-    persistSession: true,
+    // NO usar storage persistente - evita problemas con cache corrupto
+    storage: undefined,
+    // NO persistir sesión entre recargas (cada carga es fresca)
+    persistSession: false,
     // Detectar sesión en la URL (útil para OAuth redirects)
-    detectSessionInUrl: true,
+    detectSessionInUrl: false,
+    // Auto refresh deshabilitado
+    autoRefreshToken: false,
   },
   global: {
     headers: {
