@@ -1,3 +1,6 @@
+-- BACKUP of original file: cleanup_users.sql
+-- Backed up on 2025-11-16 before deletion
+
 -- ============================================
 -- Script para eliminar usuarios de prueba
 -- Mantiene solo: instructor@test.com y thesantiblocks@gmail.com

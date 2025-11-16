@@ -44,9 +44,36 @@ export function Checkout({ onNavigate, courseId, courseSlug, userData, isInitial
 
   console.log('🛒 [Checkout] Props:', { courseId, courseSlug, hasUserData: !!userData, isInitializing });
 
-  // Mostrar loader mientras se inicializa la sesi\u00f3n\n  if (isInitializing) {
+  // Mostrar loader mientras se inicializa la sesión
+  if (isInitializing) {
     return (
-      <div className=\"flex min-h-screen items-center justify-center\">\n        <div className=\"text-center\">\n          <Loader2 className=\"h-12 w-12 animate-spin text-[#1e467c] mx-auto mb-4\" />\n          <p className=\"text-lg text-gray-600\">Verificando sesi\u00f3n...</p>\n        </div>\n      </div>\n    );\n  }\n\n  // Si no hay courseId NI courseSlug, mostrar error\n  if (!courseId && !courseSlug) {\n    return (\n      <div className=\"flex min-h-screen items-center justify-center\">\n        <Card className=\"w-full max-w-md\">\n          <CardHeader>\n            <CardTitle className=\"text-red-600\">Error</CardTitle>\n            <CardDescription>No se proporcion\u00f3 informaci\u00f3n del curso</CardDescription>\n          </CardHeader>\n          <CardContent>\n            <Button onClick={() => onNavigate?.(\"catalog\")} className=\"w-full\">\n              Volver al Cat\u00e1logo\n            </Button>\n          </CardContent>\n        </Card>\n      </div>\n    );\n  }
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-[#1e467c] mx-auto mb-4" />
+          <p className="text-lg text-gray-600">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si no hay courseId NI courseSlug, mostrar error
+  if (!courseId && !courseSlug) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600">Error</CardTitle>
+            <CardDescription>No se proporcionó información del curso</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => onNavigate?.("catalog")} className="w-full">
+              Volver al Catálogo
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   const [error, setError] = useState<string | null>(null);
 
   // Cargar datos del curso desde Supabase

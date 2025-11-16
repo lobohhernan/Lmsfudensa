@@ -207,6 +207,20 @@ export default function App() {
     const loadSession = async () => {
       try {
         console.log('🔐 [App] Cargando sesión...')
+        
+        // Verificar si hay tokens en localStorage antes de hacer la petición
+        const hasStoredSession = localStorage.getItem('sb-lgqzmqfnjcnquwkqkgpy-auth-token')
+        
+        if (!hasStoredSession) {
+          // No hay sesión guardada, terminar inmediatamente
+          console.log('⚠️ [App] No hay tokens en localStorage, saltando verificación')
+          setIsLoggedIn(false)
+          setUserData(null)
+          sessionStorage.removeItem('user_session')
+          setIsInitializing(false)
+          return
+        }
+        
         const { data: { session } } = await supabase.auth.getSession();
         console.log('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
         
@@ -262,29 +276,22 @@ export default function App() {
           setIsInitializing(false); // Marcar inicialización completa
           clearAuthTimeout()
         } else {
-          // No hay sesión inmediata — esperar un poco por si la rehidratación llega
-          console.log('⚠️ [App] No hay sesión, esperando 3s...')
-          clearAuthTimeout()
-          authTimeoutRef.current = window.setTimeout(() => {
-            console.log('❌ [App] Timeout alcanzado, marcando como no autenticado')
-            setIsLoggedIn(false)
-            setUserData(null)
-            sessionStorage.removeItem('user_session')
-            setIsInitializing(false) // Marcar fin de inicialización
-            authTimeoutRef.current = null
-          }, 3000)  // Aumentado de 800ms a 3000ms para redes lentas
-        }
-      } catch (error) {
-        logError("Error cargando sesión:", error);
-        // En caso de error, marcar como no autenticado después de corto retraso
-        clearAuthTimeout()
-        authTimeoutRef.current = window.setTimeout(() => {
+          // No hay sesión válida — terminar rápido
+          console.log('⚠️ [App] No hay sesión válida, finalizando...')
           setIsLoggedIn(false)
           setUserData(null)
           sessionStorage.removeItem('user_session')
-          setIsInitializing(false) // Marcar fin de inicialización
-          authTimeoutRef.current = null
-        }, 3000)  // Aumentado de 800ms a 3000ms para redes lentas
+          setIsInitializing(false)
+          clearAuthTimeout()
+        }
+      } catch (error) {
+        logError("Error cargando sesión:", error);
+        // En caso de error, marcar como no autenticado inmediatamente
+        setIsLoggedIn(false)
+        setUserData(null)
+        sessionStorage.removeItem('user_session')
+        setIsInitializing(false)
+        clearAuthTimeout()
       }
     };
 

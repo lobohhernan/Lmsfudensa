@@ -1,3 +1,6 @@
+-- BACKUP of original file: cleanup_test_data.sql
+-- Backed up on 2025-11-16 before deletion
+
 -- SQL para limpiar datos de prueba (Juan Pérez)
 -- Ejecutar esto en Supabase SQL Editor
 
