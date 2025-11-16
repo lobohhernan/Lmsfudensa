@@ -17,23 +17,39 @@
 4. Copia y pega **TODO ESTO**:
 
 ```sql
+-- DESHABILITAR RLS
 ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.courses DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lessons DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.evaluations DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.enrollments DISABLE ROW LEVEL SECURITY;
 
+-- ELIMINAR POLICIES VIEJAS
+DROP POLICY IF EXISTS "profiles_select_all" ON public.profiles;
+DROP POLICY IF EXISTS "courses_select_all" ON public.courses;
+DROP POLICY IF EXISTS "courses_insert_auth" ON public.courses;
+DROP POLICY IF EXISTS "courses_update_auth" ON public.courses;
+DROP POLICY IF EXISTS "courses_delete_auth" ON public.courses;
+DROP POLICY IF EXISTS "courses_public_select" ON public.courses;
+DROP POLICY IF EXISTS "courses_authenticated_insert" ON public.courses;
+DROP POLICY IF EXISTS "courses_owner_update" ON public.courses;
+DROP POLICY IF EXISTS "courses_owner_delete" ON public.courses;
+DROP POLICY IF EXISTS "lessons_select_all" ON public.lessons;
+DROP POLICY IF EXISTS "evaluations_select_all" ON public.evaluations;
+DROP POLICY IF EXISTS "enrollments_select_all" ON public.enrollments;
+
+-- HABILITAR RLS NUEVAMENTE
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lessons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.evaluations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
 
+-- CREAR POLÍTICAS NUEVAS
 CREATE POLICY "courses_select_all" ON public.courses FOR SELECT USING (true);
 CREATE POLICY "courses_insert_auth" ON public.courses FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 CREATE POLICY "courses_update_auth" ON public.courses FOR UPDATE USING (auth.uid() IS NOT NULL);
 CREATE POLICY "courses_delete_auth" ON public.courses FOR DELETE USING (auth.uid() IS NOT NULL);
-
 CREATE POLICY "profiles_select_all" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "lessons_select_all" ON public.lessons FOR SELECT USING (true);
 CREATE POLICY "evaluations_select_all" ON public.evaluations FOR SELECT USING (true);

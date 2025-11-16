@@ -9,8 +9,28 @@ ALTER TABLE public.lessons DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.evaluations DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.enrollments DISABLE ROW LEVEL SECURITY;
 
--- 2️⃣ ESPERAR UN MOMENTO Y VOLVER A HABILITAR
--- (Esto asegura que las policies viejas se limpian)
+-- 2️⃣ ELIMINAR TODAS LAS POLICIES ANTIGUAS (Para evitar conflictos)
+-- PROFILES
+DROP POLICY IF EXISTS "profiles_select_all" ON public.profiles;
+
+-- COURSES
+DROP POLICY IF EXISTS "courses_select_all" ON public.courses;
+DROP POLICY IF EXISTS "courses_insert_auth" ON public.courses;
+DROP POLICY IF EXISTS "courses_update_auth" ON public.courses;
+DROP POLICY IF EXISTS "courses_delete_auth" ON public.courses;
+DROP POLICY IF EXISTS "courses_public_select" ON public.courses;
+DROP POLICY IF EXISTS "courses_authenticated_insert" ON public.courses;
+DROP POLICY IF EXISTS "courses_owner_update" ON public.courses;
+DROP POLICY IF EXISTS "courses_owner_delete" ON public.courses;
+
+-- LESSONS
+DROP POLICY IF EXISTS "lessons_select_all" ON public.lessons;
+
+-- EVALUATIONS
+DROP POLICY IF EXISTS "evaluations_select_all" ON public.evaluations;
+
+-- ENROLLMENTS
+DROP POLICY IF EXISTS "enrollments_select_all" ON public.enrollments;
 
 -- 3️⃣ HABILITAR RLS NUEVAMENTE (Ahora limpio)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;

@@ -79,7 +79,17 @@
       const output = document.getElementById('output');
       const section = document.createElement('div');
       section.className = `section ${type}`;
-      section.innerHTML = `<strong>${title}</strong><code>${JSON.stringify(content, null, 2)}</code>`;
+      
+      let contentStr = content;
+      if (typeof content === 'object') {
+        try {
+          contentStr = JSON.stringify(content, null, 2);
+        } catch (e) {
+          contentStr = String(content);
+        }
+      }
+      
+      section.innerHTML = `<strong>${title}</strong><code>${contentStr}</code>`;
       output.appendChild(section);
     };
 
@@ -89,79 +99,126 @@
       log('⏱️ Timestamp', new Date().toISOString());
       
       // 1. Verificar localStorage
-      log('📦 LocalStorage Size', {
-        itemCount: localStorage.length,
-        estimatedSize: new Blob(Object.values(localStorage)).size + ' bytes',
-        keys: Object.keys(localStorage).slice(0, 10) // Primeras 10 keys
-      }, 'info');
+      try {
+        const localStorageSize = new Blob(Object.values(localStorage)).size;
+        log('📦 LocalStorage Size', {
+          itemCount: localStorage.length,
+          sizeBytes: localStorageSize,
+          sizeMB: (localStorageSize / 1024 / 1024).toFixed(2),
+          firstKeys: Object.keys(localStorage).slice(0, 5)
+        }, localStorage.length > 0 ? 'info' : 'warning');
+      } catch (e) {
+        log('⚠️ LocalStorage Error', e.message, 'warning');
+      }
 
       // 2. Verificar sessionStorage
-      log('📦 SessionStorage Size', {
-        itemCount: sessionStorage.length,
-        estimatedSize: new Blob(Object.values(sessionStorage)).size + ' bytes',
-        keys: Object.keys(sessionStorage).slice(0, 10)
-      }, 'info');
-
-      // 3. Verificar cookies
-      log('🍪 Cookies', {
-        count: document.cookie.split(';').length,
-        cookies: document.cookie.slice(0, 200)
-      }, 'info');
-
-      // 4. Verificar variables de entorno
       try {
-        const scriptContent = `
-          console.log('Checking env vars from App.tsx');
-        `;
-        log('🔧 Environment Variables', {
-          nodeEnv: typeof process !== 'undefined' ? process.env.NODE_ENV : 'N/A',
-          viteEnv: typeof import.meta !== 'undefined' ? 'available' : 'N/A'
+        const sessionStorageSize = new Blob(Object.values(sessionStorage)).size;
+        log('📦 SessionStorage Size', {
+          itemCount: sessionStorage.length,
+          sizeBytes: sessionStorageSize,
+          sizeMB: (sessionStorageSize / 1024 / 1024).toFixed(2),
+          firstKeys: Object.keys(sessionStorage).slice(0, 5)
         }, 'info');
       } catch (e) {
-        log('⚠️ Env Check Error', e.message, 'warning');
+        log('⚠️ SessionStorage Error', e.message, 'warning');
       }
 
-      // 5. Verificar si Supabase cargó
+      // 3. Verificar cookies
       try {
-        // Esperar un momento para que la app cargue
-        await new Promise(r => setTimeout(r, 1000));
-        
-        if (window.__SUPABASE_CLIENT__) {
-          const session = await window.__SUPABASE_CLIENT__.auth.getSession();
-          log('✅ Supabase Session', {
-            hasSession: !!session.data.session,
-            user: session.data.session?.user?.email || 'anonymous',
-            timestamp: new Date().toISOString()
-          }, session.data.session ? 'success' : 'warning');
-        } else {
-          log('⚠️ Supabase Client', 'No está disponible en window.__SUPABASE_CLIENT__', 'warning');
-        }
+        const cookieCount = document.cookie.split(';').length;
+        log('🍪 Cookies', {
+          count: cookieCount,
+          sampleSize: new Blob([document.cookie]).size,
+          cookies: document.cookie.slice(0, 300)
+        }, 'info');
       } catch (e) {
-        log('❌ Supabase Check Error', e.message, 'error');
+        log('⚠️ Cookies Error', e.message, 'warning');
       }
 
-      // 6. Verificar Network
-      log('🌐 Network Check', {
+      // 4. Verificar Navigator
+      log('🌐 Network & Browser', {
         online: navigator.onLine,
-        userAgent: navigator.userAgent.slice(0, 100) + '...'
+        userAgent: navigator.userAgent.slice(0, 100),
+        language: navigator.language,
+        hardwareConcurrency: navigator.hardwareConcurrency
       }, navigator.onLine ? 'success' : 'error');
 
-      // 7. Verificar cookies de Supabase
-      const supabaseCookies = document.cookie.split(';').filter(c => c.includes('sb-') || c.includes('supabase'));
-      log('🔐 Supabase Cookies Detectadas', {
-        count: supabaseCookies.length,
-        cookies: supabaseCookies
-      }, supabaseCookies.length > 0 ? 'success' : 'warning');
+      // 5. Verificar IndexedDB
+      try {
+        if (window.indexedDB) {
+          const dbs = await indexedDB.databases();
+          log('🗄️ IndexedDB', {
+            available: true,
+            databases: dbs.length,
+            dbNames: dbs.map(db => db.name)
+          }, dbs.length > 0 ? 'info' : 'warning');
+        } else {
+          log('🗄️ IndexedDB', 'Not available', 'warning');
+        }
+      } catch (e) {
+        log('⚠️ IndexedDB Error', e.message, 'warning');
+      }
 
-      // 8. Comparar modo normal vs incógnito
-      log('🔍 Modo de Navegación', {
-        description: 'Compara esto en modo normal vs incógnito',
-        localStorageWorks: testStorage('localStorage'),
-        sessionStorageWorks: testStorage('sessionStorage'),
-        cookiesWorks: !!document.cookie
-      }, 'info');
+      // 6. Verificar Service Workers
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          log('🔧 Service Workers', {
+            available: true,
+            registrations: registrations.length,
+            scopes: registrations.map(r => r.scope)
+          }, registrations.length > 0 ? 'info' : 'warning');
+        } else {
+          log('🔧 Service Workers', 'Not available', 'warning');
+        }
+      } catch (e) {
+        log('⚠️ Service Workers Error', e.message, 'warning');
+      }
 
-      log('✅ Diagnóstico Completado', new Date().toISOString(), 'success');
+      // 7. Verificar Storage API
+      try {
+        if ('storage' in navigator && 'estimate' in navigator.storage) {
+          const estimate = await navigator.storage.estimate();
+          log('💾 Storage API (Quota)', {
+            usageBytes: estimate.usage,
+            usageMB: (estimate.usage / 1024 / 1024).toFixed(2),
+            quotaBytes: estimate.quota,
+            quotaGB: (estimate.quota / 1024 / 1024 / 1024).toFixed(2),
+            percentUsed: ((estimate.usage / estimate.quota) * 100).toFixed(2) + '%'
+          }, estimate.usage > estimate.quota * 0.8 ? 'warning' : 'success');
+        } else {
+          log('💾 Storage API', 'Not available', 'warning');
+        }
+      } catch (e) {
+        log('⚠️ Storage API Error', e.message, 'warning');
+      }
+
+      // 8. Verificar si hay sesión de Supabase
+      try {
+        const supabaseAuthKey = Object.keys(localStorage).find(k => k.includes('supabase'));
+        if (supabaseAuthKey) {
+          const authData = localStorage.getItem(supabaseAuthKey);
+          const authSize = new Blob([authData]).size;
+          log('🔐 Supabase Session', {
+            found: true,
+            key: supabaseAuthKey,
+            sizeBytes: authSize,
+            sizeMB: (authSize / 1024 / 1024).toFixed(2),
+            preview: authData?.slice(0, 100) + '...'
+          }, 'info');
+        } else {
+          log('🔐 Supabase Session', 'Not found in localStorage', 'warning');
+        }
+      } catch (e) {
+        log('⚠️ Supabase Session Error', e.message, 'warning');
+      }
+
+      // 9. Resumen
+      log('✅ Diagnóstico Completado', {
+        timestamp: new Date().toISOString(),
+        nextStep: 'Si ves valores altos en LocalStorage (>100MB), deberías limpiar con "Limpiar Todo y Recargar"'
+      }, 'success');
     }
 
     function testStorage(type) {
@@ -179,32 +236,38 @@
 
     function clearAllAndReload() {
       if (confirm('Esto borrará TODOS los datos del navegador. ¿Continuar?')) {
-        // Clear localStorage
-        localStorage.clear();
-        
-        // Clear sessionStorage
-        sessionStorage.clear();
-        
-        // Clear cookies
-        document.cookie.split(";").forEach(c => {
-          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-        });
-
-        // Clear service workers
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(registrations => {
-            registrations.forEach(reg => reg.unregister());
-            setTimeout(() => window.location.href = '/', 1000);
+        try {
+          // Clear localStorage
+          localStorage.clear();
+          
+          // Clear sessionStorage
+          sessionStorage.clear();
+          
+          // Clear cookies
+          document.cookie.split(";").forEach(c => {
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
           });
-        } else {
-          window.location.href = '/';
+
+          log('✅ Storage Limpiado', 'Recargando en 2 segundos...', 'success');
+
+          // Clear service workers
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+              registrations.forEach(reg => reg.unregister());
+              setTimeout(() => window.location.href = '/', 2000);
+            });
+          } else {
+            setTimeout(() => window.location.href = '/', 2000);
+          }
+        } catch (e) {
+          log('❌ Error limpiando', e.message, 'error');
         }
       }
     }
 
     // Run on load
     window.addEventListener('load', () => {
-      log('🚀 Página Cargada', 'Ejecuta el diagnóstico para ver detalles', 'success');
+      log('🚀 Página Cargada', 'Haz clic en "Ejecutar Diagnóstico Completo" para ver detalles', 'success');
     });
   </script>
 </body>
