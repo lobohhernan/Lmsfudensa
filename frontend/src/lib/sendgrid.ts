@@ -3,8 +3,6 @@ export async function sendEmailViaSendGrid(
   to: string,
   subject: string,
   htmlContent: string,
-  fromEmail?: string,
-  fromName?: string,
   replyTo?: string
 ) {
   // Use Resend API directly from frontend

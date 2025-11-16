@@ -20,6 +20,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storageKey: 'fudensa-auth-token', // Clave única para evitar conflictos
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  },
   global: {
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate'
