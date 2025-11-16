@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { debug, info, error as logError } from './logger'
 
 // Obtener valores de .env.local
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -11,22 +10,26 @@ const storageKey = typeof supabaseStorageKeyEnv === 'string' && supabaseStorageK
   ? supabaseStorageKeyEnv
   : 'lmsfudensa.supabase.auth'
 
-// Detectar entorno navegador de forma segura (no usar para storage ahora)
-// En desarrollo y para funcionalidad pública (lectura de cursos), NO usar storage persistente
-// Esto evita problemas con cache corrupto. Cada carga es fresca desde el servidor
+// Detectar entorno navegador de forma segura
+const isBrowser = typeof window !== 'undefined'
+
+// Usar localStorage para persistir sesión (seguro en SPA)
+// Supabase maneja automáticamente el refresh de tokens
+const storage = isBrowser ? window.localStorage : undefined
 
 // Debug: verificar que las variables se cargaron correctamente (ocultar parte de la key)
-debug('🔧 Supabase Config:', {
+console.log('🔧 [Supabase] Config:', {
   url: supabaseUrl,
   keyLength: supabaseAnonKey?.length,
   storageKey,
+  storageEnabled: !!storage,
 })
 
 // Validar que las variables existan
 if (!supabaseUrl || !supabaseAnonKey) {
-  logError('❌ ERROR: Variables de entorno de Supabase no encontradas')
-  logError('VITE_SUPABASE_URL:', supabaseUrl)
-  logError('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'presente' : 'ausente')
+  console.error('❌ ERROR: Variables de entorno de Supabase no encontradas')
+  console.error('VITE_SUPABASE_URL:', supabaseUrl)
+  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'presente' : 'ausente')
   throw new Error('Faltan variables de entorno de Supabase. Verifica que .env.local existe y contiene VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY')
 }
 
@@ -34,14 +37,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     // Key usada para almacenar la sesión de auth
     storageKey,
-    // NO usar storage persistente - evita problemas con cache corrupto
-    storage: undefined,
-    // NO persistir sesión entre recargas (cada carga es fresca)
-    persistSession: false,
-    // Detectar sesión en la URL (útil para OAuth redirects)
-    detectSessionInUrl: false,
-    // Auto refresh deshabilitado
-    autoRefreshToken: false,
+    // Usar localStorage para persistir sesión entre recargas
+    storage,
+    // Persistir sesión entre recargas (NECESARIO para que no se cierre sesión)
+    persistSession: true,
+    // Detectar sesión en la URL (útil para OAuth redirects y magic links)
+    detectSessionInUrl: true,
+    // Auto refresh de tokens habilitado (NECESARIO para renovar sesión)
+    autoRefreshToken: true,
   },
   global: {
     headers: {
@@ -50,5 +53,5 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-info(`✅ Cliente Supabase inicializado correctamente (storageKey=${storageKey}, storage=disabled)`)
+console.log(`✅ [Supabase] Cliente inicializado correctamente (storageKey=${storageKey}, storage=${storage ? 'localStorage' : 'disabled'}, persistSession=true)`)
  

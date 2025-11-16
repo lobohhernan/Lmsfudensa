@@ -1,92 +1,74 @@
 import { useEffect } from 'react'
-import { debug, warn, error as logError } from '../lib/logger'
+import { debug } from '../lib/logger'
 
 /**
- * Hook que detecta y limpia storage corrupto automáticamente
- * Si el localStorage ocupa más de 100MB, lo limpia
+ * Hook SIMPLIFICADO - Solo limpia storage si excede quota
+ * Protege sesiones de Supabase
  */
 export function useStorageCleanup() {
   useEffect(() => {
-    const checkStorageSize = () => {
+    const checkQuota = () => {
       try {
         if (!window.localStorage) return
 
-        // Calcular el tamaño total de localStorage
+        // Solo calcular tamaño total
         let totalSize = 0
-        const problematicKeys: string[] = []
-
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i)
           if (!key) continue
-
           const value = localStorage.getItem(key) || ''
-          const size = new Blob([value]).size
-          totalSize += size
-
-          // Si una key individual es mayor a 10MB, es sospechosa
-          if (size > 10 * 1024 * 1024) {
-            problematicKeys.push(`${key} (${(size / 1024 / 1024).toFixed(2)} MB)`)
-          }
+          totalSize += new Blob([value]).size
         }
 
         const sizeMB = totalSize / 1024 / 1024
-
-        if (problematicKeys.length > 0) {
-          warn(`⚠️ Storage corrupto detectado:`, problematicKeys)
-          debug(`Total localStorage: ${sizeMB.toFixed(2)} MB`)
-
-          // Limpiar solo localStorage, mantener sesión
-          try {
-            localStorage.clear()
-            debug('✅ LocalStorage limpiado')
-          } catch (e) {
-            logError('Error limpiando localStorage:', e)
-          }
-        } else if (sizeMB > 100) {
-          warn(`⚠️ LocalStorage muy grande: ${sizeMB.toFixed(2)} MB`)
-          // Limpiar items de cache viejos (supabase auth puede ser culpable)
+        
+        // Solo actuar si es MUY grande (más de 200MB)
+        if (sizeMB > 200) {
+          debug(`⚠️ LocalStorage muy grande: ${sizeMB.toFixed(2)} MB - limpiando cache...`)
+          
+          // Remover solo keys de cache, NO auth
           const keysToRemove: string[] = []
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i)
-            if (key?.includes('supabase') || key?.includes('cache') || key?.includes('sb-')) {
+            if (key && !key.includes('supabase') && !key.includes('sb-') && key.includes('cache')) {
               keysToRemove.push(key)
             }
           }
-
+          
           keysToRemove.forEach(key => {
             try {
               localStorage.removeItem(key)
-              debug(`🗑️ Removed: ${key}`)
             } catch (e) {
-              logError(`Error removing ${key}:`, e)
+              // Ignorar errores
             }
           })
-        } else if (sizeMB > 10) {
-          debug(`📦 LocalStorage size: ${sizeMB.toFixed(2)} MB (normal)`)
+          
+          debug(`✅ ${keysToRemove.length} items de cache eliminados`)
         }
       } catch (error) {
-        // QuotaExceededError o acceso negado
-        if (error instanceof DOMException) {
-          if (error.name === 'QuotaExceededError') {
-            warn('⚠️ Storage quota excedida, limpiando...')
-            try {
-              localStorage.clear()
-              debug('✅ LocalStorage limpiado por quota excedida')
-            } catch (e) {
-              logError('Error limpiando localStorage:', e)
+        // Solo manejar QuotaExceededError
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+          // Limpiar todo excepto auth
+          const keysToRemove: string[] = []
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key && !key.includes('supabase') && !key.includes('sb-')) {
+              keysToRemove.push(key)
             }
-          } else if (error.name === 'SecurityError') {
-            warn('⚠️ Storage access denied (private mode?)')
           }
-        } else {
-          logError('Storage check error:', error)
+          keysToRemove.forEach(key => {
+            try {
+              localStorage.removeItem(key)
+            } catch (e) {
+              // Ignorar
+            }
+          })
         }
       }
     }
 
-    // Ejecutar en el siguiente tick para no bloquear la inicialización
-    const timeoutId = setTimeout(checkStorageSize, 500)
-
+    // Ejecutar después de 1 segundo (no urgente)
+    const timeoutId = setTimeout(checkQuota, 1000)
     return () => clearTimeout(timeoutId)
   }, [])
 }

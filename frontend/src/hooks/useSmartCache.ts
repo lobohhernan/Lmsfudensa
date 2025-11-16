@@ -1,25 +1,13 @@
 /**
- * useSmartCache - Hook de React para manejo inteligente de caché
+ * useSmartCache - SIMPLIFICADO
  * 
- * Uso:
- * const { data, loading, error, refetch } = useSmartCache(
- *   'courses',
- *   () => supabase.from('courses').select('*'),
- *   CACHE_TTL.COURSES
- * )
+ * Hace fetch directo a Supabase sin caché.
+ * Mantenido por compatibilidad con código existente.
  */
 
 import { useEffect, useState } from 'react'
-import {
-  getCachedData,
-  setCachedData,
-  isCacheExpired,
-  CACHE_KEYS,
-  onDataChange,
-  notifyDataChange,
-  syncData,
-} from '../lib/cacheManager'
-import { debug, error as logError } from '../lib/logger'
+import { CACHE_KEYS } from '../lib/cacheManager'
+import { error as logError } from '../lib/logger'
 
 interface UseSmartCacheOptions<T> {
   cacheKey: string
@@ -39,7 +27,6 @@ interface UseSmartCacheReturn<T> {
 export function useSmartCache<T>({
   cacheKey,
   fetcher,
-  ttl,
   onError,
 }: UseSmartCacheOptions<T>): UseSmartCacheReturn<T> {
   const [data, setData] = useState<T | null>(null)
@@ -50,45 +37,27 @@ export function useSmartCache<T>({
     try {
       setLoading(true)
       setError(null)
-
-      // Usar syncData que maneja caché automáticamente
-      const result = await syncData(cacheKey, ttl, fetcher)
+      const result = await fetcher()
       setData(result)
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
       setError(error)
       onError?.(error)
-      logError(`❌ Error en useSmartCache (${cacheKey}):`, error)
+      logError(`❌ Error fetching data (${cacheKey}):`, error)
     } finally {
       setLoading(false)
     }
   }
 
-  // Cargar datos al montar el componente
   useEffect(() => {
     loadData()
   }, [cacheKey])
 
-  // Escuchar cambios de data desde otros componentes/pestañas
-  useEffect(() => {
-    const unsubscribe = onDataChange(cacheKey, () => {
-      debug(`🔄 Datos cambiaron externamente, recargar: ${cacheKey}`)
-      loadData()
-    })
-
-    return unsubscribe
-  }, [cacheKey])
-
-  // Refetch manual
   const refetch = async () => {
-    debug(`🔃 Refetch manual para: ${cacheKey}`)
     await loadData()
   }
 
-  // Invalidar caché
   const invalidateCache = () => {
-    debug(`🗑️ Invalidando caché: ${cacheKey}`)
-    try { localStorage.removeItem(cacheKey) } catch (e) { /* ignore */ }
     loadData()
   }
 
