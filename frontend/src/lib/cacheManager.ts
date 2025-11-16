@@ -37,9 +37,25 @@ interface CacheEntry<T> {
  * DESACTIVADO: Siempre retorna null para forzar fetch desde Supabase
  */
 export function getCachedData<T>(key: string): T | null {
-  // Cache desactivado - siempre retornar null para forzar fetch fresco
-  console.log(`🚫 Cache desactivado para: ${key} - fetchando desde servidor`)
-  return null
+  try {
+    const stored = localStorage.getItem(key)
+    if (!stored) return null
+
+    const cached: CacheEntry<T> = JSON.parse(stored)
+
+    // Si la versión cambió, invalidar
+    const storedAppVersion = localStorage.getItem(CACHE_KEYS.APP_VERSION)
+    if (storedAppVersion && storedAppVersion !== cached.version) {
+      console.log(`🔁 Versión de app diferente para ${key} (guardada: ${cached.version} vs actual: ${storedAppVersion}) - invalidando`)
+      localStorage.removeItem(key)
+      return null
+    }
+
+    return cached.data
+  } catch (error) {
+    console.error(`❌ Error leyendo caché ${key}:`, error)
+    return null
+  }
 }
 
 /**
@@ -47,8 +63,17 @@ export function getCachedData<T>(key: string): T | null {
  * DESACTIVADO: No guarda nada en localStorage
  */
 export function setCachedData<T>(key: string, data: T): void {
-  // Cache desactivado - no guardar en localStorage
-  console.log(`🚫 Cache desactivado - no guardando: ${key}`)
+  try {
+    const entry: CacheEntry<T> = {
+      data,
+      timestamp: Date.now(),
+      version: APP_VERSION,
+    }
+    localStorage.setItem(key, JSON.stringify(entry))
+    console.log(`💾 Caché guardado: ${key}`)
+  } catch (error) {
+    console.error(`❌ Error guardando caché ${key}:`, error)
+  }
 }
 
 /**
