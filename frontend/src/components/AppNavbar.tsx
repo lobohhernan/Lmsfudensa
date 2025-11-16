@@ -21,6 +21,7 @@ import {
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
+import { debug, error as logError } from '../lib/logger'
 import logoHorizontal from "../assets/logo-horizontal.svg";
 
 interface AppNavbarProps {
@@ -177,19 +178,19 @@ export function AppNavbar({
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem
                       onClick={async () => {
-                        console.log("🔽 Click en Cerrar Sesión (Desktop)");
+                        debug("🔽 Click en Cerrar Sesión (Desktop)");
                         try {
                           // Cerrar sesión en Supabase
-                          console.log("Ejecutando supabase.auth.signOut()...");
+                          debug("Ejecutando supabase.auth.signOut()...");
                           await supabase.auth.signOut();
-                          console.log("✅ signOut completado");
-                          
+                          debug("✅ signOut completado");
+
                           // Llamar al callback de logout del padre
-                          console.log("Llamando a onLogout()...");
+                          debug("Llamando a onLogout()...");
                           onLogout?.();
-                          console.log("✅ onLogout() ejecutado");
+                          debug("✅ onLogout() ejecutado");
                         } catch (error) {
-                          console.error("❌ Error en logout:", error);
+                          logError("❌ Error en logout:", error);
                           toast.error("Error al cerrar sesión");
                         }
                       }}
@@ -301,22 +302,22 @@ export function AppNavbar({
                       <Button
                         variant="ghost"
                         onClick={async () => {
-                          console.log("🔽 Click en Cerrar Sesión (Mobile)");
+                          debug("🔽 Click en Cerrar Sesión (Mobile)");
                           try {
                             // Cerrar sesión en Supabase
-                            console.log("Ejecutando supabase.auth.signOut()...");
+                            debug("Ejecutando supabase.auth.signOut()...");
                             await supabase.auth.signOut();
-                            console.log("✅ signOut completado");
-                            
+                            debug("✅ signOut completado");
+
                             // Llamar al callback de logout
-                            console.log("Llamando a onLogout()...");
+                            debug("Llamando a onLogout()...");
                             onLogout?.();
-                            console.log("✅ onLogout() ejecutado");
-                            
+                            debug("✅ onLogout() ejecutado");
+
                             // Cerrar menú móvil
                             setMobileMenuOpen(false);
                           } catch (error) {
-                            console.error("❌ Error en logout:", error);
+                            logError("❌ Error en logout:", error);
                             toast.error("Error al cerrar sesión");
                           }
                         }}
@@ -413,7 +414,7 @@ export function AppNavbar({
                     setIsRegistering(false);
                     toast.success("Sesión iniciada correctamente. ¡Bienvenido!");
                   } catch (error) {
-                    console.error("Error en login:", error);
+                    logError("Error en login:", error);
                     toast.error("Error al iniciar sesión");
                   } finally {
                     setIsLoggingIn(false);
@@ -467,13 +468,13 @@ export function AppNavbar({
                   </div>
                 </div>
                 
-                <Button
+                  <Button
                   type="button"
                   variant="outline"
                   className="w-full border-white/20 bg-white/10 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] transition-all hover:bg-white/15 hover:border-white/30 hover:text-white"
                   onClick={() => {
                     // Google login logic here
-                    console.log('Login with Google');
+                    debug('Login with Google');
                   }}
                 >
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
@@ -576,7 +577,7 @@ export function AppNavbar({
                       }]);
 
                     if (profileError) {
-                      console.error("Error al crear perfil:", profileError);
+                      logError("Error al crear perfil:", profileError);
                       // No mostrar error si el perfil ya existe
                       if (!profileError.message.includes("duplicate key")) {
                         toast.error("Error al crear el perfil: " + profileError.message);

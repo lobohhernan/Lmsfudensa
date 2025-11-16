@@ -50,6 +50,7 @@
             "sonner": "^2.0.3",
             "supabase": "^2.49.8",
             "tailwind-merge": "*",
+            "typescript": "^5.9.3",
             "vaul": "^1.1.2"
       },
       "devDependencies": {

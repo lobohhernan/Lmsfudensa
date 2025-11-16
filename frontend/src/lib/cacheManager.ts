@@ -5,6 +5,10 @@
  * Asegura que los usuarios siempre vean datos actualizados
  */
 
+// Detectar entorno navegador de forma segura
+const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+import { debug, info, warn, error as logError } from './logger'
+
 // Versión de la app (cambiar esta para forzar invalidación global)
 export const APP_VERSION = '1.0.0'
 
@@ -34,52 +38,29 @@ interface CacheEntry<T> {
 
 /**
  * Obtener datos del caché
- * DESACTIVADO: Siempre retorna null para forzar fetch desde Supabase
+ * DESHABILITADO: Siempre retorna null para reducir uso de localStorage
+ * Optimización: datos siempre frescos desde la base de datos
  */
 export function getCachedData<T>(key: string): T | null {
-  try {
-    const stored = localStorage.getItem(key)
-    if (!stored) return null
-
-    const cached: CacheEntry<T> = JSON.parse(stored)
-
-    // Si la versión cambió, invalidar
-    const storedAppVersion = localStorage.getItem(CACHE_KEYS.APP_VERSION)
-    if (storedAppVersion && storedAppVersion !== cached.version) {
-      console.log(`🔁 Versión de app diferente para ${key} (guardada: ${cached.version} vs actual: ${storedAppVersion}) - invalidando`)
-      localStorage.removeItem(key)
-      return null
-    }
-
-    return cached.data
-  } catch (error) {
-    console.error(`❌ Error leyendo caché ${key}:`, error)
-    return null
-  }
+  // Cache deshabilitado para reducir uso de memoria
+  return null
 }
 
 /**
- * Guardar datos en el caché con timestamp
- * DESACTIVADO: No guarda nada en localStorage
+ * Guardar datos en el caché con timestamp y versión
+ * DESHABILITADO: No guarda nada para reducir uso de localStorage
  */
 export function setCachedData<T>(key: string, data: T): void {
-  try {
-    const entry: CacheEntry<T> = {
-      data,
-      timestamp: Date.now(),
-      version: APP_VERSION,
-    }
-    localStorage.setItem(key, JSON.stringify(entry))
-    console.log(`💾 Caché guardado: ${key}`)
-  } catch (error) {
-    console.error(`❌ Error guardando caché ${key}:`, error)
-  }
+  // Cache deshabilitado - no guardar nada en localStorage
+  return
 }
 
 /**
  * Verificar si el caché ha expirado
  */
 export function isCacheExpired(key: string, ttl: number): boolean {
+  if (!isBrowser) return true
+  
   try {
     const stored = localStorage.getItem(key)
     if (!stored) return true
@@ -89,12 +70,12 @@ export function isCacheExpired(key: string, ttl: number): boolean {
     const isExpired = age > ttl
 
     if (isExpired) {
-      console.log(`⏰ Caché expirado para: ${key} (edad: ${age}ms, TTL: ${ttl}ms)`)
+      debug(`⏰ Caché expirado para: ${key} (edad: ${age}ms, TTL: ${ttl}ms)`)
     }
 
     return isExpired
   } catch (error) {
-    console.error(`❌ Error verificando expiración ${key}:`, error)
+    logError(`❌ Error verificando expiración ${key}:`, error)
     return true
   }
 }
@@ -103,26 +84,30 @@ export function isCacheExpired(key: string, ttl: number): boolean {
  * Limpiar un caché específico
  */
 export function clearCache(key: string): void {
-  try {
-    localStorage.removeItem(key)
-    console.log(`🗑️ Caché limpiado: ${key}`)
-  } catch (error) {
-    console.error(`❌ Error limpiando caché ${key}:`, error)
-  }
+  if (!isBrowser) return
+  
+    try {
+      localStorage.removeItem(key)
+      debug(`🗑️ Caché limpiado: ${key}`)
+    } catch (error) {
+      logError(`❌ Error limpiando caché ${key}:`, error)
+    }
 }
 
 /**
  * Limpiar TODO el caché
  */
 export function clearAllCache(): void {
-  try {
-    Object.values(CACHE_KEYS).forEach((key) => {
-      localStorage.removeItem(key)
-    })
-    console.log(`🗑️ Todo el caché fue limpiado`)
-  } catch (error) {
-    console.error(`❌ Error limpiando todo el caché:`, error)
-  }
+  if (!isBrowser) return
+  
+    try {
+      Object.values(CACHE_KEYS).forEach((key) => {
+        localStorage.removeItem(key)
+      })
+      debug(`🗑️ Todo el caché fue limpiado`)
+    } catch (error) {
+      logError(`❌ Error limpiando todo el caché:`, error)
+    }
 }
 
 /**
@@ -130,7 +115,9 @@ export function clearAllCache(): void {
  * Útil cuando detectamos versión nueva
  */
 export function forcePageRefresh(): void {
-  console.warn(`🔄 Forzando recarga sin caché...`)
+  if (!isBrowser) return
+  
+  warn(`🔄 Forzando recarga sin caché...`)
   // Limpiar caché del navegador
   if ('caches' in window) {
     caches.keys().then((names) => {
@@ -146,6 +133,8 @@ export function forcePageRefresh(): void {
  * (útil si tienes endpoint que retorna versión actual)
  */
 export async function checkForNewVersion(): Promise<boolean> {
+  if (!isBrowser) return false
+  
   try {
     // Aquí puedes hacer un fetch a un endpoint que retorna la versión del servidor
     // Por ahora, solo comparamos con APP_VERSION
@@ -153,42 +142,30 @@ export async function checkForNewVersion(): Promise<boolean> {
     const hasNewVersion = storedVersion !== APP_VERSION
 
     if (hasNewVersion) {
-      console.warn(`🚀 Nueva versión detectada: ${APP_VERSION}`)
+      warn(`🚀 Nueva versión detectada: ${APP_VERSION}`)
       clearAllCache()
+      localStorage.setItem(CACHE_KEYS.APP_VERSION, APP_VERSION)
       return true
     }
 
     return false
   } catch (error) {
-    console.error(`❌ Error verificando versión:`, error)
+    logError(`❌ Error verificando versión:`, error)
     return false
   }
 }
 
 /**
- * Sincronizar datos: obtener del caché si es válido, sino desde Supabase
+ * Sincronizar datos: siempre obtiene datos frescos desde Supabase
+ * OPTIMIZADO: Sin caché para reducir uso de localStorage
  */
 export async function syncData<T>(
   key: string,
   ttl: number,
   fetchFn: () => Promise<T>
 ): Promise<T> {
-  console.log(`🔄 Sincronizando: ${key}`)
-
-  // 1. Verificar si hay caché válido
-  if (!isCacheExpired(key, ttl)) {
-    const cached = getCachedData<T>(key)
-    if (cached) {
-      console.log(`✅ Usando caché válido para: ${key}`)
-      return cached
-    }
-  }
-
-  // 2. Si no hay caché válido, fetchar datos nuevos
-  console.log(`📡 Fetchando datos nuevos para: ${key}`)
-  const data = await fetchFn()
-  setCachedData(key, data)
-  return data
+  // Siempre fetchar datos frescos - sin caché
+  return await fetchFn()
 }
 
 /**
@@ -210,38 +187,27 @@ export function onDataChange(key: string, callback: () => void): () => void {
 }
 
 export function notifyDataChange(key: string): void {
-  console.log(`📢 Notificando cambios para: ${key}`)
+  debug(`📢 Notificando cambios para: ${key}`)
   dataChangeListeners.get(key)?.forEach((callback) => callback())
 }
 
 /**
- * Inicializar verificación de versión en background
- * Ejecutar esto al montar la app
+ * Inicializar Cache Manager
+ * OPTIMIZADO: Limpia todo el caché al inicio y deshabilita checks periódicos
  */
 export function initCacheManager(): void {
-  console.log(`🚀 Cache Manager inicializado (v${APP_VERSION})`)
+  if (!isBrowser) return
 
-  // Guardar versión actual
-  localStorage.setItem(CACHE_KEYS.APP_VERSION, APP_VERSION)
+  debug(`🚀 Cache Manager inicializado (v${APP_VERSION}) - Modo sin caché`)
 
-  // Verificar versión cada 30 segundos
-  setInterval(() => {
-    checkForNewVersion()
-  }, 30000)
+  try {
+    // Limpiar TODO el caché al iniciar para liberar espacio
+    clearAllCache()
+    // Solo guardar versión para referencia
+    localStorage.setItem(CACHE_KEYS.APP_VERSION, APP_VERSION)
+  } catch (error) {
+    logError(`❌ Error inicializando Cache Manager:`, error)
+  }
 
-  // Escuchar cuando el usuario regresa a la ventana
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      console.log(`👁️ Usuario regresó a la ventana, verificando actualizaciones...`)
-      checkForNewVersion()
-    }
-  })
-
-  // Escuchar cambios de storage (si otra pestaña actualizó el cache)
-  window.addEventListener('storage', (event) => {
-    if (event.key === CACHE_KEYS.APP_VERSION && event.newValue !== APP_VERSION) {
-      console.warn(`⚠️ Versión cambió en otra pestaña, recargando...`)
-      forcePageRefresh()
-    }
-  })
+  // NO hacer checks periódicos para reducir carga
 }

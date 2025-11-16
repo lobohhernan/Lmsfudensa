@@ -1,142 +1,75 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
+import { debug, info, error as logError } from './lib/logger'
 
 export function DatabaseTest() {
   const [courses, setCourses] = useState<any[]>([])
   const [profiles, setProfiles] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     testConnection()
   }, [])
 
-  const testConnection = async () => {
+  async function testConnection() {
+    setLoading(true)
+    setError(null)
     try {
-      setLoading(true)
-      
-      console.log('🔍 Iniciando test de conexión...')
-      console.log('URL:', import.meta.env.VITE_SUPABASE_URL)
-      
-      // Test 1: Traer cursos (SELECT id, title, slug, category)
-      console.log('📚 Ejecutando: SELECT id, title, slug, category FROM courses...')
+      debug('🔍 Iniciando test de conexión...')
+      debug('URL:', import.meta.env.VITE_SUPABASE_URL)
+
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
         .select('id, title, slug, category')
         .limit(10)
 
-      console.log('Cursos response:', { data: coursesData, error: coursesError })
-      
-      // 🎯 Mostrar tabla en consola de VS Code
-      if (coursesData && coursesData.length > 0) {
-        console.log('\n📋 TABLA DE CURSOS:')
-        console.table(coursesData)
-      } else {
-        console.log('⚠️ No se encontraron cursos en la base de datos')
-      }
-      
+      debug('Cursos response:', { data: coursesData, error: coursesError })
       if (coursesError) {
-        console.error('❌ Error en cursos:', coursesError)
+        logError('❌ Error en cursos:', coursesError)
         throw coursesError
       }
       setCourses(coursesData || [])
 
-      // Test 2: Traer perfiles
-      console.log('👤 Intentando traer perfiles...')
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .limit(5)
 
-      console.log('Perfiles response:', { data: profilesData, error: profilesError })
-      
-      // 🎯 Mostrar tabla de profiles en consola
-      if (profilesData && profilesData.length > 0) {
-        console.log('\n👥 TABLA DE PROFILES:')
-        console.table(profilesData)
-      } else {
-        console.log('⚠️ No se encontraron profiles en la base de datos')
-      }
-      
+      debug('Perfiles response:', { data: profilesData, error: profilesError })
       if (profilesError) {
-        console.error('❌ Error en perfiles:', profilesError)
+        logError('❌ Error en perfiles:', profilesError)
         throw profilesError
       }
       setProfiles(profilesData || [])
 
-      console.log('✅ Test completado exitosamente')
-      setError(null)
+      debug('✅ Test completado exitosamente')
     } catch (err: any) {
-      console.error('💥 Error general:', err)
-      setError(err.message)
+      logError('💥 Error general:', err)
+      setError(err?.message || String(err))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'monospace' }}>
-      <h1>🧪 Test de Conexión a Supabase</h1>
-      
-      {loading && <p>⏳ Conectando a la base de datos...</p>}
-      
+    <div style={{ padding: 20 }}>
+      <h2>🧪 Database Test</h2>
+      {loading && <p>⏳ Ejecutando pruebas...</p>}
       {error && (
-        <div style={{ background: '#fee', padding: '10px', borderRadius: '5px', color: '#c00' }}>
-          <strong>❌ Error:</strong> {error}
+        <div style={{ color: 'red', marginBottom: 12 }}>
+          <strong>Error:</strong> {error}
         </div>
       )}
-      
-      {!loading && !error && (
-        <>
-          <div style={{ marginTop: '20px' }}>
-            <h2>📚 Cursos encontrados: {courses.length}</h2>
-            {courses.length === 0 ? (
-              <p style={{ color: '#999' }}>No hay cursos en la BD. Ejecuta el seed script.</p>
-            ) : (
-              <ul>
-                {courses.map((course) => (
-                  <li key={course.id}>
-                    <strong>{course.title}</strong> - {course.slug} - ${course.price}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
 
-          <div style={{ marginTop: '20px' }}>
-            <h2>👤 Perfiles encontrados: {profiles.length}</h2>
-            {profiles.length === 0 ? (
-              <p style={{ color: '#999' }}>No hay perfiles en la BD. Ejecuta el seed script.</p>
-            ) : (
-              <ul>
-                {profiles.map((profile) => (
-                  <li key={profile.id}>
-                    <strong>{profile.full_name}</strong> - {profile.email} ({profile.role})
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+      <div style={{ marginBottom: 12 }}>
+        <strong>Cursos:</strong> {courses.length}
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <strong>Perfiles:</strong> {profiles.length}
+      </div>
 
-          <div style={{ marginTop: '30px', padding: '10px', background: '#efe', borderRadius: '5px' }}>
-            <strong>✅ Conexión exitosa a Supabase!</strong>
-            <p>URL: {import.meta.env.VITE_SUPABASE_URL}</p>
-          </div>
-        </>
-      )}
-
-      <button 
-        onClick={testConnection}
-        style={{ 
-          marginTop: '20px', 
-          padding: '10px 20px', 
-          background: '#007bff', 
-          color: 'white', 
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer'
-        }}
-      >
+      <button onClick={testConnection} style={{ padding: '8px 12px' }}>
         🔄 Reintentar
       </button>
     </div>

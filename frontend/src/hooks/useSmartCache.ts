@@ -19,6 +19,7 @@ import {
   notifyDataChange,
   syncData,
 } from '../lib/cacheManager'
+import { debug, error as logError } from '../lib/logger'
 
 interface UseSmartCacheOptions<T> {
   cacheKey: string
@@ -57,7 +58,7 @@ export function useSmartCache<T>({
       const error = err instanceof Error ? err : new Error(String(err))
       setError(error)
       onError?.(error)
-      console.error(`❌ Error en useSmartCache (${cacheKey}):`, error)
+      logError(`❌ Error en useSmartCache (${cacheKey}):`, error)
     } finally {
       setLoading(false)
     }
@@ -71,7 +72,7 @@ export function useSmartCache<T>({
   // Escuchar cambios de data desde otros componentes/pestañas
   useEffect(() => {
     const unsubscribe = onDataChange(cacheKey, () => {
-      console.log(`🔄 Datos cambiaron externamente, recargar: ${cacheKey}`)
+      debug(`🔄 Datos cambiaron externamente, recargar: ${cacheKey}`)
       loadData()
     })
 
@@ -80,14 +81,14 @@ export function useSmartCache<T>({
 
   // Refetch manual
   const refetch = async () => {
-    console.log(`🔃 Refetch manual para: ${cacheKey}`)
+    debug(`🔃 Refetch manual para: ${cacheKey}`)
     await loadData()
   }
 
   // Invalidar caché
   const invalidateCache = () => {
-    console.log(`🗑️ Invalidando caché: ${cacheKey}`)
-    localStorage.removeItem(cacheKey)
+    debug(`🗑️ Invalidando caché: ${cacheKey}`)
+    try { localStorage.removeItem(cacheKey) } catch (e) { /* ignore */ }
     loadData()
   }
 

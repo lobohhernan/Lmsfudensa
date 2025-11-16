@@ -22,6 +22,7 @@ import {
 } from "../components/ui/breadcrumb";
 import { Badge } from "../components/ui/badge";
 import { supabase } from "../lib/supabase";
+import { debug, error as logError } from '../lib/logger'
 import { isUserEnrolled, enrollUser } from "../lib/enrollments";
 
 interface CheckoutProps {
@@ -51,7 +52,7 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
     const loadCourseData = async () => {
       try {
         setLoading(true);
-        console.log("Cargando curso en checkout con ID:", courseId);
+        debug("Cargando curso en checkout con ID:", courseId);
         
         const { data: course, error: courseError } = await supabase
           .from("courses")
@@ -60,11 +61,11 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
           .single();
 
         if (courseError) {
-          console.error("Error al cargar curso:", courseError);
+          logError("Error al cargar curso:", courseError);
           throw courseError;
         }
         
-        console.log("Curso cargado en checkout:", course);
+        debug("Curso cargado en checkout:", course);
         setCourseData(course);
         setError(null);
       } catch (err: any) {
@@ -129,7 +130,7 @@ export function Checkout({ onNavigate, courseId, userData }: CheckoutProps) {
           if (user && courseId) {
             const res = await enrollUser(user.id, courseId);
             if (res.success) {
-              console.log("Usuario inscrito correctamente en el curso");
+              debug("Usuario inscrito correctamente en el curso");
             } else {
               console.warn("No se pudo inscribir automáticamente:", res.error);
             }

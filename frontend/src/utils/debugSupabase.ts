@@ -1,51 +1,68 @@
 import { supabase } from "../lib/supabase";
+import { debug, info, warn, error as logError } from '../lib/logger'
 
 /**
  * Función de debug para verificar el estado de la sesión de Supabase
  */
 export async function debugSupabaseSession() {
-  console.log("=== DEBUG SUPABASE SESSION ===");
-  
-  // 1. Verificar sesión actual
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  console.log("Session:", sessionData);
-  console.log("Session Error:", sessionError);
-  
+  debug("=== DEBUG SUPABASE SESSION ===");
+
+  // 1. Verificar sesión actual (con manejo de errores)
+  try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    debug("Session:", sessionData);
+    if (sessionError) warn("Session Error:", sessionError);
+  } catch (err) {
+    logError("❌ Error obteniendo session (getSession):", err);
+  }
+
   // 2. Verificar usuario actual
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  console.log("User:", userData);
-  console.log("User Error:", userError);
-  
-  // 3. Verificar localStorage
-  const localStorageKeys = Object.keys(localStorage).filter(key => 
-    key.includes('supabase') || key.includes('auth')
-  );
-  console.log("LocalStorage Keys:", localStorageKeys);
-  localStorageKeys.forEach(key => {
-    console.log(`${key}:`, localStorage.getItem(key));
-  });
-  
+  try {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    debug("User:", userData);
+    if (userError) warn("User Error:", userError);
+  } catch (err) {
+    logError("❌ Error obteniendo user (getUser):", err);
+  }
+
+  // 3. Verificar localStorage (con protección)
+  try {
+    const localStorageKeys = Object.keys(localStorage).filter((key) =>
+      key.includes('supabase') || key.includes('auth')
+    );
+    debug("LocalStorage Keys:", localStorageKeys);
+    localStorageKeys.forEach((key) => {
+      try {
+        debug(`${key}:`, localStorage.getItem(key));
+      } catch (err) {
+        logError(`❌ Error leyendo localStorage[${key}]:`, err);
+      }
+    });
+  } catch (err) {
+    logError("❌ Error accediendo a localStorage:", err);
+  }
+
   // 4. Test de conexión simple
   try {
     const { data, error } = await supabase
       .from("courses")
       .select("id, title")
       .limit(1);
-    
-    console.log("Test Query Result:", data);
-    console.log("Test Query Error:", error);
+
+    debug("Test Query Result:", data);
+    if (error) warn("Test Query Error:", error);
   } catch (err) {
-    console.error("Test Query Exception:", err);
+    logError("❌ Test Query Exception:", err);
   }
-  
-  console.log("=== END DEBUG ===");
+
+  debug("=== END DEBUG ===");
 }
 
 /**
  * Limpia completamente la sesión y el caché local
  */
 export async function clearSupabaseSession() {
-  console.log("Limpiando sesión de Supabase...");
+  debug("Limpiando sesión de Supabase...");
   
   // 1. Sign out
   await supabase.auth.signOut();
@@ -56,7 +73,7 @@ export async function clearSupabaseSession() {
   );
   keysToRemove.forEach(key => {
     localStorage.removeItem(key);
-    console.log(`Removed: ${key}`);
+    debug(`Removed: ${key}`);
   });
   
   // 3. Limpiar sessionStorage
@@ -65,8 +82,8 @@ export async function clearSupabaseSession() {
   );
   sessionKeysToRemove.forEach(key => {
     sessionStorage.removeItem(key);
-    console.log(`Removed from sessionStorage: ${key}`);
+    debug(`Removed from sessionStorage: ${key}`);
   });
   
-  console.log("Sesión limpiada. Recarga la página para continuar.");
+  debug("Sesión limpiada. Recarga la página para continuar.");
 }
