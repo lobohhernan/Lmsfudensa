@@ -57,7 +57,3 @@ supabase/.env.local
 *.tmp
 .temp/
 temp/
-
-# Backup zips and extracted snapshots
-Lmsfudensa.zip
-zip_extract/

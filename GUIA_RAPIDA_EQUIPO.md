@@ -143,9 +143,6 @@ npm run build
 npm run preview
 ```
 
-<!-- Playwright instructions removed per user request; testing will be added later -->
-```
-
 ### Ver Datos de la BD (PowerShell)
 
 ```powershell
