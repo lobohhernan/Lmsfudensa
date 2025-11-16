@@ -20,6 +20,8 @@ import { Button } from "./components/ui/button";
 import { supabase } from "./lib/supabase";
 import { initCacheManager } from "./lib/cacheManager";
 import { debugSupabaseSession, clearSupabaseSession } from "./utils/debugSupabase";
+import { debug, error as logError } from './lib/logger'
+import { useStorageCleanup } from "./hooks/useStorageCleanup"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -111,6 +113,9 @@ function parseRouteFromHash(): {
 }
 
 export default function App() {
+  // 🧹 Limpiar storage corrupto al iniciar
+  useStorageCleanup()
+
   // Hidratar estado inicial desde URL hash
   const initialRoute = parseRouteFromHash();
   
@@ -240,7 +245,7 @@ export default function App() {
           }, 800)
         }
       } catch (error) {
-        console.error("Error cargando sesión:", error);
+        logError("Error cargando sesión:", error);
         // En caso de error, marcar como no autenticado después de corto retraso
         clearAuthTimeout()
         authTimeoutRef.current = window.setTimeout(() => {
@@ -287,7 +292,7 @@ export default function App() {
           setUserData(userData_);
           sessionStorage.setItem('user_session', JSON.stringify(userData_));
         } catch (error) {
-          console.log("Error cargando perfil:", error);
+          logError("Error cargando perfil:", error);
           // Aunque falle el perfil, mantener la sesión autenticada
           const userData_ = {
             email: session.user.email || "",
@@ -344,7 +349,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      console.log("🚪 Iniciando cierre de sesión...");
+      debug("🚪 Iniciando cierre de sesión...");
       
       // Cerrar sesión en Supabase primero
       const { error } = await supabase.auth.signOut();
@@ -354,7 +359,7 @@ export default function App() {
         throw error;
       }
       
-      console.log("✅ Sesión cerrada en Supabase");
+      debug("✅ Sesión cerrada en Supabase");
       
       // Limpiar estados locales
       setIsLoggedIn(false);
@@ -364,8 +369,8 @@ export default function App() {
       // Limpiar sessionStorage
       sessionStorage.removeItem('user_session');
       
-      console.log("✅ Estados y sessionStorage limpiados");
-      console.log("✅ Sesión cerrada completamente");
+      debug("✅ Estados y sessionStorage limpiados");
+      debug("✅ Sesión cerrada completamente");
       
       toast.success("Sesión cerrada correctamente");
     } catch (error) {
@@ -565,15 +570,15 @@ export default function App() {
             <DropdownMenuItem
               onClick={async (e: React.MouseEvent) => {
                 e.preventDefault();
-                try {
-                  // Ejecutar debug de Supabase en la pestaña normal
-                  // Muestra resultados en consola del navegador
-                  await debugSupabaseSession();
-                  toast.success("Debug Supabase ejecutado (ver consola)");
-                } catch (err) {
-                  console.error("Error ejecutando debugSupabaseSession:", err);
-                  toast.error("Error ejecutando debug");
-                }
+                        try {
+                          // Ejecutar debug de Supabase en la pestaña normal
+                          // Muestra resultados en consola del navegador
+                          await debugSupabaseSession();
+                          toast.success("Debug Supabase ejecutado (ver consola)");
+                        } catch (err) {
+                          logError("Error ejecutando debugSupabaseSession:", err);
+                          toast.error("Error ejecutando debug");
+                        }
               }}
               className="cursor-pointer"
             >
@@ -587,7 +592,7 @@ export default function App() {
                   await clearSupabaseSession();
                   toast.success("Sesión local limpiada");
                 } catch (err) {
-                  console.error("Error clearSupabaseSession:", err);
+                  logError("Error clearSupabaseSession:", err);
                   toast.error("Error limpiando sesión");
                 }
               }}

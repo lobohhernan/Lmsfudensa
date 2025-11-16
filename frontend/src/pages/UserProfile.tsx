@@ -15,6 +15,7 @@ import {
 } from "../components/ui/select";
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { debug, error as logError } from '../lib/logger'
 
 interface UserProfileProps {
   onNavigate?: (page: string, courseId?: string) => void;
@@ -46,7 +47,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
         .single();
 
       if (profileError) {
-        console.log("Perfil no encontrado, creando uno básico:", profileError);
+        debug("Perfil no encontrado, creando uno básico:", profileError);
         
         // Intentar crear el perfil si no existe
         const newProfile = {

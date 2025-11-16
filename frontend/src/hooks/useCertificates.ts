@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { debug, error as logError } from '../lib/logger'
 
 export interface Certificate {
   id: string;
@@ -35,7 +36,7 @@ export function useCertificates() {
       if (fetchError) throw fetchError;
       setCertificates(data || []);
     } catch (err: any) {
-      console.error("Error fetching certificates:", err);
+      logError("Error fetching certificates:", err);
       setError(err.message || "Error al cargar certificados");
     } finally {
       setLoading(false);
@@ -56,7 +57,7 @@ export function useCertificates() {
           table: "certificates",
         },
         (payload) => {
-          console.log("Certificates realtime event:", payload);
+          debug("Certificates realtime event:", payload);
           fetchCertificates(); // Refetch on any change
         }
       )

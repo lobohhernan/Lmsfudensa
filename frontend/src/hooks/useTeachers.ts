@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { debug, error as logError } from '@/lib/logger'
 
 export interface Teacher {
   id: string
@@ -67,7 +68,7 @@ export function useTeachersRealtime() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'teachers' },
         (payload) => {
-          console.log('📡 Teachers realtime event:', payload.eventType)
+          debug('📡 Teachers realtime event:', payload.eventType)
 
           if (payload.eventType === 'INSERT') {
             const newTeacher = payload.new as Teacher
@@ -109,7 +110,7 @@ export function useTeachersRealtime() {
       const message =
         err instanceof Error ? err.message : 'Error fetching teachers'
       setError(message)
-      console.error('Error fetching teachers:', err)
+      logError('Error fetching teachers:', err)
     } finally {
       setLoading(false)
     }

@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Badge } from "../components/ui/badge";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { supabase } from "../lib/supabase";
+import { debug, error as logError } from '../lib/logger'
 import { useState, useEffect } from "react";
 
 interface CourseDetailProps {
@@ -30,7 +31,7 @@ export function CourseDetail({ courseId, onNavigate, isLoggedIn, onAuthRequired 
     const loadCourseData = async () => {
       try {
         setLoading(true);
-        console.log("Cargando curso con ID:", courseId);
+        debug("Cargando curso con ID:", courseId);
         
         // Cargar datos del curso
         const { data: course, error: courseError } = await supabase
@@ -40,11 +41,11 @@ export function CourseDetail({ courseId, onNavigate, isLoggedIn, onAuthRequired 
           .single();
 
         if (courseError) {
-          console.error("Error al cargar curso:", courseError);
+          logError("Error al cargar curso:", courseError);
           throw courseError;
         }
         
-        console.log("Curso cargado:", course);
+        debug("Curso cargado:", course);
         setCourseData(course);
 
         // Cargar lecciones del curso (ordenar por order_index, no 'order')
@@ -55,11 +56,11 @@ export function CourseDetail({ courseId, onNavigate, isLoggedIn, onAuthRequired 
           .order("order_index", { ascending: true });
 
         if (lessonsError) {
-          console.error("Error al cargar lecciones:", lessonsError);
+          logError("Error al cargar lecciones:", lessonsError);
           // No bloquear si no hay lecciones
           setLessons([]);
         } else {
-          console.log("Lecciones cargadas:", courseLessons?.length || 0);
+          debug("Lecciones cargadas:", courseLessons?.length || 0);
           setLessons(courseLessons || []);
         }
         

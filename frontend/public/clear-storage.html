@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limpiar Almacenamiento - LMS Fudensa</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #0B5FFF;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #0B5FFF;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 0;
+      width: 100%;
+    }
+    button:hover {
+      background: #094acc;
+    }
+    button.danger {
+      background: #dc2626;
+    }
+    button.danger:hover {
+      background: #b91c1c;
+    }
+    .info {
+      background: #eff6ff;
+      border: 1px solid #0B5FFF;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+    .success {
+      background: #dcfce7;
+      border: 1px solid #16a34a;
+      color: #166534;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+      display: none;
+    }
+    .stats {
+      font-family: monospace;
+      background: #f9fafb;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧹 Limpiar Almacenamiento</h1>
+    
+    <div class="info">
+      <strong>⚠️ Esta herramienta limpiará:</strong>
+      <ul>
+        <li>LocalStorage (incluyendo sesiones de Supabase)</li>
+        <li>SessionStorage</li>
+        <li>Cookies del sitio</li>
+        <li>IndexedDB</li>
+        <li>Cache Storage (Service Workers)</li>
+      </ul>
+    </div>
+
+    <div class="stats" id="stats">
+      Calculando uso de almacenamiento...
+    </div>
+
+    <button onclick="showStorageInfo()">📊 Ver Información de Almacenamiento</button>
+    <button onclick="clearLocalStorageOnly()">🗑️ Limpiar Solo LocalStorage</button>
+    <button onclick="clearAllStorage()" class="danger">🧨 Limpiar TODO el Almacenamiento</button>
+
+    <div class="success" id="success">
+      ✅ Almacenamiento limpiado exitosamente. Recarga la página para continuar.
+    </div>
+  </div>
+
+  <script>
+    async function calculateStorageUsage() {
+      const stats = {
+        localStorage: 0,
+        sessionStorage: 0,
+        cookies: 0,
+        total: 0
+      };
+
+      // LocalStorage
+      if (window.localStorage) {
+        stats.localStorage = new Blob(Object.values(localStorage)).size;
+      }
+
+      // SessionStorage
+      if (window.sessionStorage) {
+        stats.sessionStorage = new Blob(Object.values(sessionStorage)).size;
+      }
+
+      // Cookies
+      stats.cookies = new Blob([document.cookie]).size;
+
+      // Storage API (si está disponible)
+      if ('storage' in navigator && 'estimate' in navigator.storage) {
+        try {
+          const estimate = await navigator.storage.estimate();
+          stats.quota = estimate.quota;
+          stats.usage = estimate.usage;
+        } catch (e) {
+          console.error('Error estimating storage:', e);
+        }
+      }
+
+      return stats;
+    }
+
+    async function showStorageInfo() {
+      const stats = await calculateStorageUsage();
+      const statsEl = document.getElementById('stats');
+      
+      let html = '<strong>Uso de Almacenamiento:</strong><br>';
+      html += `LocalStorage: ${(stats.localStorage / 1024 / 1024).toFixed(2)} MB<br>`;
+      html += `SessionStorage: ${(stats.sessionStorage / 1024 / 1024).toFixed(2)} MB<br>`;
+      html += `Cookies: ${(stats.cookies / 1024).toFixed(2)} KB<br>`;
+      
+      if (stats.usage !== undefined) {
+        html += `<br><strong>Total usado:</strong> ${(stats.usage / 1024 / 1024).toFixed(2)} MB<br>`;
+        html += `<strong>Cuota total:</strong> ${(stats.quota / 1024 / 1024 / 1024).toFixed(2)} GB`;
+      }
+
+      // LocalStorage items
+      if (window.localStorage) {
+        html += '<br><br><strong>Items en LocalStorage:</strong><br>';
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          const size = new Blob([localStorage.getItem(key)]).size;
+          html += `• ${key}: ${(size / 1024).toFixed(2)} KB<br>`;
+        }
+      }
+
+      statsEl.innerHTML = html;
+    }
+
+    function clearLocalStorageOnly() {
+      if (confirm('¿Estás seguro de que quieres limpiar el LocalStorage? Esto cerrará tu sesión.')) {
+        localStorage.clear();
+        document.getElementById('success').style.display = 'block';
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+      }
+    }
+
+    async function clearAllStorage() {
+      if (confirm('⚠️ ADVERTENCIA: Esto eliminará TODOS los datos almacenados en el navegador para este sitio. ¿Continuar?')) {
+        // Clear LocalStorage
+        localStorage.clear();
+        
+        // Clear SessionStorage
+        sessionStorage.clear();
+        
+        // Clear Cookies
+        document.cookie.split(";").forEach(c => {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+
+        // Clear IndexedDB
+        if (window.indexedDB) {
+          const dbs = await indexedDB.databases();
+          dbs.forEach(db => {
+            if (db.name) indexedDB.deleteDatabase(db.name);
+          });
+        }
+
+        // Clear Cache Storage
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+        }
+
+        // Unregister Service Workers
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(reg => reg.unregister()));
+        }
+
+        document.getElementById('success').style.display = 'block';
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+      }
+    }
+
+    // Show info on load
+    showStorageInfo();
+  </script>
+</body>
+</html>

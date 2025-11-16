@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabase";
 import { supabaseAdmin, isAdminClientConfigured } from "../lib/supabaseAdmin";
+import { debug, info, error as logError } from '../lib/logger'
 
 interface IssueCertificateParams {
   studentId: string;
@@ -37,7 +38,7 @@ export async function issueCertificate(params: IssueCertificateParams) {
     );
 
     if (hashError) {
-      console.error("Error generando hash:", hashError);
+      logError("Error generando hash:", hashError);
       throw new Error("No se pudo generar el hash del certificado");
     }
 
@@ -64,14 +65,14 @@ export async function issueCertificate(params: IssueCertificateParams) {
       .single();
 
     if (error) {
-      console.error("Error insertando certificado:", error);
+      logError("Error insertando certificado:", error);
       throw error;
     }
 
-    console.log("✅ Certificado emitido:", data);
+    info("✅ Certificado emitido:", data);
     return data;
   } catch (err: any) {
-    console.error("❌ Error en issueCertificate:", err);
+    logError("❌ Error en issueCertificate:", err);
     throw err;
   }
 }
@@ -99,7 +100,7 @@ export async function hasCertificate(
     if (error) throw error;
     return (data && data.length > 0) || false;
   } catch (err) {
-    console.error("Error verificando certificado:", err);
+    logError("Error verificando certificado:", err);
     return false;
   }
 }

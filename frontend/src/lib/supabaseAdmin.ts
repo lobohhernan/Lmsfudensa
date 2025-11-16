@@ -19,6 +19,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { debug, warn } from './logger'
 
 // Obtener las credenciales
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -30,9 +31,9 @@ if (!supabaseUrl) {
 }
 
 if (!supabaseServiceRoleKey) {
-  console.warn('⚠️ VITE_SUPABASE_SERVICE_ROLE_KEY no configurada')
-  console.warn('El Admin Panel puede tener problemas con RLS')
-  console.warn('Solución temporal: Desactiva RLS en Supabase ejecutando FIX_RLS_DEFINITIVE_2025.sql OPCIÓN 1')
+  warn('⚠️ VITE_SUPABASE_SERVICE_ROLE_KEY no configurada')
+  warn('El Admin Panel puede tener problemas con RLS')
+  warn('Solución temporal: Desactiva RLS en Supabase ejecutando FIX_RLS_DEFINITIVE_2025.sql OPCIÓN 1')
 }
 
 /**
@@ -71,6 +72,6 @@ export function logAdminOperation(
   data?: any
 ) {
   if (import.meta.env.DEV) {
-    console.log(`🔐 [ADMIN] ${operation} en ${table}`, data)
+    debug(`🔐 [ADMIN] ${operation} en ${table}`, data)
   }
 }

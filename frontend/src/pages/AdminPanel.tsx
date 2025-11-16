@@ -54,6 +54,7 @@ import { CourseCard } from "../components/CourseCard";
 import { type FullCourse } from "../lib/data";
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
+import { debug, error as logError } from '../lib/logger'
 import { supabaseAdmin, isAdminClientConfigured, logAdminOperation } from "../lib/supabaseAdmin";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
 import { useTeachersRealtime } from "../hooks/useTeachers";
@@ -164,7 +165,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       }
       
       setUsersList(data || []);
-      console.log("Usuarios cargados:", data?.length);
+      debug("Usuarios cargados:", data?.length);
     } catch (err: any) {
       const msg = err?.message || String(err);
       setUsersError(msg);
@@ -304,7 +305,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             console.error("❌ Error guardando evaluaciones:", evalError);
             toast.warning("Curso guardado, pero error al guardar evaluaciones");
           } else {
-            console.log(`✅ ${evaluationsToInsert.length} evaluaciones guardadas`);
+            debug(`✅ ${evaluationsToInsert.length} evaluaciones guardadas`);
           }
         } catch (evalErr) {
           console.error("Error guardando evaluaciones:", evalErr);
