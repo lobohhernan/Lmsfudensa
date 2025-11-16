@@ -1,5 +1,4 @@
-
-import { Facebook, Instagram, Linkedin, Youtube } from "lucide-react";
+import { Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
 import { useEffect, useState } from "react";
 import logoVertical from "../assets/logo-vertical.svg";
 import { supabase } from "../lib/supabase";
