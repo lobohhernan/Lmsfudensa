@@ -45,6 +45,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Lockfiles
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
 # Caché
 .cache/
 .next/
