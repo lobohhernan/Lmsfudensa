@@ -189,6 +189,15 @@ export default function App() {
     // ✨ Inicializar Cache Manager (detección automática de versión)
     initCacheManager()
 
+    const authTimeoutRef: { current: number | null } = { current: null }
+
+    const clearAuthTimeout = () => {
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current)
+        authTimeoutRef.current = null
+      }
+    }
+
     const loadSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -220,16 +229,26 @@ export default function App() {
           setUserData(userData_);
           sessionStorage.setItem('user_session', JSON.stringify(userData_));
         } else {
-          // No hay sesión, limpiar todo
-          setIsLoggedIn(false);
-          setUserData(null);
-          sessionStorage.removeItem('user_session');
+          // No hay sesión inmediata — esperar un poco por si la rehidratación llega
+          // (algunos entornos pueden rehidratar storage de forma asíncrona)
+          clearAuthTimeout()
+          authTimeoutRef.current = window.setTimeout(() => {
+            setIsLoggedIn(false)
+            setUserData(null)
+            sessionStorage.removeItem('user_session')
+            authTimeoutRef.current = null
+          }, 800)
         }
       } catch (error) {
         console.error("Error cargando sesión:", error);
-        setIsLoggedIn(false);
-        setUserData(null);
-        sessionStorage.removeItem('user_session');
+        // En caso de error, marcar como no autenticado después de corto retraso
+        clearAuthTimeout()
+        authTimeoutRef.current = window.setTimeout(() => {
+          setIsLoggedIn(false)
+          setUserData(null)
+          sessionStorage.removeItem('user_session')
+          authTimeoutRef.current = null
+        }, 800)
       }
     };
 
@@ -237,6 +256,11 @@ export default function App() {
 
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // Si llegó alguna actualización de auth, cancelar el timeout de no-auth
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current)
+        authTimeoutRef.current = null
+      }
       if (session?.user) {
         try {
           const { data: profile } = await supabase
@@ -282,6 +306,10 @@ export default function App() {
 
     return () => {
       subscription?.unsubscribe();
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current)
+        authTimeoutRef.current = null
+      }
     };
   }, []);
 
@@ -361,26 +389,55 @@ export default function App() {
       </>
     );
   }
-
   if (currentPage === "lesson") {
     return (
-      <>
-        <LessonPlayer 
+      <div className="flex min-h-screen flex-col">
+        <AppNavbar 
           onNavigate={handleNavigate} 
-          courseId={currentCourseId}
-          lessonId={currentLessonId}
+          isLoggedIn={isLoggedIn}
+          currentUser={userData}
+          onLogout={handleLogout}
+          onLogin={handleLogin}
+          currentPage={currentPage}
+          openLoginModal={showAuthModal}
+          onLoginModalChange={setShowAuthModal}
         />
+
+        <main className="flex-1">
+          <LessonPlayer 
+            onNavigate={handleNavigate} 
+            courseId={currentCourseId}
+            lessonId={currentLessonId}
+          />
+        </main>
+
+        <AppFooter onNavigate={handleNavigate} />
         <Toaster />
-      </>
+      </div>
     );
   }
 
   if (currentPage === "evaluation") {
     return (
-      <>
-        <Evaluation onNavigate={handleNavigate} />
+      <div className="flex min-h-screen flex-col">
+        <AppNavbar 
+          onNavigate={handleNavigate} 
+          isLoggedIn={isLoggedIn}
+          currentUser={userData}
+          onLogout={handleLogout}
+          onLogin={handleLogin}
+          currentPage={currentPage}
+          openLoginModal={showAuthModal}
+          onLoginModalChange={setShowAuthModal}
+        />
+
+        <main className="flex-1">
+          <Evaluation onNavigate={handleNavigate} />
+        </main>
+
+        <AppFooter onNavigate={handleNavigate} />
         <Toaster />
-      </>
+      </div>
     );
   }
 
