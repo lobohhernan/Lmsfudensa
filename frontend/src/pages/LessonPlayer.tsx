@@ -2,14 +2,16 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, CheckCircle, Award, List, Youtube, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/button";
-import { Progress } from "../components/ui/progress";
 import { LessonList, Lesson } from "../components/LessonList";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-// Avatar imports removed (unused)
+import { resolveCourseSlugToId } from "../lib/courseResolver"
+import { isUserEnrolled } from "../lib/enrollments"
+import { toast } from "sonner"
 
 interface LessonPlayerProps {
-  onNavigate?: (page: string) => void;
+  onNavigate?: (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => void;
   courseId?: string;
+  courseSlug?: string;
   lessonId?: string;
 }
 
@@ -20,25 +22,85 @@ interface LessonWithYoutube extends Lesson {
 
 // comments placeholder removed (unused)
 
-export function LessonPlayer({ onNavigate, courseId, lessonId }: LessonPlayerProps) {
+export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug, lessonId }: LessonPlayerProps) {
   const [lessons, setLessons] = useState<LessonWithYoutube[]>([]);
   const [courseData, setCourseData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentLesson, setCurrentLesson] = useState(lessonId || "1");
   const [showSidebar, setShowSidebar] = useState(false);
+  const [courseId, setCourseId] = useState<string | undefined>(initialCourseId);
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const [savingProgress, setSavingProgress] = useState(false);
 
-  // Cargar curso y lecciones desde Supabase
+  // ✅ PASO 1: Resolver courseSlug a courseId si es necesario
   useEffect(() => {
+    const resolveSlug = async () => {
+      // Si ya tenemos courseId, no hacer nada
+      if (courseId) return;
+      
+      // Si no tenemos courseId pero sí slug, resolver
+      if (!courseId && courseSlug) {
+        console.log(`🔄 [LessonPlayer] Resolviendo slug: ${courseSlug}`);
+        const resolvedId = await resolveCourseSlugToId(courseSlug);
+        
+        if (resolvedId) {
+          console.log(`✅ [LessonPlayer] Slug resuelto: ${courseSlug} → ${resolvedId}`);
+          setCourseId(resolvedId);
+        } else {
+          setError(`No se encontró curso con slug: ${courseSlug}`);
+          setLoading(false);
+        }
+      } else if (!courseId && !courseSlug) {
+        setError("No se proporcionó información del curso");
+        setLoading(false);
+      }
+    };
+    
+    resolveSlug();
+  }, [courseSlug, courseId]);
+
+  // ✅ PASO 2: Cargar curso y lecciones desde Supabase
+  useEffect(() => {
+    // Esperar a tener courseId antes de cargar
     if (!courseId) {
-      setError("No se proporcionó ID del curso");
-      setLoading(false);
       return;
     }
 
     const loadData = async () => {
       try {
         setLoading(true);
+
+        // ✅ VERIFICAR SI EL USUARIO ESTÁ INSCRITO ANTES DE CARGAR
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const enrolled = await isUserEnrolled(user.id, courseId);
+          
+          if (!enrolled) {
+            // ❌ Usuario NO inscrito → Redirigir a la página del curso
+            console.log('⚠️ [LessonPlayer] Usuario no inscrito, redirigiendo a CourseDetail');
+            toast.error("Debes inscribirte en el curso para acceder a las lecciones");
+            setLoading(false);
+            setTimeout(() => {
+              // ✅ Mantener courseId y courseSlug al redirigir
+              onNavigate?.("course", courseId, courseSlug);
+            }, 1500);
+            return;
+          }
+          
+          console.log('✅ [LessonPlayer] Usuario inscrito, cargando lecciones...');
+        } else {
+          // ❌ Usuario NO autenticado → Redirigir a CourseDetail
+          console.log('⚠️ [LessonPlayer] Usuario no autenticado, redirigiendo');
+          toast.error("Debes iniciar sesión para acceder al curso");
+          setLoading(false);
+          setTimeout(() => {
+            // ✅ Mantener courseId y courseSlug al redirigir
+            onNavigate?.("course", courseId, courseSlug);
+          }, 1500);
+          return;
+        }
 
         // Cargar curso
         const { data: course, error: courseError } = await supabase
@@ -59,13 +121,29 @@ export function LessonPlayer({ onNavigate, courseId, lessonId }: LessonPlayerPro
 
         if (lessonsError) throw lessonsError;
 
-        // Mapear a formato esperado
+        // ✅ Cargar progreso del usuario desde user_progress
+        const { data: progressData } = await supabase
+          .from("user_progress")
+          .select("lesson_id, completed")
+          .eq("user_id", user.id)
+          .eq("course_id", courseId)
+          .eq("completed", true);
+
+        // Crear Set de lecciones completadas para búsqueda O(1)
+        const completedIds = new Set(
+          (progressData || []).map((p: any) => p.lesson_id)
+        );
+        setCompletedLessons(completedIds);
+
+        console.log(`✅ [LessonPlayer] Progreso cargado: ${completedIds.size} lecciones completadas`);
+
+        // Mapear a formato esperado y marcar completadas
         const mappedLessons: LessonWithYoutube[] = (lessonsData || []).map((lesson: any) => ({
           id: lesson.id,
           title: lesson.title,
           duration: lesson.duration || "N/A",
           type: lesson.type || "video",
-          completed: lesson.completed || false,
+          completed: completedIds.has(lesson.id), // ✅ Marcar desde DB
           locked: lesson.locked || false,
           youtubeId: lesson.youtube_id || null,
         }));
@@ -85,8 +163,58 @@ export function LessonPlayer({ onNavigate, courseId, lessonId }: LessonPlayerPro
 
   const currentLessonData = lessons.find((l) => l.id === currentLesson);
   const currentIndex = lessons.findIndex((l) => l.id === currentLesson);
-  const completedCount = lessons.filter((l) => l.completed).length;
-  const courseProgress = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
+  const isCurrentLessonCompleted = currentLessonData?.completed || false;
+
+  // Función para marcar la lección actual como completada
+  const handleMarkComplete = async () => {
+    try {
+      setSavingProgress(true);
+      
+      // Obtener usuario actual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Debes iniciar sesión para guardar tu progreso");
+        return;
+      }
+
+      if (!courseId) {
+        toast.error("No se pudo identificar el curso");
+        return;
+      }
+
+      // ✅ Guardar en base de datos usando la función SQL
+      const { error: saveError } = await supabase.rpc('mark_lesson_complete', {
+        p_user_id: user.id,
+        p_course_id: courseId,
+        p_lesson_id: currentLesson
+      });
+
+      if (saveError) {
+        console.error('❌ Error guardando progreso:', saveError);
+        toast.error("Error al guardar tu progreso");
+        return;
+      }
+
+      // ✅ Actualizar estado local
+      setCompletedLessons(prev => new Set(prev).add(currentLesson));
+      setLessons(prevLessons => 
+        prevLessons.map(lesson => 
+          lesson.id === currentLesson 
+            ? { ...lesson, completed: true }
+            : lesson
+        )
+      );
+
+      console.log(`✅ [LessonPlayer] Progreso guardado: Lección ${currentLesson} completada`);
+      toast.success("¡Lección completada! Tu progreso ha sido guardado");
+
+    } catch (err: any) {
+      console.error('❌ Error al marcar como completada:', err);
+      toast.error("Error al guardar tu progreso");
+    } finally {
+      setSavingProgress(false);
+    }
+  };
 
   // Loading state
   if (loading) {
@@ -123,23 +251,15 @@ export function LessonPlayer({ onNavigate, courseId, lessonId }: LessonPlayerPro
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onNavigate?.("course")}
+              onClick={() => onNavigate?.("course", courseId, courseSlug)}
             >
               <ChevronLeft className="h-5 w-5" />
               Volver al curso
             </Button>
             <div className="hidden md:block">
-              <h2 className="text-[#0F172A]">RCP Adultos AHA 2020</h2>
-              <p className="text-sm text-[#64748B]">
-                {completedCount} de {lessons.length} lecciones completadas
-              </p>
+              <h2 className="text-[#0F172A]">{courseData?.title || "Curso"}</h2>
+              <p className="text-sm text-[#64748B]">Lección {currentIndex + 1} de {lessons.length}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden w-48 md:block">
-              <Progress value={courseProgress} className="h-2" />
-            </div>
-            <span className="text-sm text-[#64748B]">{Math.round(courseProgress)}%</span>
           </div>
         </div>
       </div>
@@ -190,9 +310,18 @@ export function LessonPlayer({ onNavigate, courseId, lessonId }: LessonPlayerPro
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-4">
-                <Button>
-                  <CheckCircle className="mr-2 h-5 w-5" />
-                  Marcar como completada
+                <Button 
+                  onClick={handleMarkComplete}
+                  variant={isCurrentLessonCompleted ? "default" : "default"}
+                  className={isCurrentLessonCompleted ? "bg-[#22C55E] hover:bg-[#16A34A]" : ""}
+                  disabled={savingProgress || isCurrentLessonCompleted}
+                >
+                  {savingProgress ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                  )}
+                  {savingProgress ? "Guardando..." : (isCurrentLessonCompleted ? "Completada ✓" : "Marcar como completada")}
                 </Button>
                 {currentIndex < lessons.length - 1 && (
                   <Button

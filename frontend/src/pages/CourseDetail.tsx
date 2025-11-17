@@ -6,25 +6,57 @@ import { Badge } from "../components/ui/badge";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
+import { resolveCourseSlugToId } from "../lib/courseResolver"
+import { isUserEnrolled } from "../lib/enrollments"
 import { useState, useEffect } from "react";
 
 interface CourseDetailProps {
   courseId?: string;
+  courseSlug?: string;
   onNavigate?: (page: string, courseId?: string) => void;
   isLoggedIn?: boolean;
   onAuthRequired?: (page: string, courseId?: string) => void;
 }
 
-export function CourseDetail({ courseId, onNavigate, isLoggedIn, onAuthRequired }: CourseDetailProps) {
+export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate, isLoggedIn, onAuthRequired }: CourseDetailProps) {
   const [courseData, setCourseData] = useState<any>(null);
   const [lessons, setLessons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [courseId, setCourseId] = useState<string | undefined>(initialCourseId);
 
+  // ✅ PASO 1: Resolver courseSlug a courseId si es necesario
   useEffect(() => {
+    const resolveSlug = async () => {
+      // Si ya tenemos courseId, no hacer nada
+      if (courseId) return;
+      
+      // Si no tenemos courseId pero sí slug, resolver
+      if (!courseId && courseSlug) {
+        debug(`🔄 [CourseDetail] Resolviendo slug: ${courseSlug}`);
+        const resolvedId = await resolveCourseSlugToId(courseSlug);
+        
+        if (resolvedId) {
+          debug(`✅ [CourseDetail] Slug resuelto: ${courseSlug} → ${resolvedId}`);
+          setCourseId(resolvedId);
+        } else {
+          setError(`No se encontró curso con slug: ${courseSlug}`);
+          setLoading(false);
+        }
+      } else if (!courseId && !courseSlug) {
+        // No hay ni courseId ni courseSlug
+        setError("No se proporcionó información del curso");
+        setLoading(false);
+      }
+    };
+    
+    resolveSlug();
+  }, [courseSlug, courseId]);
+
+  // ✅ PASO 2: Cargar datos del curso cuando tengamos courseId
+  useEffect(() => {
+    // Esperar a tener courseId antes de cargar
     if (!courseId) {
-      setError("No se proporcionó ID del curso");
-      setLoading(false);
       return;
     }
 

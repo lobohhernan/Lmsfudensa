@@ -37,7 +37,7 @@ export function useCoursesRealtime() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'courses' },
         (payload) => {
-          console.log('📡 Realtime event:', payload.eventType, payload.new || payload.old)
+          // Realtime event handling (logs removidos para performance)
 
           if (payload.eventType === 'INSERT') {
             // Add new course
@@ -70,20 +70,11 @@ export function useCoursesRealtime() {
 
   const fetchCourses = async () => {
     try {
-      console.log('🔍 [useCoursesRealtime] Iniciando fetch de cursos...')
       setLoading(true)
       const { data, error: queryError } = await supabase
         .from('courses')
         .select('*')
         .order('created_at', { ascending: false })
-
-      console.log('📦 [useCoursesRealtime] Respuesta:', {
-        count: data?.length || 0,
-        hasError: !!queryError,
-        errorMsg: queryError?.message || null,
-        firstCourse: data?.[0]?.title || 'N/A',
-        sampleData: data?.slice(0, 1)
-      })
 
       if (queryError) throw queryError
 
@@ -96,7 +87,6 @@ export function useCoursesRealtime() {
             : undefined,
       }))
       
-      console.log(`✅ [useCoursesRealtime] ${processedData.length} cursos cargados correctamente`)
       setCourses(processedData)
       setError(null)
     } catch (err) {

@@ -83,5 +83,7 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    // ✅ Configurar para SPA routing sin hash
+    historyApiFallback: true,
   },
 });

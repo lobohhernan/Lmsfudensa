@@ -24,16 +24,17 @@ import { Badge } from "../components/ui/badge";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
 import { isUserEnrolled, enrollUser } from "../lib/enrollments";
+import { resolveCourseSlugToId } from "../lib/courseResolver"
 
 interface CheckoutProps {
-  onNavigate?: (page: string) => void;
+  onNavigate?: (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => void;
   courseId?: string;
   courseSlug?: string;
   userData?: { email: string; name: string } | null;
   isInitializing?: boolean;
 }
 
-export function Checkout({ onNavigate, courseId, courseSlug, userData, isInitializing = false }: CheckoutProps) {
+export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, userData, isInitializing = false }: CheckoutProps) {
   const [step, setStep] = useState(1);
   const [country, setCountry] = useState("AR");
   // paymentMethod removed (not used)
@@ -41,8 +42,37 @@ export function Checkout({ onNavigate, courseId, courseSlug, userData, isInitial
   const [isProcessing, setIsProcessing] = useState(false);
   const [courseData, setCourseData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [courseId, setCourseId] = useState<string | undefined>(initialCourseId);
 
   console.log('🛒 [Checkout] Props:', { courseId, courseSlug, hasUserData: !!userData, isInitializing });
+
+  // ✅ PASO 1: Resolver courseSlug a courseId si es necesario
+  useEffect(() => {
+    const resolveSlug = async () => {
+      // Si ya tenemos courseId, no hacer nada
+      if (courseId) return;
+      
+      // Si no tenemos courseId pero sí slug, resolver
+      if (!courseId && courseSlug) {
+        console.log(`🔄 [Checkout] Resolviendo slug: ${courseSlug}`);
+        const resolvedId = await resolveCourseSlugToId(courseSlug);
+        
+        if (resolvedId) {
+          console.log(`✅ [Checkout] Slug resuelto: ${courseSlug} → ${resolvedId}`);
+          setCourseId(resolvedId);
+        } else {
+          setError(`No se encontró curso con slug: ${courseSlug}`);
+          setLoading(false);
+        }
+      } else if (!courseId && !courseSlug) {
+        setError("No se proporcionó información del curso");
+        setLoading(false);
+      }
+    };
+    
+    resolveSlug();
+  }, [courseSlug, courseId]);
 
   // Mostrar loader mientras se inicializa la sesión
   if (isInitializing) {
@@ -56,31 +86,10 @@ export function Checkout({ onNavigate, courseId, courseSlug, userData, isInitial
     );
   }
 
-  // Si no hay courseId NI courseSlug, mostrar error
-  if (!courseId && !courseSlug) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-red-600">Error</CardTitle>
-            <CardDescription>No se proporcionó información del curso</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => onNavigate?.("catalog")} className="w-full">
-              Volver al Catálogo
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-  const [error, setError] = useState<string | null>(null);
-
-  // Cargar datos del curso desde Supabase
+  // ✅ PASO 2: Cargar datos del curso desde Supabase
   useEffect(() => {
+    // Esperar a tener courseId antes de cargar
     if (!courseId) {
-      setError("No se proporcionó ID del curso");
-      setLoading(false);
       return;
     }
 
@@ -125,12 +134,14 @@ export function Checkout({ onNavigate, courseId, courseSlug, userData, isInitial
 
         const enrolled = await isUserEnrolled(user.id, courseId);
         if (enrolled) {
+          console.log("✅ [Checkout] Usuario ya inscrito, redirigiendo a lección 1...");
           toast.info("Ya estás inscrito en este curso", {
             description: "Te redirigiremos a la lección",
           });
           setTimeout(() => {
-            onNavigate?.("lesson");
-          }, 1500);
+            // ✅ Pasar courseId, courseSlug y lessonId para URL correcta
+            onNavigate?.("lesson", courseId, courseSlug, "1");
+          }, 1000); // Reducido a 1 segundo
         }
       } catch (err) {
         console.error("Error verificando inscripción:", err);
@@ -158,28 +169,31 @@ export function Checkout({ onNavigate, courseId, courseSlug, userData, isInitial
     setTimeout(() => {
       (async () => {
         try {
-          toast.success("¡Pago procesado exitosamente!");
-
           // Intentar inscribir al usuario en el curso
           const { data: { user } } = await supabase.auth.getUser();
           if (user && courseId) {
             const res = await enrollUser(user.id, courseId);
             if (res.success) {
-              debug("Usuario inscrito correctamente en el curso");
+              debug("✅ Usuario inscrito correctamente en el curso");
+              toast.success("¡Pago procesado exitosamente!");
+              
+              setIsProcessing(false);
+              
+              // ✅ REDIRIGIR DIRECTO A LA PRIMERA LECCIÓN DEL CURSO
+              // El certificado solo se mostrará al completar el curso + evaluación
+              setTimeout(() => {
+                onNavigate?.("lesson", courseId, courseSlug, "1");
+              }, 800);
             } else {
               console.warn("No se pudo inscribir automáticamente:", res.error);
+              toast.error("Error al procesar la inscripción");
+              setIsProcessing(false);
             }
           } else {
             console.warn("No hay usuario autenticado o courseId no disponible para inscribir");
+            toast.error("Error de autenticación");
+            setIsProcessing(false);
           }
-
-          setIsProcessing(false);
-          // Mostrar pantalla de confirmación
-          setStep(3);
-          // Después de unos segundos, redirigir al reproductor de lecciones
-          setTimeout(() => {
-            onNavigate?.("lesson");
-          }, 1800);
         } catch (err) {
           console.error("Error durante el flujo de pago/inscripción:", err);
           toast.error("Ocurrió un error procesando la inscripción");
@@ -215,69 +229,8 @@ export function Checkout({ onNavigate, courseId, courseSlug, userData, isInitial
     );
   }
 
-  if (step === 3) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] py-12">
-        <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#22C55E]/10">
-              <Check className="h-10 w-10 text-[#22C55E]" />
-            </div>
-            <h1 className="mb-4 text-[#0F172A]">¡Pago Confirmado!</h1>
-            <p className="mb-8 text-[#64748B]">
-              Tu certificado está listo para ser descargado
-            </p>
-
-            {/* Certificate Preview */}
-            <Card className="mb-8 overflow-hidden border-2 border-[#16A34A]">
-              <CardContent className="bg-gradient-to-br from-white to-[#F8FAFC] p-8">
-                <div className="mb-6 flex justify-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#16A34A]">
-                    <Award className="h-8 w-8 text-white" />
-                  </div>
-                </div>
-                <h2 className="mb-2 text-[#0F172A]">Certificado de Finalización</h2>
-                <p className="mb-6 text-[#64748B]">
-                  Este certifica que has completado exitosamente
-                </p>
-                <h3 className="mb-6 text-[#0F172A]">
-                  {courseData?.title || "Curso"}
-                </h3>
-                <div className="mb-6 space-y-2 text-sm text-[#64748B]">
-                  <p>Duración: {courseData?.duration || "N/A"}</p>
-                  <p>Fecha de emisión: {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                  <p className="font-mono">
-                    Hash: a7f8e9c2b4d6f1a3c5e7b9d2f4a6c8e0
-                  </p>
-                </div>
-                <div className="flex justify-center gap-2">
-                  <Badge className="bg-[#0B5FFF] text-white">FUDENSA</Badge>
-                  <Badge className="bg-[#16A34A] text-white">
-                    <ShieldCheck className="mr-1 h-3 w-3" />
-                    Verificado
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <Button size="lg" onClick={() => onNavigate?.("profile")}>
-                <Award className="mr-2 h-5 w-5" />
-                Ver en Mi Perfil
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => onNavigate?.("home")}
-              >
-                Volver al Inicio
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // ✅ ELIMINADO: step === 3 (certificado)
+  // El certificado ahora solo aparece después de completar el curso + evaluación
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
