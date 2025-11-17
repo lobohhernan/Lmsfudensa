@@ -22,6 +22,7 @@ import { initCacheManager } from "./lib/cacheManager";
 import { debugSupabaseSession, clearSupabaseSession } from "./utils/debugSupabase";
 import { debug, error as logError } from './lib/logger'
 import { useStorageCleanup } from "./hooks/useStorageCleanup"
+import { resolveCourseSlugToId } from "./lib/courseResolver"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,15 +44,15 @@ type Page =
   | "about"
   | "contact";
 
-// Función para parsear la ruta desde el hash
-function parseRouteFromHash(): {
+// Función para parsear la ruta desde el pathname (sin hash)
+function parseRouteFromPath(): {
   page: Page;
   courseId?: string;
   courseSlug?: string;
   lessonId?: string;
 } {
-  const hash = window.location.hash.slice(1); // Quita el #
-  const parts = hash.split('/').filter(Boolean);
+  const pathname = window.location.pathname;
+  const parts = pathname.split('/').filter(Boolean);
 
   if (!parts.length || parts[0] === '') {
     return { page: 'home' };
@@ -116,60 +117,91 @@ export default function App() {
   // 🧹 Limpiar storage corrupto al iniciar
   useStorageCleanup()
 
-  // Hidratar estado inicial desde URL hash
-  const initialRoute = parseRouteFromHash();
+  // Hidratar estado inicial desde URL pathname (sin hash)
+  const initialRoute = parseRouteFromPath();
   
   const [currentPage, setCurrentPage] = useState<Page>(initialRoute.page);
   const [currentCourseId, setCurrentCourseId] = useState<string | undefined>(initialRoute.courseId);
   const [currentCourseSlug, setCurrentCourseSlug] = useState<string | undefined>(initialRoute.courseSlug);
   const [currentLessonId, setCurrentLessonId] = useState<string | undefined>(initialRoute.lessonId);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true); // Estado de carga inicial
+  // ✅ Solo inicializar si hay tokens guardados
+  const [isInitializing, setIsInitializing] = useState(() => {
+    return !!localStorage.getItem('sb-lgqzmqfnjcnquwkqkgpy-auth-token');
+  });
   const [userData, setUserData] = useState<{ email: string; name: string } | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isResolvingRoute, setIsResolvingRoute] = useState(false);
+
+  // ✅ Resolver courseSlug a courseId cuando navegamos por URL (F5)
+  useEffect(() => {
+    const resolveSlugToId = async () => {
+      // Si ya tenemos courseId, no hacer nada
+      if (currentCourseId) return;
+      
+      // Si tenemos slug pero NO id, resolver
+      if (currentCourseSlug && !currentCourseId) {
+        setIsResolvingRoute(true);
+        debug(`🔄 [App] Resolviendo slug "${currentCourseSlug}" a ID...`);
+        
+        const resolvedId = await resolveCourseSlugToId(currentCourseSlug);
+        
+        if (resolvedId) {
+          debug(`✅ [App] Slug resuelto: ${currentCourseSlug} → ${resolvedId}`);
+          setCurrentCourseId(resolvedId);
+        } else {
+          logError(`❌ [App] No se pudo resolver slug: ${currentCourseSlug}`);
+        }
+        
+        setIsResolvingRoute(false);
+      }
+    };
+    
+    resolveSlugToId();
+  }, [currentCourseSlug, currentCourseId]);
 
   // Actualizar URL según la página activa
   useEffect(() => {
     if (currentPage === "profile" && userData) {
       // Perfil: /perfil/username
       const userId = userData.email.split('@')[0];
-      window.history.replaceState(null, "", `#/perfil/${userId}`);
+      window.history.pushState(null, "", `/perfil/${userId}`);
       document.title = `Perfil - ${userData.name} | FUDENSA`;
     } else if (currentPage === "catalog") {
       // Catálogo: /cursos
-      window.history.replaceState(null, "", "#/cursos");
+      window.history.pushState(null, "", "/cursos");
       document.title = "Catálogo de Cursos | FUDENSA";
     } else if (currentPage === "course" && currentCourseSlug) {
       // Curso: /curso/nombre-del-curso
-      window.history.replaceState(null, "", `#/curso/${currentCourseSlug}`);
+      window.history.pushState(null, "", `/curso/${currentCourseSlug}`);
       document.title = `${currentCourseSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} | FUDENSA`;
     } else if (currentPage === "lesson" && currentCourseSlug && currentLessonId) {
       // Lección: /curso/nombre-del-curso/leccion/1
-      window.history.replaceState(null, "", `#/curso/${currentCourseSlug}/leccion/${currentLessonId}`);
+      window.history.pushState(null, "", `/curso/${currentCourseSlug}/leccion/${currentLessonId}`);
       document.title = `Lección ${currentLessonId} | FUDENSA`;
     } else if (currentPage === "evaluation" && currentCourseSlug) {
       // Evaluación: /curso/nombre-del-curso/evaluacion
-      window.history.replaceState(null, "", `#/curso/${currentCourseSlug}/evaluacion`);
+      window.history.pushState(null, "", `/curso/${currentCourseSlug}/evaluacion`);
       document.title = `Evaluación | FUDENSA`;
     } else if (currentPage === "checkout" && currentCourseSlug) {
       // Checkout: /checkout/nombre-del-curso
-      window.history.replaceState(null, "", `#/checkout/${currentCourseSlug}`);
+      window.history.pushState(null, "", `/checkout/${currentCourseSlug}`);
       document.title = `Checkout | FUDENSA`;
     } else if (currentPage === "admin") {
       // Admin: /admin/panel
-      window.history.replaceState(null, "", "#/admin/panel");
+      window.history.pushState(null, "", "/admin/panel");
       document.title = "Panel de Administración | FUDENSA";
     } else if (currentPage === "about") {
-      // Sobre nosotros: /sobre-nosotros
-      window.history.replaceState(null, "", "#/sobre-nosotros");
+      // Sobre Nosotros: /sobre-nosotros
+      window.history.pushState(null, "", "/sobre-nosotros");
       document.title = "Sobre Nosotros | FUDENSA";
     } else if (currentPage === "contact") {
       // Contacto: /contacto
-      window.history.replaceState(null, "", "#/contacto");
+      window.history.pushState(null, "", "/contacto");
       document.title = "Contacto | FUDENSA";
     } else if (currentPage === "home") {
-      window.history.replaceState(null, "", "#/");
+      window.history.pushState(null, "", "/");
       document.title = "FUDENSA - Formación Profesional en Salud Certificada";
     } else {
       // Páginas restantes
@@ -190,6 +222,20 @@ export default function App() {
     }
   }, [currentPage, userData, currentCourseSlug, currentLessonId]);
 
+  // ✅ Listener para botón atrás/adelante del navegador
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parseRouteFromPath();
+      setCurrentPage(route.page);
+      setCurrentCourseId(route.courseId);
+      setCurrentCourseSlug(route.courseSlug);
+      setCurrentLessonId(route.lessonId);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Cargar sesión de Supabase al iniciar
   useEffect(() => {
     // ✨ Inicializar Cache Manager (detección automática de versión)
@@ -206,70 +252,75 @@ export default function App() {
 
     const loadSession = async () => {
       try {
-        console.log('🔐 [App] Cargando sesión...')
+        debug('🔐 [App] Cargando sesión...')
         
-        // Verificar si hay tokens en localStorage antes de hacer la petición
+        // ✅ SOLO MOSTRAR "Verificando sesión..." SI HAY TOKENS GUARDADOS
         const hasStoredSession = localStorage.getItem('sb-lgqzmqfnjcnquwkqkgpy-auth-token')
         
         if (!hasStoredSession) {
-          // No hay sesión guardada, terminar inmediatamente
-          console.log('⚠️ [App] No hay tokens en localStorage, saltando verificación')
+          // No hay sesión guardada, terminar inmediatamente SIN mostrar loader
+          debug('⚠️ [App] No hay tokens en localStorage, saltando verificación')
           setIsLoggedIn(false)
           setUserData(null)
           sessionStorage.removeItem('user_session')
-          setIsInitializing(false)
+          setIsInitializing(false) // Finalizar inmediatamente
           return
         }
         
+        // ✅ SI HAY TOKENS, AHORA SÍ VERIFICAMOS (aquí se muestra el loader)
+        
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
+        debug('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
         
         if (session?.user) {
-          console.log('🔐 [App] Usuario autenticado, consultando perfil...')
+          debug('🔐 [App] Usuario autenticado, consultando perfil...')
           
-          // Obtener perfil completo con TIMEOUT de 2 segundos
-          const profilePromise = supabase
-            .from("profiles")
-            .select("full_name, email")
-            .eq("id", session.user.id)
-            .single();
-          
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout profiles')), 2000)
-          );
-          
-          let profile = null;
-          let profileError = null;
-          
-          try {
-            const result = await Promise.race([profilePromise, timeoutPromise]) as any;
-            profile = result.data;
-            profileError = result.error;
-          } catch (err: any) {
-            console.warn('⚠️ [App] Timeout o error en profiles:', err.message);
-            profileError = err;
-          }
-          
-          console.log('🔐 [App] Respuesta profiles:', { hasProfile: !!profile, error: profileError?.message });
-
+          // ⚠️ IMPORTANTE: NO BLOQUEAR si falla profiles
+          // Los cursos deben cargar independientemente
           let userData_: { email: string; name: string };
           
-          if (profile) {
-            console.log('✅ [App] Perfil encontrado:', profile.full_name)
-            userData_ = {
-              email: profile.email || session.user.email || "",
-              name: profile.full_name || session.user.email?.split('@')[0] || "Usuario",
-            };
-          } else {
-            // Si no tiene perfil, usar los datos del auth (esto es OK)
-            console.log('⚠️ [App] No hay perfil en DB, usando datos de auth')
+          try {
+            // Obtener perfil completo con TIMEOUT de 1 segundo (reducido)
+            const profilePromise = supabase
+              .from("profiles")
+              .select("full_name, email")
+              .eq("id", session.user.id)
+              .single();
+            
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout profiles')), 3000) // ⏱️ 3 segundos max
+            );
+            
+            const result = await Promise.race([profilePromise, timeoutPromise]) as any;
+            const profile = result?.data;
+            const profileError = result?.error;
+            
+            debug('🔐 [App] Respuesta profiles:', { hasProfile: !!profile, error: profileError?.message });
+
+            if (profile) {
+              debug('✅ [App] Perfil encontrado:', profile.full_name)
+              userData_ = {
+                email: profile.email || session.user.email || "",
+                name: profile.full_name || session.user.email?.split('@')[0] || "Usuario",
+              };
+            } else {
+              // Si no tiene perfil, usar los datos del auth (esto es OK)
+              debug('⚠️ [App] No hay perfil en DB, usando datos de auth')
+              userData_ = {
+                email: session.user.email || "",
+                name: session.user.email?.split('@')[0] || "Usuario",
+              };
+            }
+          } catch (err: any) {
+            // ✅ Si falla profiles, NO IMPORTA, usar datos de auth
+            debug('⚠️ [App] Error en profiles (ignorado):', err.message);
             userData_ = {
               email: session.user.email || "",
               name: session.user.email?.split('@')[0] || "Usuario",
             };
           }
           
-          console.log('✅ [App] Login exitoso:', userData_.email)
+          debug('✅ [App] Login exitoso:', userData_.email)
           setIsLoggedIn(true);
           setUserData(userData_);
           sessionStorage.setItem('user_session', JSON.stringify(userData_));
@@ -277,7 +328,7 @@ export default function App() {
           clearAuthTimeout()
         } else {
           // No hay sesión válida — terminar rápido
-          console.log('⚠️ [App] No hay sesión válida, finalizando...')
+          debug('⚠️ [App] No hay sesión válida, finalizando...')
           setIsLoggedIn(false)
           setUserData(null)
           sessionStorage.removeItem('user_session')
@@ -299,7 +350,7 @@ export default function App() {
 
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('🔄 [App] Auth state change:', _event, { hasSession: !!session })
+      debug('🔄 [App] Auth state change:', _event, { hasSession: !!session })
       // Si llegó alguna actualización de auth, cancelar el timeout de no-auth
       if (authTimeoutRef.current) {
         clearTimeout(authTimeoutRef.current)
@@ -315,7 +366,7 @@ export default function App() {
             .single();
           
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout profiles')), 2000)
+            setTimeout(() => reject(new Error('Timeout profiles')), 3000) // ⏱️ 3 segundos max
           );
           
           const result = await Promise.race([profilePromise, timeoutPromise]) as any;
@@ -402,7 +453,7 @@ export default function App() {
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error("❌ Error en Supabase signOut:", error);
+        logError("❌ Error en Supabase signOut:", error);
         throw error;
       }
       
@@ -421,7 +472,7 @@ export default function App() {
       
       toast.success("Sesión cerrada correctamente");
     } catch (error) {
-      console.error("❌ Error al cerrar sesión:", error);
+      logError("❌ Error al cerrar sesión:", error);
       toast.error("Error al cerrar sesión");
       
       // Forzar limpieza aunque haya error
@@ -432,13 +483,15 @@ export default function App() {
     }
   };
 
-  // Mostrar loader mientras se inicializa la sesión
-  if (isInitializing) {
+  // Mostrar loader mientras se inicializa la sesión O mientras resolvemos la ruta
+  if (isInitializing || isResolvingRoute) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-white border-t-transparent mb-4"></div>
-          <p className="text-white text-lg font-medium">Verificando sesión...</p>
+          <p className="text-white text-lg font-medium">
+            {isInitializing ? "Verificando sesión..." : "Cargando curso..."}
+          </p>
         </div>
       </div>
     );
@@ -471,6 +524,7 @@ export default function App() {
           <LessonPlayer 
             onNavigate={handleNavigate} 
             courseId={currentCourseId}
+            courseSlug={currentCourseSlug}
             lessonId={currentLessonId}
           />
         </main>
@@ -526,6 +580,7 @@ export default function App() {
           {currentPage === "course" && (
             <CourseDetail 
               courseId={currentCourseId}
+              courseSlug={currentCourseSlug}
               onNavigate={handleNavigate} 
               isLoggedIn={isLoggedIn}
               onAuthRequired={(page, courseId) => {
@@ -537,6 +592,7 @@ export default function App() {
           {currentPage === "checkout" && (
             <Checkout 
               onNavigate={handleNavigate}
+              courseId={currentCourseId}
               courseSlug={currentCourseSlug}
               userData={userData}
               isInitializing={isInitializing}

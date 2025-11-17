@@ -1,0 +1,4 @@
+# Netlify Redirects para SPA con History API (sin hash)
+# Redirigir todas las rutas a index.html para SPA routing
+
+/* /index.html 200

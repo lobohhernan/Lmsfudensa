@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limpieza de Caché - FUDENSA LMS</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e467c 0%, #2d5f93 50%, #55a5c7 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #1e467c;
+      margin-bottom: 20px;
+      font-size: 28px;
+      text-align: center;
+    }
+
+    p {
+      color: #555;
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
+
+    .warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .warning strong {
+      color: #856404;
+    }
+
+    .info-box {
+      background: #e7f3ff;
+      border-left: 4px solid #2196F3;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .info-box strong {
+      color: #0c5aa6;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-primary {
+      background: #1e467c;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2d5f93;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(30, 70, 124, 0.3);
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(220, 53, 69, 0.3);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+      transform: translateY(-2px);
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 600;
+      display: none;
+    }
+
+    .result.success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      display: block;
+    }
+
+    .result.error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+      display: block;
+    }
+
+    .storage-info {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+
+    .storage-info pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .emoji {
+      font-size: 48px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="emoji">🧹</div>
+    <h1>Limpieza de Caché y Almacenamiento</h1>
+    
+    <p>
+      Esta herramienta te permite limpiar los datos almacenados en tu navegador que pueden estar causando 
+      problemas con la aplicación FUDENSA LMS.
+    </p>
+
+    <div class="info-box">
+      <strong>ℹ️ ¿Cuándo usar esto?</strong><br>
+      - Ves errores en la consola al cargar la página<br>
+      - La aplicación funciona en modo incógnito pero no en navegación normal<br>
+      - Tienes problemas con el inicio de sesión<br>
+      - Los datos no se cargan correctamente
+    </div>
+
+    <div class="warning">
+      <strong>⚠️ Advertencia:</strong><br>
+      Al limpiar el almacenamiento, cerrarás tu sesión actual. Deberás volver a iniciar sesión.
+    </div>
+
+    <div class="storage-info" id="storageInfo">
+      <strong>📊 Datos Almacenados Actualmente:</strong>
+      <pre id="storageData">Cargando...</pre>
+    </div>
+
+    <div class="button-group">
+      <button class="btn-primary" onclick="inspectStorage()">
+        🔍 Inspeccionar Almacenamiento
+      </button>
+      <button class="btn-danger" onclick="clearAllStorage()">
+        🗑️ Limpiar Todo
+      </button>
+      <button class="btn-secondary" onclick="goToHome()">
+        🏠 Volver a la Aplicación
+      </button>
+    </div>
+
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    // Inspeccionar almacenamiento actual
+    function inspectStorage() {
+      const storageData = {
+        localStorage: {},
+        sessionStorage: {},
+        cookies: document.cookie
+      };
+
+      // Obtener todos los items de localStorage
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        const value = localStorage.getItem(key);
+        
+        // Truncar valores largos
+        storageData.localStorage[key] = value.length > 100 
+          ? value.substring(0, 100) + '... (truncado)'
+          : value;
+      }
+
+      // Obtener todos los items de sessionStorage
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        const value = sessionStorage.getItem(key);
+        
+        storageData.sessionStorage[key] = value.length > 100
+          ? value.substring(0, 100) + '... (truncado)'
+          : value;
+      }
+
+      document.getElementById('storageData').textContent = 
+        JSON.stringify(storageData, null, 2);
+      
+      showResult('Datos inspeccionados correctamente', 'success');
+    }
+
+    // Limpiar todo el almacenamiento
+    function clearAllStorage() {
+      if (!confirm('¿Estás seguro? Esto cerrará tu sesión actual.')) {
+        return;
+      }
+
+      try {
+        // Limpiar localStorage
+        const localStorageKeys = Object.keys(localStorage);
+        localStorage.clear();
+
+        // Limpiar sessionStorage
+        const sessionStorageKeys = Object.keys(sessionStorage);
+        sessionStorage.clear();
+
+        // Limpiar cookies
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c
+            .replace(/^ +/, "")
+            .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+
+        // Limpiar caché del Service Worker (si existe)
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => caches.delete(name));
+          });
+        }
+
+        const message = `
+✅ Limpieza completada exitosamente
+
+Datos eliminados:
+- ${localStorageKeys.length} items de localStorage
+- ${sessionStorageKeys.length} items de sessionStorage
+- Cookies del dominio
+- Caché del Service Worker
+
+Puedes volver a la aplicación y iniciar sesión nuevamente.
+        `;
+
+        showResult(message, 'success');
+        
+        // Actualizar vista de almacenamiento
+        setTimeout(inspectStorage, 500);
+
+      } catch (error) {
+        showResult(`❌ Error al limpiar: ${error.message}`, 'error');
+      }
+    }
+
+    // Mostrar resultado
+    function showResult(message, type) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.textContent = message;
+      resultDiv.className = `result ${type}`;
+      
+      // Auto-ocultar después de 5 segundos (solo para éxitos)
+      if (type === 'success') {
+        setTimeout(() => {
+          resultDiv.style.display = 'none';
+        }, 5000);
+      }
+    }
+
+    // Volver a la aplicación
+    function goToHome() {
+      window.location.href = '/';
+    }
+
+    // Cargar datos al iniciar
+    window.onload = function() {
+      inspectStorage();
+    };
+  </script>
+</body>
+</html>

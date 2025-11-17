@@ -72,21 +72,55 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
         setUserProfile(profile);
       }
 
-      // Cargar cursos del usuario
-      const { data: courses, error: coursesError } = await supabase
-        .from("courses")
-        .select("*")
-        .limit(3);
+      // Cargar cursos del usuario desde ENROLLMENTS reales
+      const { data: enrollments, error: enrollmentsError } = await supabase
+        .from("enrollments")
+        .select(`
+          id,
+          course_id,
+          enrolled_at,
+          last_accessed_at,
+          completed,
+          courses (
+            id,
+            title,
+            slug,
+            image,
+            description
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('last_accessed_at', { ascending: false });
 
-      if (!coursesError && courses) {
-        const mappedCourses = courses.map((course: any, index: number) => ({
-          id: course.id,
-          title: course.title,
-          progress: [75, 45, 20][index] || 0,
-          lastAccessed: ["Ayer", "Hace 3 días", "Hace 1 semana"][index] || "Nunca",
-          image: course.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400",
-        }));
+      if (!enrollmentsError && enrollments) {
+        const mappedCourses = enrollments.map((enrollment: any) => {
+          // Calcular "hace cuánto" se accedió
+          const lastAccessed = enrollment.last_accessed_at 
+            ? new Date(enrollment.last_accessed_at)
+            : new Date(enrollment.enrolled_at);
+          
+          const now = new Date();
+          const diffDays = Math.floor((now.getTime() - lastAccessed.getTime()) / (1000 * 60 * 60 * 24));
+          
+          let lastAccessedText = 'Hoy';
+          if (diffDays === 1) lastAccessedText = 'Ayer';
+          else if (diffDays > 1 && diffDays <= 7) lastAccessedText = `Hace ${diffDays} días`;
+          else if (diffDays > 7 && diffDays <= 30) lastAccessedText = `Hace ${Math.floor(diffDays / 7)} semanas`;
+          else if (diffDays > 30) lastAccessedText = `Hace ${Math.floor(diffDays / 30)} meses`;
+
+          return {
+            id: enrollment.course_id,
+            title: enrollment.courses?.title || 'Curso sin título',
+            slug: enrollment.courses?.slug || '',
+            progress: enrollment.completed ? 100 : 0, // TODO: Calcular progreso real
+            lastAccessed: lastAccessedText,
+            image: enrollment.courses?.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400",
+          };
+        });
         setUserCourses(mappedCourses);
+      } else {
+        console.error('❌ Error cargando enrollments:', enrollmentsError);
+        setUserCourses([]); // No cursos si no hay enrollments
       }
     } catch (err) {
       console.error("Error cargando datos:", err);

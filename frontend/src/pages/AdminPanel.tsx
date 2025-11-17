@@ -100,6 +100,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [usersList, setUsersList] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
+  const [deletingTeacherId, setDeletingTeacherId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeCourses: 0,
@@ -281,6 +283,39 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         toast.success("✅ Curso creado exitosamente");
       }
 
+      // Guardar lecciones del curso
+      if (course.lessons && course.lessons.length > 0) {
+        try {
+          // Eliminar lecciones existentes del curso
+          await client.from("lessons").delete().eq("course_id", course.id);
+
+          // Insertar nuevas lecciones
+          const lessonsToInsert = course.lessons.map((lesson, index) => ({
+            course_id: course.id,
+            order_index: index + 1, // ✅ Nombre correcto de la columna en DB
+            title: lesson.title,
+            duration: lesson.duration,
+            type: lesson.type || "video",
+            youtube_id: lesson.youtubeId || null, // ⚠️ Conversión camelCase -> snake_case
+            description: lesson.description || null,
+            content: lesson.content || null,
+          }));
+
+          const { error: lessonsError } = await client
+            .from("lessons")
+            .insert(lessonsToInsert);
+
+          if (lessonsError) {
+            console.error("❌ Error guardando lecciones:", lessonsError);
+            toast.warning("Curso guardado, pero error al guardar lecciones");
+          } else {
+            debug(`✅ ${lessonsToInsert.length} lecciones guardadas`);
+          }
+        } catch (lessonsErr) {
+          console.error("Error guardando lecciones:", lessonsErr);
+        }
+      }
+
       // Guardar evaluaciones del curso
       if (course.evaluation && course.evaluation.length > 0) {
         try {
@@ -292,7 +327,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             course_id: course.id,
             question_order: index + 1,
             question: q.question,
-            options: JSON.stringify(q.options),
+            options: q.options, // ✅ Enviar como array directo (TEXT[] en PostgreSQL)
             correct_answer: q.correctAnswer,
             explanation: q.explanation || null,
           }));
@@ -321,9 +356,89 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     }
   };
 
-  const handleEditCourse = (course: FullCourse) => {
-    setEditingCourse(course);
-    setShowCourseForm(true);
+  const handleEditCourse = async (course: FullCourse) => {
+    try {
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+      
+      // Cargar lecciones del curso desde la base de datos
+      const { data: lessonsData, error: lessonsError } = await client
+        .from("lessons")
+        .select("*")
+        .eq("course_id", course.id)
+        .order("order_index", { ascending: true }); // ✅ Nombre correcto de columna
+
+      if (lessonsError) {
+        logError("❌ Error cargando lecciones:", lessonsError);
+        toast.error("Error al cargar lecciones del curso");
+      }
+
+      // Cargar evaluaciones del curso
+      const { data: evaluationsData, error: evaluationsError } = await client
+        .from("evaluations")
+        .select("*")
+        .eq("course_id", course.id)
+        .order("question_order", { ascending: true });
+
+      if (evaluationsError) {
+        logError("❌ Error cargando evaluaciones:", evaluationsError);
+        toast.error("Error al cargar evaluaciones del curso");
+      }
+
+      // Mapear lecciones a formato esperado por CourseForm
+      const mappedLessons = (lessonsData || []).map((lesson: any) => ({
+        id: String(lesson.id),
+        title: lesson.title,
+        duration: lesson.duration || "",
+        type: lesson.type || "video",
+        completed: false,
+        locked: false,
+        youtubeId: lesson.youtube_id || "", // ⚠️ Conversión snake_case -> camelCase
+        description: lesson.description || "",
+        content: lesson.content || "",
+      }));
+
+      // Mapear evaluaciones a formato esperado por CourseForm
+      // No usar nombre 'eval' porque es una declaración reservada en ESM.
+      const mappedEvaluations = (evaluationsData || []).map((e: any) => {
+        // ✅ options es TEXT[] en PostgreSQL, viene como array directamente
+        let optionsArray: string[] = [];
+        
+        if (Array.isArray(e.options)) {
+          // Ya es array, usar directamente
+          optionsArray = e.options;
+        } else if (typeof e.options === 'string') {
+          // Si viene como string JSON (migración antigua), parsear
+          try {
+            const parsed = JSON.parse(e.options);
+            optionsArray = Array.isArray(parsed) ? parsed : [];
+          } catch (err) {
+            logError('❌ Error parseando options:', e.options, err);
+            optionsArray = [];
+          }
+        }
+
+        return {
+          id: e.question_order,
+          question: e.question,
+          options: optionsArray,
+          correctAnswer: e.correct_answer,
+          explanation: e.explanation || "",
+        };
+      });
+
+      // Combinar curso con lecciones y evaluaciones
+      const fullCourse = {
+        ...course,
+        lessons: mappedLessons,
+        evaluation: mappedEvaluations,
+      };
+
+      setEditingCourse(fullCourse);
+      setShowCourseForm(true);
+    } catch (err) {
+      console.error("Error preparando edición de curso:", err);
+      toast.error("Error al preparar la edición del curso");
+    }
   };
 
   const handleDeleteCourse = (courseId: string) => {
@@ -416,6 +531,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
       
       if (courseToDelete) {
+        // ✅ Mostrar estado de eliminación (animación visual)
+        setDeletingCourseId(courseToDelete);
+        
         // Eliminar curso de Supabase
         logAdminOperation('DELETE', 'courses', { courseId: courseToDelete });
         
@@ -427,13 +545,21 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         if (error) {
           console.error("❌ Error DELETE:", error);
           toast.error("Error al eliminar el curso: " + error.message);
+          setDeletingCourseId(null); // Reset animation state on error
           return;
         }
         
         toast.success("✅ Curso eliminado exitosamente");
+        
+        // ✅ Delay de 500ms para mostrar animación de desaparición antes de actualizar UI
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setDeletingCourseId(null);
         // No need to reload - realtime subscription will update the list automatically
       }
       if (teacherToDelete) {
+        // ✅ Mostrar estado de eliminación (animación visual)
+        setDeletingTeacherId(teacherToDelete);
+        
         // Eliminar profesor de Supabase
         logAdminOperation('DELETE', 'teachers', { teacherId: teacherToDelete });
         
@@ -445,15 +571,22 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         if (error) {
           console.error("❌ Error DELETE teacher:", error);
           toast.error("Error al eliminar el profesor: " + error.message);
+          setDeletingTeacherId(null); // Reset animation state on error
           return;
         }
         
         toast.success("✅ Profesor eliminado exitosamente");
+        
+        // ✅ Delay de 500ms para mostrar animación de desaparición antes de actualizar UI
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setDeletingTeacherId(null);
         // No need to reload - realtime subscription will update the list automatically
       }
     } catch (err) {
       toast.error("Error al eliminar");
       console.error(err);
+      setDeletingCourseId(null);
+      setDeletingTeacherId(null);
     } finally {
       setDeleteDialogOpen(false);
       setCourseToDelete(null);
@@ -668,7 +801,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {courseList.length > 0 ? (
                   courseList.map((course) => (
-                    <div key={course.id} className="relative group">
+                    <div 
+                      key={course.id} 
+                      className={`relative group transition-all duration-500 ${
+                        deletingCourseId === course.id 
+                          ? "opacity-0 scale-95" 
+                          : "opacity-100 scale-100"
+                      }`}
+                    >
                       <CourseCard
                         id={course.id}
                         title={course.title}
@@ -811,7 +951,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       </TableRow>
                     ) : (
                       filteredTeachers.map((teacher) => (
-                        <TableRow key={teacher.id}>
+                        <TableRow 
+                          key={teacher.id}
+                          className={`transition-all duration-500 ${
+                            deletingTeacherId === teacher.id
+                              ? "opacity-0 bg-red-50/50"
+                              : "opacity-100 bg-transparent"
+                          }`}
+                        >
                           <TableCell className="text-[#0F172A] font-medium">{teacher.full_name}</TableCell>
                           <TableCell className="text-sm">{teacher.email}</TableCell>
                           <TableCell>{teacher.specialization || "-"}</TableCell>

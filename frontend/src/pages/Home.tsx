@@ -7,32 +7,15 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { Progress } from "../components/ui/progress";
 import cprTrainingImage from "../assets/section-home.png";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
+import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
 interface HomeProps {
   onNavigate?: (page: string, courseId?: string, courseSlug?: string) => void;
   isLoggedIn?: boolean;
 }
 
-const coursesInProgress = [
-  {
-    id: "1",
-    title: "RCP Adultos AHA 2020 - Reanimación Cardiopulmonar",
-    image: "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjcHIlMjB0cmFpbmluZyUyMGR1bW15fGVufDF8fHx8MTc2MTg2MTMzMnww&ixlib=rb-4.1.0&q=80&w=1080",
-    progress: 65,
-    currentLesson: "Compresiones torácicas efectivas",
-    totalLessons: 8,
-    completedLessons: 5,
-  },
-  {
-    id: "3",
-    title: "Primeros Auxilios Básicos - Manejo de Emergencias",
-    image: "https://images.unsplash.com/photo-1622115585848-1d5b6e8af4e4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmaXJzdCUyMGFpZCUyMGNvdXJzZXxlbnwxfHx8fDE3NjE4NjEzMzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    progress: 30,
-    currentLesson: "Vendajes y curaciones",
-    totalLessons: 6,
-    completedLessons: 2,
-  },
-];
+// ❌ Eliminados cursos hardcodeados - ahora se cargan desde enrollments reales
 
 const testimonials = [
   {
@@ -60,8 +43,111 @@ const testimonials = [
 
 export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
   const { courses: allCourses, loading, error } = useCoursesRealtime();
+  const [coursesInProgress, setCoursesInProgress] = useState<any[]>([]);
+  const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+
+  // ✅ Cargar cursos inscritos REALES del usuario autenticado
+  useEffect(() => {
+    const loadUserEnrollments = async () => {
+      if (!isLoggedIn) {
+        setCoursesInProgress([]);
+        return;
+      }
+
+      try {
+        setLoadingEnrollments(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          setCoursesInProgress([]);
+          return;
+        }
+
+        // Obtener enrollments con datos del curso
+        const { data: enrollments, error: enrollError } = await supabase
+          .from('enrollments')
+          .select(`
+            id,
+            course_id,
+            enrolled_at,
+            last_accessed_at,
+            courses (
+              id,
+              title,
+              slug,
+              image,
+              description
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('last_accessed_at', { ascending: false })
+          .limit(2);
+
+        if (enrollError) {
+          console.error('❌ Error cargando enrollments:', enrollError);
+          setCoursesInProgress([]);
+          return;
+        }
+
+        // ✅ Calcular progreso real para cada curso
+        const mapped = await Promise.all((enrollments || []).map(async (enrollment: any) => {
+          const courseId = enrollment.course_id;
+          
+          // Contar lecciones totales del curso
+          const { count: totalLessons } = await supabase
+            .from('lessons')
+            .select('*', { count: 'exact', head: true })
+            .eq('course_id', courseId);
+          
+          // Contar lecciones completadas por el usuario
+          const { count: completedLessons } = await supabase
+            .from('user_progress')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('course_id', courseId)
+            .eq('completed', true);
+          
+          const total = totalLessons || 0;
+          const completed = completedLessons || 0;
+          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+          
+          // Obtener última lección accedida
+          const { data: lastProgress } = await supabase
+            .from('user_progress')
+            .select('lesson_id, lessons(title, order_index)')
+            .eq('user_id', user.id)
+            .eq('course_id', courseId)
+            .order('last_accessed_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          const currentLesson = lastProgress?.lessons?.title || 'Lección 1';
+          
+          return {
+            id: courseId,
+            title: enrollment.courses?.title || 'Curso sin título',
+            slug: enrollment.courses?.slug || '',
+            image: enrollment.courses?.image || 'https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400',
+            progress,
+            currentLesson,
+            totalLessons: total,
+            completedLessons: completed,
+          };
+        }));
+
+        setCoursesInProgress(mapped);
+      } catch (err) {
+        console.error('❌ Error en loadUserEnrollments:', err);
+        setCoursesInProgress([]);
+      } finally {
+        setLoadingEnrollments(false);
+      }
+    };
+
+    loadUserEnrollments();
+  }, [isLoggedIn]);
   
-  console.log('🏠 [Home] Renderizando:', { coursesCount: allCourses.length, loading, error, isLoggedIn })
+  console.log('🏠 [Home] Renderizando:', { coursesCount: allCourses.length, loading, error, isLoggedIn, enrollmentsCount: coursesInProgress.length })
   
   // Mostrar los primeros 6 cursos en la sección destacada
   const displayCourses = allCourses.slice(0, 6).map(course => ({
@@ -157,8 +243,8 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
         </div>
       </section>
 
-      {/* Courses In Progress - Only show when logged in */}
-      {isLoggedIn && (
+      {/* Courses In Progress - Only show when logged in AND has enrollments */}
+      {isLoggedIn && coursesInProgress.length > 0 && (
         <section className="border-b bg-white py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-6 flex items-end justify-between">
@@ -178,8 +264,13 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
               </Button>
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2">
-              {coursesInProgress.map((course) => (
+            {loadingEnrollments ? (
+              <div className="text-center py-8">
+                <p className="text-[#64748B]">Cargando tus cursos...</p>
+              </div>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2">
+                {coursesInProgress.map((course) => (
                 <Card key={course.id} className="group relative overflow-hidden border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 cursor-pointer">
                   {/* Glass effect top highlight */}
                   <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
@@ -194,7 +285,11 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                         <Button
                           size="lg"
                           className="rounded-full"
-                          onClick={() => onNavigate?.("lesson")}
+                          onClick={() => {
+                            if (course.id && course.slug) {
+                              onNavigate?.("lesson", course.id, course.slug, "1");
+                            }
+                          }}
                         >
                           <Play className="h-5 w-5" />
                         </Button>
@@ -216,7 +311,13 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                         <Progress value={course.progress} className="h-2" />
                         <Button
                           className="mt-3 w-full"
-                          onClick={() => onNavigate?.("lesson")}
+                          onClick={() => {
+                            if (course.id && course.slug) {
+                              onNavigate?.("lesson", course.id, course.slug, "1");
+                            } else {
+                              console.error('❌ [Home] No se pudo navegar: courseId o slug faltante', course);
+                            }
+                          }}
                         >
                           Continuar Curso
                         </Button>
@@ -226,6 +327,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                 </Card>
               ))}
             </div>
+            )}
           </div>
         </section>
       )}
