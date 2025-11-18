@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Button } from "../ui/button";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "../../lib/supabase";
+import { Button } from "./ui/button";
+import { Alert, AlertDescription } from "./ui/alert";
+import { initMercadoPago, createMercadoPagoPreference, redirectToMercadoPago } from "../lib/mercadopago";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 interface MercadoPagoCheckoutProps {
   courseId: string;
@@ -22,116 +22,111 @@ export function MercadoPagoCheckout({
   onPaymentInitiated,
 }: MercadoPagoCheckoutProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isMercadoPagoReady, setIsMercadoPagoReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
 
-  // Inicializar Mercado Pago SDK
+  // Inicializar Mercado Pago SDK cuando el componente se monta
   useEffect(() => {
-    const initMP = async () => {
-      try {
-        const { loadMercadoPago } = await import(
-          "@mercadopago/sdk-js"
-        );
-        const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY;
-
-        if (!publicKey) {
-          console.error("❌ Public Key de Mercado Pago no configurada");
-          return;
-        }
-
-        await loadMercadoPago();
-        setIsMercadoPagoReady(true);
-        console.log("✅ Mercado Pago SDK inicializado");
-      } catch (error) {
-        console.error("❌ Error inicializando Mercado Pago:", error);
-        toast.error("Error al cargar el sistema de pagos");
+    const loadSDK = async () => {
+      const loaded = await initMercadoPago();
+      setSdkLoaded(!!loaded);
+      if (!loaded) {
+        setError("No se pudo cargar el SDK de Mercado Pago");
       }
     };
 
-    initMP();
+    loadSDK();
   }, []);
 
   const handlePayment = async () => {
     try {
       setIsLoading(true);
+      setError(null);
 
-      // Llamar a la Edge Function de Supabase
-      const { data, error } = await supabase.functions.invoke(
-        "mercadopago-preference",
-        {
-          body: {
-            courseId,
-            courseTitle,
-            price,
-            userEmail,
-            userName,
-          },
-        }
+      console.log("💳 Iniciando proceso de pago...");
+      console.log("Curso:", courseTitle);
+      console.log("Precio:", price);
+      console.log("Email:", userEmail);
+
+      // Crear preferencia de pago llamando a la Edge Function
+      const initPoint = await createMercadoPagoPreference(
+        courseId,
+        courseTitle,
+        price,
+        userEmail,
+        userName
       );
 
-      if (error) {
-        console.error("❌ Error creando preferencia:", error);
-        toast.error("No se pudo procesar el pago. Intenta nuevamente.");
-        setIsLoading(false);
-        return;
+      if (!initPoint) {
+        throw new Error("No se pudo crear la preferencia de pago");
       }
 
-      if (data?.initPoint) {
-        console.log("✅ Preferencia creada:", data.preferenceId);
-        onPaymentInitiated?.();
-        
-        // Redirigir a Mercado Pago
-        window.location.href = data.initPoint;
-      } else {
-        toast.error("No se pudo inicializar el pago");
-        setIsLoading(false);
+      // Callback opcional
+      if (onPaymentInitiated) {
+        onPaymentInitiated();
       }
-    } catch (error) {
-      console.error("❌ Error en pago:", error);
-      toast.error("Error procesando el pago");
+
+      // Redirigir a Mercado Pago
+      redirectToMercadoPago(initPoint);
+    } catch (err) {
+      console.error("Error en pago:", err);
+      setError(
+        err instanceof Error ? err.message : "Error al procesar el pago"
+      );
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">💳 Mercado Pago</h3>
-        <p className="text-sm text-blue-800 mb-4">
-          Paga de forma segura con tu cuenta de Mercado Pago o tarjeta de crédito/débito.
-        </p>
-
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Curso:</span>
-            <span className="font-medium">{courseTitle}</span>
-          </div>
-          <div className="flex justify-between border-t pt-2">
-            <span className="text-gray-600">Total a pagar:</span>
-            <span className="font-bold text-lg text-blue-600">
-              ${price.toFixed(2)} ARS
-            </span>
-          </div>
+    <div className="w-full max-w-md mx-auto space-y-4">
+      {/* Resumen del curso */}
+      <div className="bg-gray-50 p-4 rounded-lg border">
+        <h3 className="font-semibold text-lg mb-2">{courseTitle}</h3>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-600">Precio:</span>
+          <span className="text-2xl font-bold text-blue-600">
+            ${price.toLocaleString("es-AR")}
+          </span>
+        </div>
+        <div className="mt-3 pt-3 border-t text-sm text-gray-600">
+          <p>Email: {userEmail}</p>
+          {userName && <p>Estudiante: {userName}</p>}
         </div>
       </div>
 
+      {/* Mostrar error si existe */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Botón de pago */}
       <Button
         onClick={handlePayment}
-        disabled={isLoading || !isMercadoPagoReady}
+        disabled={isLoading || !sdkLoaded}
         className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-base"
+        size="lg"
       >
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Procesando pago...
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Procesando...
           </>
         ) : (
-          "Ir a Mercado Pago"
+          "💳 Ir a Mercado Pago"
         )}
       </Button>
 
-      <p className="text-xs text-gray-500 text-center">
-        Serás redirigido a Mercado Pago para completar el pago de forma segura.
-      </p>
+      {/* Nota de seguridad */}
+      <div className="bg-blue-50 p-3 rounded text-sm text-blue-800 border border-blue-200">
+        <p className="font-semibold mb-1">🔒 Pago Seguro</p>
+        <p>
+          Serás redirigido a Mercado Pago para completar el pago de forma segura.
+          Los datos de tu tarjeta no se comparten con FUDENSA.
+        </p>
+      </div>
     </div>
   );
 }

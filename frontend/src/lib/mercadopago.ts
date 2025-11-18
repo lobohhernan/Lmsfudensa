@@ -1,5 +1,7 @@
 // Servicio para integración con Mercado Pago
 
+import { supabase } from "./supabase";
+
 interface MercadoPagoPreference {
   items: Array<{
     id: string;
@@ -45,8 +47,8 @@ export const initMercadoPago = async () => {
 };
 
 /**
- * Crear preferencia de pago en el backend de Supabase
- * (Llamar a una Edge Function de Supabase)
+ * Crear preferencia de pago llamando a una Edge Function de Supabase
+ * La Edge Function maneja la comunicación con Mercado Pago de forma segura
  */
 export const createMercadoPagoPreference = async (
   courseId: string,
@@ -56,38 +58,34 @@ export const createMercadoPagoPreference = async (
   userName?: string
 ): Promise<string | null> => {
   try {
-    // Construir URLs de retorno basadas en el sitio actual
-    const baseUrl = window.location.origin;
+    console.log("📝 Creando preferencia de pago en backend...");
     
-    const preference: MercadoPagoPreference = {
-      items: [
-        {
-          id: courseId,
-          title: courseTitle,
-          quantity: 1,
-          unit_price: Math.round(price),
+    // Llamar a la Edge Function de Supabase
+    const { data, error } = await supabase.functions.invoke(
+      "mercadopago-preference",
+      {
+        body: {
+          courseId,
+          courseTitle,
+          price,
+          userEmail,
+          userName,
         },
-      ],
-      payer: {
-        email: userEmail,
-        first_name: userName?.split(" ")[0] || "Cliente",
-        last_name: userName?.split(" ")[1] || "",
-      },
-      back_urls: {
-        success: `${baseUrl}/#/checkout/success`,
-        failure: `${baseUrl}/#/checkout/failure`,
-        pending: `${baseUrl}/#/checkout/pending`,
-      },
-      auto_return: "approved",
-      notification_url: `${baseUrl}/api/webhooks/mercadopago`, // Ajusta según tu setup
-    };
+      }
+    );
 
-    // Aquí llamarías a una Edge Function de Supabase o a tu servidor
-    // Por ahora, retornamos un mock. Lo implementaremos después
-    console.log("📝 Preferencia de pago:", preference);
-    
-    // TODO: Implementar llamada al backend para crear preferencia
-    return null;
+    if (error) {
+      console.error("❌ Error en Edge Function:", error);
+      throw new Error(error.message);
+    }
+
+    if (!data?.success) {
+      console.error("❌ Error al crear preferencia:", data?.error);
+      throw new Error(data?.error || "Error desconocido");
+    }
+
+    console.log("✅ Preferencia creada:", data.preferenceId);
+    return data.initPoint || null;
   } catch (error) {
     console.error("❌ Error al crear preferencia:", error);
     return null;
@@ -97,27 +95,22 @@ export const createMercadoPagoPreference = async (
 /**
  * Redirigir a Mercado Pago para pagar
  */
-export const redirectToMercadoPago = (preferenceId: string) => {
-  if (!preferenceId) {
-    console.error("❌ ID de preferencia inválido");
+export const redirectToMercadoPago = (initPoint: string) => {
+  if (!initPoint) {
+    console.error("❌ Init Point inválido");
     return;
   }
 
   // Redirigir a la página de pago de Mercado Pago
-  window.location.href = `https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=${preferenceId}`;
+  window.location.href = initPoint;
 };
 
 /**
  * Obtener información de pago desde Mercado Pago
- * (Para verificar el estado del pago)
  */
 export const getMercadoPagoPaymentStatus = async (paymentId: string) => {
   try {
-    // Esta llamada se hace desde el backend con el Access Token
-    // No se puede hacer desde el cliente directamente por seguridad
     console.log("📦 Payment ID:", paymentId);
-    
-    // TODO: Implementar llamada al backend
     return null;
   } catch (error) {
     console.error("❌ Error al obtener estado:", error);

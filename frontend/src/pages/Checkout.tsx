@@ -21,7 +21,6 @@ import {
   BreadcrumbSeparator,
 } from "../components/ui/breadcrumb";
 import { Badge } from "../components/ui/badge";
-import { MercadoPagoCheckout } from "../components/MercadoPagoCheckout";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
 import { isUserEnrolled, enrollUser } from "../lib/enrollments";
@@ -372,20 +371,35 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                 <CardHeader>
                   <CardTitle>Método de Pago</CardTitle>
                   <CardDescription>
-                    Completa tu pago de forma segura con Mercado Pago
+                    Selecciona tu método de pago preferido
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <MercadoPagoCheckout
-                    courseId={courseId!}
-                    courseTitle={courseData?.title || "Curso"}
-                    price={price}
-                    userEmail={userData?.email || ""}
-                    userName={userData?.name}
-                    onPaymentInitiated={() => {
-                      console.log("💳 Pago iniciado en Mercado Pago");
-                    }}
-                  />
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3 rounded-lg border-2 border-[#00A8FF] bg-[#00A8FF]/5 p-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded bg-[#00A8FF]">
+                        <span className="font-bold text-white">MP</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-[#0F172A]">Mercado Pago</p>
+                        <p className="text-sm text-[#64748B]">
+                          Paga con tarjetas de crédito/débito, efectivo (Rapipago/Pago Fácil) o dinero en cuenta
+                        </p>
+                      </div>
+                      <CheckCircle className="h-6 w-6 text-[#00A8FF]" />
+                    </div>
+
+                    <div className="rounded-lg bg-[#F8FAFC] p-4 text-sm text-[#64748B]">
+                      <p className="mb-2 font-semibold text-[#0F172A]">Métodos aceptados:</p>
+                      <ul className="space-y-1">
+                        <li>• Visa, Mastercard, American Express</li>
+                        <li>• Tarjetas de débito</li>
+                        <li>• Efectivo (Rapipago, Pago Fácil)</li>
+                        <li>• Saldo en Mercado Pago</li>
+                        <li>• Cuotas sin interés disponibles</li>
+                      </ul>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -452,13 +466,34 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                 )}
 
                 {step === 2 && (
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => setStep(1)}
-                  >
-                    Volver al Resumen
-                  </Button>
+                  <>
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={handlePayment}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Procesando pago...
+                        </>
+                      ) : (
+                        <>
+                          Confirmar Pago
+                          <CreditCard className="ml-2 h-5 w-5" />
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => setStep(1)}
+                      disabled={isProcessing}
+                    >
+                      Volver
+                    </Button>
+                  </>
                 )}
               </CardContent>
             </Card>
