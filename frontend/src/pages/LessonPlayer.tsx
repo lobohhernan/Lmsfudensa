@@ -121,21 +121,30 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
 
         if (lessonsError) throw lessonsError;
 
-        // ✅ Cargar progreso del usuario desde user_progress
-        const { data: progressData } = await supabase
-          .from("user_progress")
-          .select("lesson_id, completed")
-          .eq("user_id", user.id)
-          .eq("course_id", courseId)
-          .eq("completed", true);
+        // ✅ Cargar progreso del usuario desde user_progress (con manejo de errores)
+        let completedIds = new Set<string>();
+        try {
+          const { data: progressData, error: progressError } = await supabase
+            .from("user_progress")
+            .select("lesson_id, completed")
+            .eq("user_id", user.id)
+            .eq("course_id", courseId)
+            .eq("completed", true);
 
-        // Crear Set de lecciones completadas para búsqueda O(1)
-        const completedIds = new Set(
-          (progressData || []).map((p: any) => p.lesson_id)
-        );
+          if (progressError) {
+            console.warn('⚠️ Error cargando progreso (posible RLS):', progressError);
+          } else {
+            // Crear Set de lecciones completadas para búsqueda O(1)
+            completedIds = new Set(
+              (progressData || []).map((p: any) => p.lesson_id)
+            );
+            console.log(`✅ [LessonPlayer] Progreso cargado: ${completedIds.size} lecciones completadas`);
+          }
+        } catch (progressErr) {
+          console.warn('⚠️ Error al cargar progreso del usuario, continuando sin él:', progressErr);
+        }
+        
         setCompletedLessons(completedIds);
-
-        console.log(`✅ [LessonPlayer] Progreso cargado: ${completedIds.size} lecciones completadas`);
 
         // Mapear a formato esperado y marcar completadas
         const mappedLessons: LessonWithYoutube[] = (lessonsData || []).map((lesson: any) => ({
