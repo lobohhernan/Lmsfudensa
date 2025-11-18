@@ -258,7 +258,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         // Crear nuevo curso en Supabase
         logAdminOperation('INSERT', 'courses', { title: course.title });
         
-        const { error } = await client.from("courses").insert([{
+        const { data: newCourse, error } = await client.from("courses").insert([{
           title: course.title,
           slug: course.slug,
           description: course.description,
@@ -273,21 +273,30 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           students: null,
           rating: 0,
           reviews: 0,
-        }]);
+        }]).select();
         
         if (error) {
           console.error("❌ Error INSERT:", error);
           toast.error("Error al crear el curso: " + error.message);
           return;
         }
+        
+        // ✅ IMPORTANTE: Usar el ID real del curso recién creado
+        if (newCourse && newCourse[0]) {
+          course.id = newCourse[0].id;
+          debug(`✅ Curso creado con ID: ${course.id}`);
+        }
+        
         toast.success("✅ Curso creado exitosamente");
       }
 
       // Guardar lecciones del curso
       if (course.lessons && course.lessons.length > 0) {
         try {
-          // Eliminar lecciones existentes del curso
-          await client.from("lessons").delete().eq("course_id", course.id);
+          // Eliminar lecciones existentes del curso (solo si es edición)
+          if (editingCourse) {
+            await client.from("lessons").delete().eq("course_id", course.id);
+          }
 
           // Insertar nuevas lecciones
           const lessonsToInsert = course.lessons.map((lesson, index) => ({
@@ -301,26 +310,32 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             content: lesson.content || null,
           }));
 
+          debug(`📝 Insertando ${lessonsToInsert.length} lecciones para curso ${course.id}`);
+
           const { error: lessonsError } = await client
             .from("lessons")
             .insert(lessonsToInsert);
 
           if (lessonsError) {
             console.error("❌ Error guardando lecciones:", lessonsError);
-            toast.warning("Curso guardado, pero error al guardar lecciones");
+            console.error("❌ Datos que intentamos insertar:", lessonsToInsert);
+            toast.warning("Curso guardado, pero error al guardar lecciones: " + lessonsError.message);
           } else {
-            debug(`✅ ${lessonsToInsert.length} lecciones guardadas`);
+            debug(`✅ ${lessonsToInsert.length} lecciones guardadas exitosamente`);
           }
         } catch (lessonsErr) {
-          console.error("Error guardando lecciones:", lessonsErr);
+          console.error("❌ Error guardando lecciones (catch):", lessonsErr);
+          toast.warning("Curso guardado, pero error al guardar lecciones");
         }
       }
 
       // Guardar evaluaciones del curso
       if (course.evaluation && course.evaluation.length > 0) {
         try {
-          // Eliminar evaluaciones existentes del curso
-          await client.from("evaluations").delete().eq("course_id", course.id);
+          // Eliminar evaluaciones existentes del curso (solo si es edición)
+          if (editingCourse) {
+            await client.from("evaluations").delete().eq("course_id", course.id);
+          }
 
           // Insertar nuevas evaluaciones
           const evaluationsToInsert = course.evaluation.map((q, index) => ({
@@ -332,22 +347,30 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             explanation: q.explanation || null,
           }));
 
+          debug(`📝 Insertando ${evaluationsToInsert.length} evaluaciones para curso ${course.id}`);
+
           const { error: evalError } = await client
             .from("evaluations")
             .insert(evaluationsToInsert);
 
           if (evalError) {
             console.error("❌ Error guardando evaluaciones:", evalError);
-            toast.warning("Curso guardado, pero error al guardar evaluaciones");
+            console.error("❌ Datos que intentamos insertar:", evaluationsToInsert);
+            toast.warning("Curso guardado, pero error al guardar evaluaciones: " + evalError.message);
           } else {
-            debug(`✅ ${evaluationsToInsert.length} evaluaciones guardadas`);
+            debug(`✅ ${evaluationsToInsert.length} evaluaciones guardadas exitosamente`);
           }
         } catch (evalErr) {
-          console.error("Error guardando evaluaciones:", evalErr);
+          console.error("❌ Error guardando evaluaciones (catch):", evalErr);
+          toast.warning("Curso guardado, pero error al guardar evaluaciones");
         }
       }
 
-      // No need to manually reload - realtime subscription will update the list automatically
+      // ✅ Delay de 2.5 segundos para que la suscripción realtime actualice la UI
+      debug("⏳ Esperando 2.5 segundos para que se sincronice el realtime...");
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      debug("✅ Curso guardado completamente, cerrando formulario");
       setShowCourseForm(false);
       setEditingCourse(undefined);
     } catch (err) {
