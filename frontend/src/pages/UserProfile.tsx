@@ -95,20 +95,6 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
       if (!enrollmentsError && enrollments) {
         // ✅ Calcular progreso real para cada curso (igual que en Home.tsx)
         const mappedCourses = await Promise.all(enrollments.map(async (enrollment: any) => {
-          // Calcular "hace cuánto" se accedió
-          const lastAccessed = enrollment.last_accessed_at 
-            ? new Date(enrollment.last_accessed_at)
-            : new Date(enrollment.enrolled_at);
-          
-          const now = new Date();
-          const diffDays = Math.floor((now.getTime() - lastAccessed.getTime()) / (1000 * 60 * 60 * 24));
-          
-          let lastAccessedText = 'Hoy';
-          if (diffDays === 1) lastAccessedText = 'Ayer';
-          else if (diffDays > 1 && diffDays <= 7) lastAccessedText = `Hace ${diffDays} días`;
-          else if (diffDays > 7 && diffDays <= 30) lastAccessedText = `Hace ${Math.floor(diffDays / 7)} semanas`;
-          else if (diffDays > 30) lastAccessedText = `Hace ${Math.floor(diffDays / 30)} meses`;
-
           const courseId = enrollment.course_id;
           
           // Contar lecciones totales del curso
@@ -161,7 +147,6 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
             currentLesson,
             totalLessons: total,
             completedLessons: completed,
-            lastAccessed: lastAccessedText,
             image: enrollment.courses?.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400",
           };
         }));
@@ -290,9 +275,6 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                   </CardHeader>
                   <CardHeader className="shrink-0 pb-3">
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
-                    <CardDescription className="line-clamp-1">
-                      Último acceso: {course.lastAccessed}
-                    </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col pt-0 pb-6">
                     <div className="space-y-2 mb-4">
