@@ -66,6 +66,8 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     // Cargar evaluación desde Supabase
     const loadEvaluation = async () => {
       try {
+        console.log("🎓 [Evaluation] Cargando evaluación para courseId:", courseId);
+        
         // Obtener título del curso
         const { data: courseData, error: courseError } = await supabase
           .from("courses")
@@ -75,6 +77,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
 
         if (courseError) throw courseError;
         setCourseTitle(courseData?.title || "Curso");
+        console.log("✅ [Evaluation] Curso encontrado:", courseData?.title);
 
         // Obtener preguntas de evaluación desde la tabla evaluations
         const { data: evaluationQuestions, error: evalError } = await supabase
@@ -82,6 +85,8 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
           .select("*")
           .eq("course_id", courseId)
           .order("question_order", { ascending: true });
+
+        console.log("📋 [Evaluation] Preguntas encontradas:", evaluationQuestions?.length || 0);
 
         if (evalError) {
           console.error("Error cargando evaluación:", evalError);

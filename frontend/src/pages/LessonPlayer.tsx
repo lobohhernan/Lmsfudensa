@@ -424,7 +424,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
                 Completa la evaluación para obtener tu certificado
               </p>
               <Button 
-                onClick={() => onNavigate?.("evaluation")}
+                onClick={() => onNavigate?.("evaluation", courseId, courseSlug)}
                 className="w-full"
               >
                 Iniciar Evaluación
