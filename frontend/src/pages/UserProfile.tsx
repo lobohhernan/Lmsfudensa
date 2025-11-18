@@ -231,10 +231,6 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                       <p className="text-2xl text-[#0F172A]">0</p>
                       <p className="text-sm text-[#64748B]">Certificados</p>
                     </div>
-                    <div className="text-center rounded-xl border border-[#F59E0B]/20 bg-linear-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm px-6 py-3 shadow-[0_4px_16px_0_rgba(245,158,11,0.08)]">
-                      <p className="text-2xl text-[#0F172A]">0h</p>
-                      <p className="text-sm text-[#64748B]">Horas cursadas</p>
-                    </div>
                   </div>
                 </div>
               </div>
