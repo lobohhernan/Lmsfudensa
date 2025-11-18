@@ -100,28 +100,40 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
             .eq('course_id', courseId);
           
           // Contar lecciones completadas por el usuario
-          const { count: completedLessons } = await supabase
-            .from('user_progress')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('course_id', courseId)
-            .eq('completed', true);
+          let completedLessons = 0;
+          try {
+            const { count } = await supabase
+              .from('user_progress')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('course_id', courseId)
+              .eq('completed', true);
+            completedLessons = count || 0;
+          } catch (progressErr) {
+            console.warn('⚠️ Error cargando progreso, continuando sin él:', progressErr);
+            completedLessons = 0;
+          }
           
           const total = totalLessons || 0;
-          const completed = completedLessons || 0;
+          const completed = completedLessons;
           const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
           
           // Obtener última lección accedida
-          const { data: lastProgress } = await supabase
-            .from('user_progress')
-            .select('lesson_id, lessons(title, order_index)')
-            .eq('user_id', user.id)
-            .eq('course_id', courseId)
-            .order('last_accessed_at', { ascending: false })
-            .limit(1)
-            .single();
-          
-          const currentLesson = lastProgress?.lessons?.title || 'Lección 1';
+          let currentLesson = 'Lección 1';
+          try {
+            const { data: lastProgress } = await supabase
+              .from('user_progress')
+              .select('lesson_id, lessons(title, order_index)')
+              .eq('user_id', user.id)
+              .eq('course_id', courseId)
+              .order('last_accessed_at', { ascending: false })
+              .limit(1)
+              .single();
+            
+            currentLesson = lastProgress?.lessons?.title || 'Lección 1';
+          } catch (lastProgressErr) {
+            console.warn('⚠️ Error obteniendo última lección:', lastProgressErr);
+          }
           
           return {
             id: courseId,
