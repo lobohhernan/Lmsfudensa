@@ -15,7 +15,7 @@ import {
 } from "../components/ui/select";
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { debug, error as logError } from '../lib/logger'
+import { debug } from '../lib/logger'
 
 interface UserProfileProps {
   onNavigate?: (page: string, courseId?: string) => void;
@@ -93,30 +93,63 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
         .order('last_accessed_at', { ascending: false });
 
       if (!enrollmentsError && enrollments) {
-        const mappedCourses = enrollments.map((enrollment: any) => {
-          // Calcular "hace cuánto" se accedió
-          const lastAccessed = enrollment.last_accessed_at 
-            ? new Date(enrollment.last_accessed_at)
-            : new Date(enrollment.enrolled_at);
+        // ✅ Calcular progreso real para cada curso (igual que en Home.tsx)
+        const mappedCourses = await Promise.all(enrollments.map(async (enrollment: any) => {
+          const courseId = enrollment.course_id;
           
-          const now = new Date();
-          const diffDays = Math.floor((now.getTime() - lastAccessed.getTime()) / (1000 * 60 * 60 * 24));
+          // Contar lecciones totales del curso
+          const { count: totalLessons } = await supabase
+            .from('lessons')
+            .select('*', { count: 'exact', head: true })
+            .eq('course_id', courseId);
           
-          let lastAccessedText = 'Hoy';
-          if (diffDays === 1) lastAccessedText = 'Ayer';
-          else if (diffDays > 1 && diffDays <= 7) lastAccessedText = `Hace ${diffDays} días`;
-          else if (diffDays > 7 && diffDays <= 30) lastAccessedText = `Hace ${Math.floor(diffDays / 7)} semanas`;
-          else if (diffDays > 30) lastAccessedText = `Hace ${Math.floor(diffDays / 30)} meses`;
+          // Contar lecciones completadas por el usuario
+          let completedLessons = 0;
+          try {
+            const { count } = await supabase
+              .from('user_progress')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('course_id', courseId)
+              .eq('completed', true);
+            completedLessons = count || 0;
+          } catch (progressErr) {
+            console.warn('⚠️ Error cargando progreso, continuando sin él:', progressErr);
+            completedLessons = 0;
+          }
+          
+          const total = totalLessons || 0;
+          const completed = completedLessons;
+          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+          
+          // Obtener última lección accedida
+          let currentLesson = 'Lección 1';
+          try {
+            const { data: lastProgress } = await supabase
+              .from('user_progress')
+              .select('lesson_id, lessons(title, order_index)')
+              .eq('user_id', user.id)
+              .eq('course_id', courseId)
+              .order('last_accessed_at', { ascending: false })
+              .limit(1)
+              .single();
+            
+            currentLesson = (lastProgress?.lessons as any)?.title || 'Lección 1';
+          } catch (lastProgressErr) {
+            console.warn('⚠️ Error obteniendo última lección:', lastProgressErr);
+          }
 
           return {
-            id: enrollment.course_id,
+            id: courseId,
             title: enrollment.courses?.title || 'Curso sin título',
             slug: enrollment.courses?.slug || '',
-            progress: enrollment.completed ? 100 : 0, // TODO: Calcular progreso real
-            lastAccessed: lastAccessedText,
+            progress,
+            currentLesson,
+            totalLessons: total,
+            completedLessons: completed,
             image: enrollment.courses?.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400",
           };
-        });
+        }));
         setUserCourses(mappedCourses);
       } else {
         console.error('❌ Error cargando enrollments:', enrollmentsError);
@@ -230,7 +263,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
           <TabsContent value="courses" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {userCourses.map((course: any) => (
-                <Card key={course.id} className="overflow-hidden flex flex-col h-[480px] transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
+                <Card key={course.id} className="overflow-hidden flex flex-col transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
                   <CardHeader className="p-0 shrink-0">
                     <div className="relative aspect-video overflow-hidden">
                       <img
@@ -240,23 +273,26 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                       />
                     </div>
                   </CardHeader>
-                  <CardHeader className="shrink-0">
+                  <CardHeader className="shrink-0 pb-3">
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
-                    <CardDescription className="line-clamp-1">
-                      Último acceso: {course.lastAccessed}
-                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3 grow flex flex-col justify-between">
-                    <div className="space-y-2">
+                  <CardContent className="flex-1 flex flex-col pt-0 pb-6">
+                    <div className="space-y-2 mb-4">
+                      <div className="text-sm text-[#64748B] line-clamp-1">
+                        Lección actual: {course.currentLesson}
+                      </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-[#64748B]">Progreso</span>
-                        <span className="text-[#0F172A]">{course.progress}%</span>
+                        <span className="text-[#0F172A] font-medium">{course.progress}%</span>
                       </div>
-                      <Progress value={course.progress} />
+                      <Progress value={course.progress} className="h-2" />
+                      <div className="flex justify-between text-xs text-[#64748B]">
+                        <span>{course.completedLessons} de {course.totalLessons} lecciones</span>
+                      </div>
                     </div>
                     <Button
-                      className="w-full"
-                      onClick={() => onNavigate?.("lesson")}
+                      className="w-full mt-auto"
+                      onClick={() => onNavigate?.("lesson", course.id)}
                     >
                       Continuar
                     </Button>
