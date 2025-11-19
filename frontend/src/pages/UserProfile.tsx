@@ -1,4 +1,4 @@
-import { Award, Mail, Globe, Settings as SettingsIcon, BookOpen, Loader2 } from "lucide-react";
+import { Award, Mail, Globe, Settings as SettingsIcon, BookOpen, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -16,15 +16,55 @@ import {
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { debug } from '../lib/logger'
+import { CertificateCard } from "../components/CertificateCard";
+import type { Certificate } from "../hooks/useCertificates";
 
 interface UserProfileProps {
   onNavigate?: (page: string, courseId?: string) => void;
+  defaultTab?: string;
 }
 
-export function UserProfile({ onNavigate }: UserProfileProps) {
+export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileProps) {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [userCourses, setUserCourses] = useState<any[]>([]);
+  const [userCertificates, setUserCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [certificatesLoading, setCertificatesLoading] = useState(true);
+  
+  // Verificar si hay una pestaña específica solicitada
+  const initialTab = sessionStorage.getItem('profileTab') || defaultTab;
+  // Limpiar el valor después de leerlo
+  useEffect(() => {
+    sessionStorage.removeItem('profileTab');
+  }, []);
+
+  const loadCertificates = async (userId: string) => {
+    try {
+      console.log("🔍 [UserProfile] Cargando certificados para userId:", userId);
+      setCertificatesLoading(true);
+      const { data: certs, error: certsError } = await supabase
+        .from("certificates")
+        .select("*")
+        .eq("student_id", userId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      console.log("📊 [UserProfile] Respuesta de certificados:", { certs, certsError });
+
+      if (certsError) {
+        console.error("❌ [UserProfile] Error cargando certificados:", certsError);
+        setUserCertificates([]);
+      } else {
+        console.log("✅ [UserProfile] Certificados cargados:", certs?.length || 0);
+        setUserCertificates(certs || []);
+      }
+    } catch (err) {
+      console.error("❌ [UserProfile] Error en loadCertificates:", err);
+      setUserCertificates([]);
+    } finally {
+      setCertificatesLoading(false);
+    }
+  };
 
   const loadUserData = async () => {
     setLoading(true);
@@ -132,7 +172,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
               .eq('course_id', courseId)
               .order('last_accessed_at', { ascending: false })
               .limit(1)
-              .single();
+              .maybeSingle();
             
             currentLesson = (lastProgress?.lessons as any)?.title || 'Lección 1';
           } catch (lastProgressErr) {
@@ -155,6 +195,9 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
         console.error('❌ Error cargando enrollments:', enrollmentsError);
         setUserCourses([]); // No cursos si no hay enrollments
       }
+
+      // ✅ Cargar certificados del usuario
+      await loadCertificates(user.id);
     } catch (err) {
       console.error("Error cargando datos:", err);
     } finally {
@@ -164,7 +207,42 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
 
   useEffect(() => {
     loadUserData();
+
+    // Suscripción realtime para certificados
+    const certificatesChannel = supabase
+      .channel('user-certificates-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'certificates',
+        },
+        (payload) => {
+          console.log('🔔 [UserProfile] Certificado actualizado via realtime:', payload);
+          // Recargar certificados automáticamente
+          loadUserData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(certificatesChannel);
+    };
   }, []);
+
+  // Efecto adicional para recargar cuando se hace visible la pestaña de certificados
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && userProfile?.id) {
+        console.log('👁️ [UserProfile] Página visible, recargando certificados...');
+        loadCertificates(userProfile.id);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [userProfile]);
 
   if (loading) {
     return (
@@ -228,7 +306,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                       <p className="text-sm text-[#64748B]">Cursos disponibles</p>
                     </div>
                     <div className="text-center rounded-xl border border-[#22C55E]/20 bg-linear-to-br from-white to-[#22C55E]/5 backdrop-blur-sm px-6 py-3 shadow-[0_4px_16px_0_rgba(34,197,94,0.08)]">
-                      <p className="text-2xl text-[#0F172A]">0</p>
+                      <p className="text-2xl text-[#0F172A]">{userCertificates.length}</p>
                       <p className="text-sm text-[#64748B]">Certificados</p>
                     </div>
                   </div>
@@ -239,7 +317,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="courses" className="w-full">
+        <Tabs defaultValue={initialTab} className="w-full">
           <TabsList className="mb-6 w-full justify-start">
             <TabsTrigger value="courses" className="flex-none">
               <BookOpen className="h-4 w-4 sm:mr-2" />
@@ -316,20 +394,69 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
 
           {/* My Certificates */}
           <TabsContent value="certificates" className="space-y-6">
-            <Card>
-              <CardContent className="flex min-h-[300px] flex-col items-center justify-center p-12 text-center">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#F1F5F9]">
-                  <Award className="h-8 w-8 text-[#64748B]" />
+            {certificatesLoading ? (
+              <Card>
+                <CardContent className="flex min-h-[300px] items-center justify-center p-12">
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#0B5FFF]" />
+                    <p className="text-[#64748B]">Cargando certificados...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : userCertificates.length === 0 ? (
+              <Card>
+                <CardContent className="flex min-h-[300px] flex-col items-center justify-center p-12 text-center">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#F1F5F9]">
+                    <Award className="h-8 w-8 text-[#64748B]" />
+                  </div>
+                  <h3 className="mb-2 text-[#0F172A]">No tienes certificados aún</h3>
+                  <p className="mb-4 text-[#64748B]">
+                    Completa un curso y obtén tu certificado verificable
+                  </p>
+                  <div className="flex gap-2 justify-center">
+                    <Button onClick={() => onNavigate?.("catalog")}>
+                      Explorar Cursos
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => userProfile?.id && loadCertificates(userProfile.id)}
+                      size="icon"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-[#0F172A]">
+                    Mis Certificados ({userCertificates.length})
+                  </h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => userProfile?.id && loadCertificates(userProfile.id)}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Actualizar
+                  </Button>
                 </div>
-                <h3 className="mb-2 text-[#0F172A]">No tienes certificados aún</h3>
-                <p className="mb-4 text-[#64748B]">
-                  Completa un curso y obtén tu certificado verificable
-                </p>
-                <Button onClick={() => onNavigate?.("catalog")}>
-                  Explorar Cursos
-                </Button>
-              </CardContent>
-            </Card>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {userCertificates.map((cert) => (
+                    <CertificateCard
+                      key={cert.id}
+                      courseName={cert.course_title}
+                      issueDate={cert.completion_date || cert.created_at.split('T')[0]}
+                      hash={cert.hash}
+                      studentName={cert.student_name}
+                      courseHours="40"
+                      certificateId={cert.hash.substring(0, 12).toUpperCase()}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </TabsContent>
 
           {/* Settings */}

@@ -148,11 +148,12 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     if (answeredQuestions < totalQuestions) {
       setShowSubmitDialog(true);
     } else {
-      setIsSubmitted(true);
+      confirmSubmit();
     }
   };
 
   const confirmSubmit = async () => {
+    console.log("🚀 [Evaluation] confirmSubmit() EJECUTADO");
     setShowSubmitDialog(false);
     setIsSubmitted(true);
     
@@ -160,13 +161,18 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     const score = calculateScore();
     const passed = score.percentage >= 70;
     
+    console.log("📊 [Evaluation] Puntaje calculado:", score.percentage, "% - Aprobó:", passed);
+    
     // Generate certificate if passed
     if (passed) {
+      console.log("🎯 [Evaluation] Usuario aprobó, generando certificado...");
       const course = courses.find((c) => c.id === courseId);
       
       try {
         // Obtener usuario autenticado
         const { data: { user } } = await supabase.auth.getUser();
+        
+        console.log("👤 [Evaluation] Usuario obtenido:", user?.id);
         
         if (!user) {
           toast.error("No se pudo identificar al usuario");
@@ -180,7 +186,17 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
           .eq("id", user.id)
           .single();
 
+        console.log("📋 [Evaluation] Perfil obtenido:", profile);
+
         const studentName = profile?.full_name || user.email?.split("@")[0] || "Usuario";
+        
+        console.log("📝 [Evaluation] Llamando issueCertificate con:", {
+          studentId: user.id,
+          courseId: courseId,
+          studentName: studentName,
+          courseTitle: courseTitle || course?.title || "Curso Completado",
+          grade: score.percentage,
+        });
         
         // Emitir certificado en la base de datos
         const certificate = await issueCertificate({
@@ -191,6 +207,8 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
           grade: score.percentage,
           completionDate: new Date().toISOString().split("T")[0],
         });
+
+        console.log("✅ [Evaluation] Certificado recibido:", certificate);
 
         // Guardar hash para mostrar al usuario
         setCertificateHash(certificate.hash);
@@ -210,7 +228,12 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
         };
         setCertificateData(certData);
       } catch (error: any) {
-        console.error("Error emitiendo certificado:", error);
+        console.error("❌❌❌ [Evaluation] ERROR COMPLETO al emitir certificado:");
+        console.error("Error object:", error);
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+        console.error("Error details:", JSON.stringify(error, null, 2));
+        
         toast.error("Error al emitir el certificado", {
           description: error.message || "Intenta nuevamente",
         });
@@ -447,7 +470,10 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
                 {passed ? (
                   <>
                     <Button
-                      onClick={() => onNavigate?.("profile")}
+                      onClick={() => {
+                        sessionStorage.setItem('profileTab', 'certificates');
+                        onNavigate?.("profile");
+                      }}
                       className="flex-1"
                     >
                       <Award className="mr-2 h-4 w-4" />
