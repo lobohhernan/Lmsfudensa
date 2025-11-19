@@ -17,8 +17,9 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
     // AUTO-REDIRECT cuando la inscripción se confirma
     if (enrolledCourseId && !isVerifying && !enrollmentError) {
       console.log("🚀 Iniciando redirección automática al curso:", enrolledCourseId);
+      console.log("⏳ Esperando 1.5 segundos para mostrar el mensaje...");
       
-      // Countdown de 2 segundos
+      // Countdown de 1.5 segundos (más rápido que los 2 segundos de MP)
       const countdownInterval = setInterval(() => {
         setRedirectCountdown((prev) => {
           if (prev <= 1) {
@@ -29,9 +30,9 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
         });
       }, 1000);
 
-      // Redirigir después de 2 segundos
+      // Redirigir después de 1.5 segundos (antes que MP intente redirigir)
       const redirectTimer = setTimeout(() => {
-        console.log("🔄 Ejecutando redirección...");
+        console.log("🔄 Ejecutando redirección (antes de Mercado Pago)...");
         if (onNavigate) {
           console.log("✅ Usando onNavigate");
           onNavigate("course", enrolledCourseId);
@@ -39,7 +40,7 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
           console.log("⚠️ onNavigate no disponible, usando window.location.hash");
           window.location.hash = `/#/curso/${enrolledCourseId}`;
         }
-      }, 2000);
+      }, 1500); // Reducido a 1.5 segundos para ser MÁS rápido que Mercado Pago
 
       return () => {
         clearTimeout(redirectTimer);
