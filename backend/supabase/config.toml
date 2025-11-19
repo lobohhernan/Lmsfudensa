@@ -20,13 +20,8 @@ enabled = true
 enabled = true
 port = 54323
 
-[edge_functions]
-enabled = true
-port = 54324
-
 [auth]
 enabled = true
-port = 54325
 site_url = "http://localhost:3000"
 additional_redirect_urls = ["https://localhost:3000"]
 jwt_expiry = 3600
@@ -39,5 +34,4 @@ enable_confirmations = true
 
 [storage]
 enabled = true
-port = 54326
 file_size_limit = "50MiB"

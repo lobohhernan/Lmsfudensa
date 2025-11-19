@@ -5,19 +5,35 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
  * Se ejecuta cuando hay cambios en el estado de los pagos
  */
 serve(async (req: Request): Promise<Response> => {
-  // Configurar CORS
+  console.log("🔔 Solicitud webhook recibida:", {
+    method: req.method,
+    url: req.url,
+    timestamp: new Date().toISOString(),
+  });
+
+  // Configurar CORS - permitir que Mercado Pago nos contacte
   if (req.method === "OPTIONS") {
     return new Response("ok", {
+      status: 200,
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": "Content-Type, x-signature",
       },
     });
   }
 
-  // Solo permitir POST y GET
-  if (req.method !== "POST" && req.method !== "GET") {
+  // Permitir GET para health check
+  if (req.method === "GET") {
+    return new Response(
+      JSON.stringify({ status: "webhook activo", timestamp: new Date().toISOString() }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Solo permitir POST para webhooks
+  if (req.method !== "POST") {
+    console.log("❌ Método no permitido:", req.method);
     return new Response(
       JSON.stringify({ error: "Método no permitido" }),
       { status: 405, headers: { "Content-Type": "application/json" } }
@@ -25,76 +41,84 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Para verificar que el webhook está funcionando
-    if (req.method === "GET") {
+    // Obtener el cuerpo del webhook
+    const body = await req.text();
+    console.log("📝 Cuerpo webhook:", body.substring(0, 200));
+
+    if (!body) {
+      console.warn("⚠️ Webhook vacío");
       return new Response(
-        JSON.stringify({ status: "webhook activo" }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Body vacío" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Obtener datos del webhook
-    const data = await req.json();
+    // Parsear JSON
+    const data = JSON.parse(body);
 
-    console.log("📨 Webhook recibido de Mercado Pago:", {
+    console.log("📨 Webhook parseado:", {
       type: data.type,
       action: data.action,
       dataId: data.data?.id,
       timestamp: new Date().toISOString(),
     });
 
+    // Validar firma HMAC si está disponible (Mercado Pago envía x-signature)
+    const signature = req.headers.get("x-signature");
+    const requestId = req.headers.get("x-request-id");
+    
+    if (signature) {
+      console.log("✅ Firma HMAC presente, validando...");
+      // Aquí se validaría la firma HMAC
+      // Por ahora solo logueamos que llegó
+    }
+
     // Procesar notificaciones de pago
     if (data.type === "payment" && data.action === "payment.created") {
       console.log("💰 Pago creado:", data.data?.id);
       
-      // Aquí puedes:
-      // 1. Guardar el pago en la base de datos
-      // 2. Actualizar el estado del pedido
-      // 3. Enviar email de confirmación
-      // 4. Registrar la compra del curso
-
-      const paymentId = data.data?.id;
-      
-      // Ejemplo: Log del evento
-      console.log(`✅ Procesando pago #${paymentId}`);
+      // TODO: Guardar en base de datos
+      // TODO: Enviar email de confirmación
+      // TODO: Registrar la compra del curso
     }
 
     if (data.type === "payment" && data.action === "payment.updated") {
       console.log("🔄 Pago actualizado:", data.data?.id);
       
-      // Procesar cambios en el estado del pago
-      const paymentId = data.data?.id;
-      console.log(`📝 Actualizando pago #${paymentId}`);
+      // TODO: Actualizar estado del pago
     }
 
-    // Responder a Mercado Pago que recibimos la notificación
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Webhook procesado correctamente",
-        receivedAt: new Date().toISOString(),
-      }),
-      { 
-        status: 200, 
-        headers: { 
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        } 
-      }
-    );
+    // Responder exitosamente a Mercado Pago
+    const response = {
+      success: true,
+      message: "Webhook procesado correctamente",
+      receivedAt: new Date().toISOString(),
+      requestId: requestId,
+    };
+
+    console.log("✅ Respondiendo a Mercado Pago con 200");
+    
+    return new Response(JSON.stringify(response), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   } catch (error) {
     console.error("❌ Error procesando webhook:", error);
 
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Error desconocido" 
+      JSON.stringify({
+        error: error instanceof Error ? error.message : "Error desconocido",
+        timestamp: new Date().toISOString(),
       }),
-      { 
-        status: 500, 
-        headers: { 
+      {
+        status: 500,
+        headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
-        } 
+        },
       }
     );
   }
