@@ -1,11 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+
+// Inicializar cliente Supabase con service role
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
  * Edge Function para recibir webhooks de Mercado Pago
  * Se ejecuta cuando hay cambios en el estado de los pagos
  */
 serve(async (req: Request): Promise<Response> => {
-  console.log("🔔 Solicitud webhook recibida:", {
+  console.log("🔔 [WEBHOOK] Solicitud webhook recibida:", {
     method: req.method,
     url: req.url,
     timestamp: new Date().toISOString(),
@@ -33,7 +40,7 @@ serve(async (req: Request): Promise<Response> => {
 
   // Solo permitir POST para webhooks
   if (req.method !== "POST") {
-    console.log("❌ Método no permitido:", req.method);
+    console.log("❌ [WEBHOOK] Método no permitido:", req.method);
     return new Response(
       JSON.stringify({ error: "Método no permitido" }),
       { status: 405, headers: { "Content-Type": "application/json" } }
@@ -43,10 +50,10 @@ serve(async (req: Request): Promise<Response> => {
   try {
     // Obtener el cuerpo del webhook
     const body = await req.text();
-    console.log("📝 Cuerpo webhook:", body.substring(0, 200));
+    console.log("📝 [WEBHOOK] Cuerpo:", body.substring(0, 300));
 
     if (!body) {
-      console.warn("⚠️ Webhook vacío");
+      console.warn("⚠️ [WEBHOOK] Body vacío");
       return new Response(
         JSON.stringify({ error: "Body vacío" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
@@ -56,57 +63,141 @@ serve(async (req: Request): Promise<Response> => {
     // Parsear JSON
     const data = JSON.parse(body);
 
-    console.log("📨 Webhook parseado:", {
+    console.log("📨 [WEBHOOK] Parseado:", {
       type: data.type,
       action: data.action,
       dataId: data.data?.id,
-      timestamp: new Date().toISOString(),
     });
 
-    // Validar firma HMAC si está disponible (Mercado Pago envía x-signature)
-    const signature = req.headers.get("x-signature");
-    const requestId = req.headers.get("x-request-id");
+    // Solo procesamos notificaciones de pago
+    if (data.type !== "payment") {
+      console.log("⏭️ [WEBHOOK] Ignorando tipo:", data.type);
+      return new Response(JSON.stringify({ success: true, ignored: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Obtener ID del pago
+    const paymentId = data.data?.id;
+    if (!paymentId) {
+      console.warn("⚠️ [WEBHOOK] No hay ID de pago");
+      return new Response(JSON.stringify({ success: true, noPaymentId: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("💰 [WEBHOOK] Procesando pago:", paymentId);
+
+    // Obtener detalles del pago desde Mercado Pago API
+    const mpToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")!;
     
-    if (signature) {
-      console.log("✅ Firma HMAC presente, validando...");
-      // Aquí se validaría la firma HMAC
-      // Por ahora solo logueamos que llegó
-    }
-
-    // Procesar notificaciones de pago
-    if (data.type === "payment" && data.action === "payment.created") {
-      console.log("💰 Pago creado:", data.data?.id);
-      
-      // TODO: Guardar en base de datos
-      // TODO: Enviar email de confirmación
-      // TODO: Registrar la compra del curso
-    }
-
-    if (data.type === "payment" && data.action === "payment.updated") {
-      console.log("🔄 Pago actualizado:", data.data?.id);
-      
-      // TODO: Actualizar estado del pago
-    }
-
-    // Responder exitosamente a Mercado Pago
-    const response = {
-      success: true,
-      message: "Webhook procesado correctamente",
-      receivedAt: new Date().toISOString(),
-      requestId: requestId,
-    };
-
-    console.log("✅ Respondiendo a Mercado Pago con 200");
+    console.log("🔍 [WEBHOOK] Obteniendo detalles del pago desde MP API...");
     
-    return new Response(JSON.stringify(response), {
-      status: 200,
+    const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
+        Authorization: `Bearer ${mpToken}`,
       },
     });
+
+    if (!mpResponse.ok) {
+      const errorText = await mpResponse.text();
+      console.error("❌ [WEBHOOK] Error obteniendo pago de MP:", mpResponse.status, errorText);
+      return new Response(
+        JSON.stringify({ error: "No se pudo obtener el pago de MP" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const paymentData = await mpResponse.json();
+    console.log("📊 [WEBHOOK] Status del pago:", paymentData.status);
+    console.log("📊 [WEBHOOK] External reference:", paymentData.external_reference);
+
+    // Solo procesar pagos aprobados
+    if (paymentData.status !== "approved") {
+      console.log("⏭️ [WEBHOOK] Pago no aprobado, status:", paymentData.status);
+      return new Response(JSON.stringify({ success: true, notApproved: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Extraer email del payer
+    const userEmail = paymentData.payer?.email;
+    const courseId = paymentData.external_reference;
+
+    if (!userEmail || !courseId) {
+      console.error("❌ [WEBHOOK] Faltan datos:", { userEmail, courseId });
+      return new Response(
+        JSON.stringify({ error: "Faltan email o courseId en el pago" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("👤 [WEBHOOK] Usuario:", userEmail);
+    console.log("📚 [WEBHOOK] Curso:", courseId);
+
+    // Obtener el usuario por email
+    console.log("🔎 [WEBHOOK] Buscando usuario por email...");
+    
+    const { data: users, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", userEmail)
+      .single();
+
+    if (userError || !users) {
+      console.warn("⚠️ [WEBHOOK] Usuario no encontrado:", userEmail);
+      // Crear el usuario si no existe
+      console.log("👤 [WEBHOOK] Creando usuario...");
+      
+      const { data: newUser, error: createUserError } = await supabase
+        .from("users")
+        .insert({
+          email: userEmail,
+          full_name: paymentData.payer?.first_name || "Usuario",
+        })
+        .select("id")
+        .single();
+
+      if (createUserError || !newUser) {
+        console.error("❌ [WEBHOOK] Error creando usuario:", createUserError);
+        return new Response(
+          JSON.stringify({ error: "No se pudo crear el usuario" }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log("✅ [WEBHOOK] Usuario creado:", newUser.id);
+
+      // Ahora crear la inscripción con el nuevo usuario
+      await createEnrollment(newUser.id, courseId, userEmail, paymentId);
+    } else {
+      console.log("✅ [WEBHOOK] Usuario encontrado:", users.id);
+      
+      // Crear inscripción
+      await createEnrollment(users.id, courseId, userEmail, paymentId);
+    }
+
+    console.log("✅ [WEBHOOK] Pago procesado correctamente");
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Pago procesado correctamente",
+        paymentId: paymentId,
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      }
+    );
   } catch (error) {
-    console.error("❌ Error procesando webhook:", error);
+    console.error("❌ [WEBHOOK] Error general:", error);
 
     return new Response(
       JSON.stringify({
@@ -123,3 +214,72 @@ serve(async (req: Request): Promise<Response> => {
     );
   }
 });
+
+/**
+ * Crear inscripción del usuario en el curso
+ * Maneja el caso de duplicados
+ */
+async function createEnrollment(
+  userId: string,
+  courseId: string,
+  userEmail: string,
+  paymentId: string
+) {
+  console.log("📝 [WEBHOOK] Creando inscripción:", { userId, courseId });
+
+  // Primero verificar si ya existe la inscripción
+  const { data: existingEnrollment, error: checkError } = await supabase
+    .from("enrollments")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("course_id", courseId)
+    .single();
+
+  if (existingEnrollment) {
+    console.warn("⚠️ [WEBHOOK] Inscripción ya existe, actualizando...");
+    
+    // Actualizar si ya existe
+    const { error: updateError } = await supabase
+      .from("enrollments")
+      .update({
+        status: "active",
+        payment_id: paymentId,
+        enrolled_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+      .eq("course_id", courseId);
+
+    if (updateError) {
+      console.error("❌ [WEBHOOK] Error actualizando inscripción:", updateError);
+      throw updateError;
+    }
+
+    console.log("✅ [WEBHOOK] Inscripción actualizada");
+    return;
+  }
+
+  // Crear inscripción nueva
+  const { data: enrollment, error: enrollError } = await supabase
+    .from("enrollments")
+    .insert({
+      user_id: userId,
+      course_id: courseId,
+      status: "active",
+      payment_id: paymentId,
+      enrolled_at: new Date().toISOString(),
+    })
+    .select();
+
+  if (enrollError) {
+    // Si el error es por duplicate key, significa que otra instancia la creó
+    if (enrollError.message?.includes("duplicate")) {
+      console.warn("⚠️ [WEBHOOK] Inscripción creada por otro proceso, ignorando error");
+      return;
+    }
+    
+    console.error("❌ [WEBHOOK] Error creando inscripción:", enrollError);
+    throw enrollError;
+  }
+
+  console.log("✅ [WEBHOOK] Inscripción creada:", enrollment?.[0]?.id);
+}
