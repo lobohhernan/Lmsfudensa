@@ -45,11 +45,7 @@ serve(async (req: Request) => {
     console.log("📌 [MP] Origin header:", req.headers.get("origin"));
     console.log("📌 [MP] Base URL final a usar:", baseUrl);
 
-    // Build preference
-    // IMPORTANT: Use auto_return to get automatic redirect with payment params in URL
-    // In localhost, users need to click a button in Mercado Pago to return
-    // In production HTTPS, auto_return works automatically
-    // The webhook ALWAYS processes the payment
+    // Build preference with official required fields ONLY
     const preference = {
       items: [
         {
@@ -63,15 +59,12 @@ serve(async (req: Request) => {
         email: body.userEmail,
       },
       back_urls: {
-        // These URLs will receive GET params like ?payment_id=xxx&status=approved
-        success: `${baseUrl}/payment-callback?status=approved`,
-        failure: `${baseUrl}/payment-callback?status=rejected`,
-        pending: `${baseUrl}/payment-callback?status=pending`,
+        success: `${baseUrl}/`,
+        failure: `${baseUrl}/`,
+        pending: `${baseUrl}/`,
       },
-      // Enable auto_return - even if not automatic in localhost, params are passed
       auto_return: "approved",
       external_reference: body.courseId,
-      notification_url: `https://hztkspqunxeauawqcikw.supabase.co/functions/v1/mercadopago-webhook`,
     };
 
     console.log("📝 [MP] Preference object:", JSON.stringify(preference, null, 2));
