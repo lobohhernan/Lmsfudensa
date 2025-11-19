@@ -11,22 +11,40 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
   const [isVerifying, setIsVerifying] = useState(true);
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
   const [enrolledCourseId, setEnrolledCourseId] = useState<string | null>(null);
+  const [redirectCountdown, setRedirectCountdown] = useState(2);
 
   useEffect(() => {
     // AUTO-REDIRECT cuando la inscripción se confirma
     if (enrolledCourseId && !isVerifying && !enrollmentError) {
-      console.log("🚀 Redirigiendo automáticamente al curso:", enrolledCourseId);
+      console.log("🚀 Iniciando redirección automática al curso:", enrolledCourseId);
       
-      // Esperar 2 segundos para que el usuario vea el mensaje de éxito
+      // Countdown de 2 segundos
+      const countdownInterval = setInterval(() => {
+        setRedirectCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      // Redirigir después de 2 segundos
       const redirectTimer = setTimeout(() => {
+        console.log("🔄 Ejecutando redirección...");
         if (onNavigate) {
+          console.log("✅ Usando onNavigate");
           onNavigate("course", enrolledCourseId);
         } else {
+          console.log("⚠️ onNavigate no disponible, usando window.location.hash");
           window.location.hash = `/#/curso/${enrolledCourseId}`;
         }
       }, 2000);
 
-      return () => clearTimeout(redirectTimer);
+      return () => {
+        clearTimeout(redirectTimer);
+        clearInterval(countdownInterval);
+      };
     }
   }, [enrolledCourseId, isVerifying, enrollmentError, onNavigate]);
 
@@ -80,6 +98,7 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
             console.log("✅ Inscripción confirmada");
             enrolled = true;
             setEnrolledCourseId(externalRef);
+            setIsVerifying(false); // ← IMPORTANTE: Establecer false para activar el useEffect de redirección
           } else {
             retries++;
             if (retries < maxRetries) {
@@ -155,8 +174,8 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
                   <p className="text-sm text-green-800 font-semibold">
                     ✅ Acceso al curso activado
                   </p>
-                  <p className="text-xs text-green-700 mt-1">
-                    Redirigiendo al curso automáticamente...
+                  <p className="text-xs text-green-700 mt-2">
+                    En {redirectCountdown} segundo{redirectCountdown !== 1 ? 's' : ''} serás redirigido a FUDENSA
                   </p>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
