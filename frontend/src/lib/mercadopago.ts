@@ -39,10 +39,12 @@ export const createMercadoPagoPreference = async (
   courseId: string,
   courseTitle: string,
   price: number,
-  userEmail: string
+  userEmail: string,
+  userName?: string,
+  userId?: string
 ): Promise<string | null> => {
   try {
-    console.log("🛒 Creando preferencia de pago:", { courseId, courseTitle, price, userEmail });
+    console.log("🛒 Creando preferencia de pago:", { courseId, courseTitle, price, userEmail, userId });
     
     if (!supabase) {
       throw new Error("Supabase no inicializado");
@@ -59,6 +61,8 @@ export const createMercadoPagoPreference = async (
           courseTitle,
           price,
           userEmail,
+          userName,
+          userId,
           baseUrl,
         },
       }

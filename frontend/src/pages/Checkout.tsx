@@ -191,13 +191,23 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
         return;
       }
 
+      // Obtener userId del usuario autenticado
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        console.error("❌ Usuario no autenticado");
+        toast.error("Debes estar autenticado para comprar.");
+        setIsProcessing(false);
+        return;
+      }
+
       console.log("💳 Iniciando pago con Checkout Pro...");
       console.log("Datos que se enviarán:", {
         courseId,
         title: courseData.title,
         price: courseData.price,
         email: userData.email,
-        name: userData.name
+        name: userData.name,
+        userId: authUser.id
       });
       
       // Crear preferencia en Mercado Pago
@@ -206,7 +216,8 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
         courseData.title,
         courseData.price,
         userData.email,
-        userData.name
+        userData.name,
+        authUser.id
       );
 
       console.log("📍 initPoint recibido:", initPoint);

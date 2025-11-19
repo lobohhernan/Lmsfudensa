@@ -70,6 +70,18 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
           return;
         }
 
+        // Parsear external_reference (contiene JSON con courseId y userId)
+        let courseId: string;
+        try {
+          const externalRefData = JSON.parse(decodeURIComponent(externalRef));
+          courseId = externalRefData.courseId;
+          console.log("✅ Parsed external_reference:", { courseId, userId: externalRefData.userId });
+        } catch (e) {
+          // Si falla el parse, asumir que es solo courseId (compatibilidad backwards)
+          courseId = externalRef;
+          console.warn("⚠️ No se pudo parsear external_reference, usando como courseId:", courseId);
+        }
+
         // Obtener usuario autenticado
         const { data: { user } } = await supabase.auth.getUser();
 
@@ -81,7 +93,7 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
 
         // NOTA: El webhook de Mercado Pago es el único que crea la inscripción
         // Aquí solo verificamos que existe (con reintentos para esperar al webhook)
-        console.log(`🔍 Verificando inscripción del usuario ${user.id} en curso ${externalRef}...`);
+        console.log(`🔍 Verificando inscripción del usuario ${user.id} en curso ${courseId}...`);
         
         let enrolled = false;
         let retries = 0;
@@ -92,13 +104,13 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
             .from("enrollments")
             .select("id")
             .eq("user_id", user.id)
-            .eq("course_id", externalRef)
+            .eq("course_id", courseId)
             .single();
           
           if (enrollment) {
             console.log("✅ Inscripción confirmada");
             enrolled = true;
-            setEnrolledCourseId(externalRef);
+            setEnrolledCourseId(courseId);
             setIsVerifying(false); // ← IMPORTANTE: Establecer false para activar el useEffect de redirección
           } else {
             retries++;
@@ -114,7 +126,6 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
           setEnrollmentError("La inscripción tardó más de lo esperado. Por favor intenta en unos momentos.");
           setIsVerifying(false);
         }
-        // Si fue exitoso, NO establecer isVerifying=false aquí (se redirige automáticamente)
       } catch (err) {
         console.error("❌ Error en verificación:", err);
         setEnrollmentError(

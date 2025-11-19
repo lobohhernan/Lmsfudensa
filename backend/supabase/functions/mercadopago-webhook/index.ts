@@ -123,62 +123,55 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // Extraer email del payer
-    const userEmail = paymentData.payer?.email;
-    const courseId = paymentData.external_reference;
-
-    if (!userEmail || !courseId) {
-      console.error("❌ [WEBHOOK] Faltan datos:", { userEmail, courseId });
-      return new Response(
-        JSON.stringify({ error: "Faltan email o courseId en el pago" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log("👤 [WEBHOOK] Usuario:", userEmail);
-    console.log("📚 [WEBHOOK] Curso:", courseId);
-
-    // Obtener el usuario por email
-    console.log("🔎 [WEBHOOK] Buscando usuario por email...");
+    // Parsear external_reference (contiene JSON con courseId y userId)
+    let courseId: string;
+    let userId: string;
     
-    const { data: users, error: userError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", userEmail)
-      .single();
-
-    if (userError || !users) {
-      console.warn("⚠️ [WEBHOOK] Usuario no encontrado:", userEmail);
-      // Crear el usuario si no existe
-      console.log("👤 [WEBHOOK] Creando usuario...");
+    try {
+      const externalRefData = JSON.parse(paymentData.external_reference);
+      courseId = externalRefData.courseId;
+      userId = externalRefData.userId;
+      console.log("✅ [WEBHOOK] Parsed external_reference:", { courseId, userId });
+    } catch (e) {
+      // Si falla el parse, asumir que es solo courseId (compatibilidad backwards)
+      courseId = paymentData.external_reference;
+      console.warn("⚠️ [WEBHOOK] No se pudo parsear external_reference, usando como courseId:", courseId);
       
-      const { data: newUser, error: createUserError } = await supabase
-        .from("users")
-        .insert({
-          email: userEmail,
-          full_name: paymentData.payer?.first_name || "Usuario",
-        })
-        .select("id")
-        .single();
-
-      if (createUserError || !newUser) {
-        console.error("❌ [WEBHOOK] Error creando usuario:", createUserError);
+      // Sin userId, intentar obtener por email
+      const userEmail = paymentData.payer?.email;
+      if (!userEmail) {
+        console.error("❌ [WEBHOOK] No hay userId ni email disponible");
         return new Response(
-          JSON.stringify({ error: "No se pudo crear el usuario" }),
-          { status: 500, headers: { "Content-Type": "application/json" } }
+          JSON.stringify({ error: "No se puede identificar al usuario" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
         );
       }
-
-      console.log("✅ [WEBHOOK] Usuario creado:", newUser.id);
-
-      // Ahora crear la inscripción con el nuevo usuario
-      await createEnrollment(newUser.id, courseId, userEmail, paymentId);
-    } else {
-      console.log("✅ [WEBHOOK] Usuario encontrado:", users.id);
       
-      // Crear inscripción
-      await createEnrollment(users.id, courseId, userEmail, paymentId);
+      // Obtener el usuario por email
+      console.log("🔎 [WEBHOOK] Buscando usuario por email...");
+      
+      const { data: users, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", userEmail)
+        .single();
+
+      if (userError || !users) {
+        console.warn("⚠️ [WEBHOOK] Usuario no encontrado:", userEmail);
+        return new Response(
+          JSON.stringify({ error: "Usuario no encontrado" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      
+      userId = users.id;
     }
+
+    console.log("✅ [WEBHOOK] Datos extraídos:", { courseId, userId });
+
+    // Crear la inscripción
+    const userEmail = paymentData.payer?.email || "unknown@mercadopago.com";
+    await createEnrollment(userId, courseId, userEmail, paymentId);
 
     console.log("✅ [WEBHOOK] Pago procesado correctamente");
 

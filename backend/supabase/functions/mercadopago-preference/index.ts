@@ -64,7 +64,11 @@ serve(async (req: Request) => {
         pending: `${baseUrl}/`,
       },
       auto_return: "approved",
-      external_reference: body.courseId,
+      // external_reference ahora contiene tanto courseId como userId
+      external_reference: JSON.stringify({
+        courseId: body.courseId,
+        userId: body.userId,
+      }),
     };
 
     console.log("📝 [MP] Preference object:", JSON.stringify(preference, null, 2));
