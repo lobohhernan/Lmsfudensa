@@ -550,7 +550,7 @@ export default function App() {
         />
 
         <main className="flex-1">
-          <Evaluation onNavigate={handleNavigate} />
+          <Evaluation onNavigate={handleNavigate} courseId={currentCourseId} />
         </main>
 
         <AppFooter onNavigate={handleNavigate} />
