@@ -2,6 +2,13 @@
 
 import { supabase } from "./supabase";
 
+// Declarar el tipo de window.MercadoPago
+declare global {
+  interface Window {
+    MercadoPago?: any;
+  }
+}
+
 interface MercadoPagoPreference {
   items: Array<{
     id: string;
@@ -19,8 +26,8 @@ interface MercadoPagoPreference {
     failure: string;
     pending: string;
   };
-  auto_return: string;
   notification_url?: string;
+  external_reference?: string;
 }
 
 /**
@@ -28,20 +35,32 @@ interface MercadoPagoPreference {
  */
 export const initMercadoPago = async () => {
   try {
-    const { loadMercadoPago } = await import("@mercadopago/sdk-js");
-    
     const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY;
     
     if (!publicKey) {
       console.error("❌ Public Key de Mercado Pago no configurada");
       return null;
     }
+
+    // El SDK se carga desde el CDN en index.html
+    // Verificar que window.MercadoPago está disponible
+    if (typeof window !== 'undefined' && window.MercadoPago) {
+      console.log("✅ Mercado Pago SDK disponible");
+      return true;
+    }
+
+    // Si no está disponible, esperar un poco e intentar de nuevo
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    await loadMercadoPago();
-    console.log("✅ Mercado Pago SDK cargado correctamente");
-    return true;
+    if (typeof window !== 'undefined' && window.MercadoPago) {
+      console.log("✅ Mercado Pago SDK cargado correctamente");
+      return true;
+    }
+
+    console.error("❌ SDK de Mercado Pago no disponible en window.MercadoPago");
+    return null;
   } catch (error) {
-    console.error("❌ Error al cargar Mercado Pago SDK:", error);
+    console.error("❌ Error al inicializar Mercado Pago:", error);
     return null;
   }
 };
@@ -58,7 +77,30 @@ export const createMercadoPagoPreference = async (
   userName?: string
 ): Promise<string | null> => {
   try {
+    console.log("🌍 [MP] createMercadoPagoPreference iniciado");
+    console.log("🌍 [MP] Parámetros recibidos:", { courseId, courseTitle, price, userEmail, userName });
+    
     console.log("📝 Creando preferencia de pago en backend...");
+    
+    // Verificar que Supabase esté disponible
+    if (!supabase) {
+      console.error("🌍 [MP] ❌ Supabase no disponible");
+      throw new Error("Supabase no inicializado");
+    }
+
+    console.log("🌍 [MP] Llamando a Edge Function: mercadopago-preference");
+    
+    // Obtener la URL base actual del navegador
+    let baseUrl = window.location.origin;
+    
+    // En Netlify, asegurar que usamos HTTPS
+    if (window.location.hostname === 'fudensa.netlify.app' || window.location.protocol === 'https:') {
+      baseUrl = baseUrl.replace('http://', 'https://');
+    }
+    
+    console.log("🌍 [MP] Base URL del frontend:", baseUrl);
+    console.log("🌍 [MP] Hostname:", window.location.hostname);
+    console.log("🌍 [MP] Protocol:", window.location.protocol);
     
     // Llamar a la Edge Function de Supabase
     const { data, error } = await supabase.functions.invoke(
@@ -70,30 +112,82 @@ export const createMercadoPagoPreference = async (
           price,
           userEmail,
           userName,
+          baseUrl, // Enviar la URL base del frontend
         },
       }
     );
 
+    console.log("🌍 [MP] Respuesta de Edge Function:", { data, error });
+
     if (error) {
-      console.error("❌ Error en Edge Function:", error);
-      throw new Error(error.message);
+      console.error("🌍 [MP] ❌ Error en Edge Function:", error);
+      console.error("🌍 [MP] ❌ Error details:", error instanceof Error ? error.message : JSON.stringify(error));
+      throw new Error(error.message || JSON.stringify(error));
+    }
+
+    if (!data) {
+      console.error("🌍 [MP] ❌ Data es null en respuesta");
+      throw new Error("Respuesta vacía de Edge Function");
     }
 
     if (!data?.success) {
-      console.error("❌ Error al crear preferencia:", data?.error);
-      throw new Error(data?.error || "Error desconocido");
+      console.error("🌍 [MP] ❌ Error al crear preferencia - Success false");
+      console.error("🌍 [MP] ❌ Error message:", data?.error);
+      console.error("🌍 [MP] ❌ Error details:", data?.details);
+      throw new Error(data?.error || "Error desconocido al crear preferencia");
     }
 
-    console.log("✅ Preferencia creada:", data.preferenceId);
+    console.log("🌍 [MP] ✅ Preferencia creada:", data.preferenceId);
+    console.log("🌍 [MP] 📍 Init Point:", data.initPoint);
+    
     return data.initPoint || null;
   } catch (error) {
-    console.error("❌ Error al crear preferencia:", error);
+    console.error("🌍 [MP] ❌ Error al crear preferencia:", error);
+    console.error("🌍 [MP] Error type:", error instanceof Error ? error.constructor.name : typeof error);
+    console.error("🌍 [MP] Error message:", error instanceof Error ? error.message : String(error));
     return null;
   }
 };
 
 /**
+ * Configurar listener para detectar completitud del pago vía webhook
+ * Como Mercado Pago no soporta auto_return en localhost, usamos polling
+ */
+export const setupPaymentPolling = (courseId: string, maxWaitSeconds: number = 120): Promise<boolean> => {
+  return new Promise((resolve) => {
+    let pollCount = 0;
+    const maxPolls = Math.ceil(maxWaitSeconds / 2); // Polear cada 2 segundos
+    
+    const pollForCompletion = () => {
+      pollCount++;
+      
+      // Comprobar si el pago fue completado (via webhook)
+      const paymentCompleted = sessionStorage.getItem(`mp_payment_completed_${courseId}`);
+      
+      if (paymentCompleted === "true") {
+        console.log("✅ [MP] Pago completado detectado via webhook");
+        sessionStorage.removeItem(`mp_payment_completed_${courseId}`);
+        resolve(true);
+        return;
+      }
+      
+      if (pollCount < maxPolls) {
+        console.log(`⏳ [MP] Esperando confirmación del pago... (intento ${pollCount})`);
+        setTimeout(pollForCompletion, 2000); // Esperar 2 segundos y reintentar
+      } else {
+        console.log("⏰ [MP] Timeout esperando confirmación del pago");
+        resolve(false); // Timeout
+      }
+    };
+    
+    // Iniciar polling
+    pollForCompletion();
+  });
+};
+
+/**
  * Redirigir a Mercado Pago para pagar
+ * Abre en una nueva ventana y monitorea el regreso
  */
 export const redirectToMercadoPago = (initPoint: string) => {
   if (!initPoint) {
@@ -101,8 +195,62 @@ export const redirectToMercadoPago = (initPoint: string) => {
     return;
   }
 
-  // Redirigir a la página de pago de Mercado Pago
-  window.location.href = initPoint;
+  console.log("🔄 [MP] Redirigiendo a Mercado Pago:", initPoint);
+  
+  // ESTRATEGIA: Abre en nueva ventana y monitorea
+  const mpWindow = window.open(initPoint, "mercadopago_checkout", "width=800,height=600");
+
+  if (!mpWindow) {
+    console.error("❌ No se pudo abrir ventana");
+    return;
+  }
+
+  // Monitorear cuando el usuario cierra la ventana o navega de vuelta
+  const checkWindowStatus = setInterval(() => {
+    try {
+      // Verificar si la ventana se cerró
+      if (mpWindow.closed) {
+        console.log("✅ [MP] Usuario cerró ventana de Mercado Pago");
+        clearInterval(checkWindowStatus);
+
+        // El usuario completó el pago (o canceló)
+        // Redirigir a payment-callback para polling
+        // El webhook debería haber procesado el pago si fue exitoso
+        const courseId = sessionStorage.getItem("mp_pending_course");
+        const userEmail = sessionStorage.getItem("mp_pending_email");
+
+        if (courseId && userEmail) {
+          console.log("🔄 [MP] Redirigiendo a payment-callback para verificar pago...");
+          window.location.href = "/payment-callback";
+        } else {
+          console.error("❌ [MP] Datos de pago no encontrados");
+          window.location.href = "/";
+        }
+
+        return;
+      }
+
+      // Intentar acceder a la URL (puede fallar por CORS pero nos da pistas)
+      try {
+        const windowUrl = mpWindow.location.href;
+        console.log("📍 [MP Window] URL:", windowUrl);
+      } catch (e) {
+        // Normal por CORS - ventana de otro dominio
+      }
+    } catch (e) {
+      // Error al acceder a la ventana (puede ser por CORS)
+      console.log("⚠️  No se puede acceder a URL de ventana (CORS esperado)");
+    }
+  }, 1000); // Verificar cada segundo
+
+  // Timeout: Si después de 10 minutos no se cerró, asumir que se completó
+  setTimeout(() => {
+    clearInterval(checkWindowStatus);
+    if (!mpWindow.closed) {
+      console.log("⏰ [MP] Timeout - redirigiendo a payment-callback");
+      window.location.href = "/payment-callback";
+    }
+  }, 600000); // 10 minutos
 };
 
 /**
