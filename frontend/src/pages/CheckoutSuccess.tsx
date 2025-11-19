@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { supabase } from "../lib/supabase";
-import { enrollUser } from "../lib/enrollments";
 
 interface CheckoutSuccessProps {
   onNavigate?: (page: string, courseId?: string) => void;
@@ -14,7 +13,7 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
   const [enrolledCourseId, setEnrolledCourseId] = useState<string | null>(null);
 
   useEffect(() => {
-    const verifyAndEnroll = async () => {
+    const verifyEnrollment = async () => {
       try {
         // Obtener parámetros de Mercado Pago desde la URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -43,16 +42,38 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
           return;
         }
 
-        // Inscribir al usuario en el curso
-        console.log(`📚 Inscribiendo usuario ${user.id} en curso ${externalRef}...`);
-        const res = await enrollUser(user.id, externalRef);
-
-        if (res.success) {
-          console.log("✅ Usuario inscrito correctamente");
-          setEnrolledCourseId(externalRef);
-        } else {
-          console.error("⚠️ Error en inscripción:", res.error);
-          setEnrollmentError(res.error || "Error al inscribirse en el curso");
+        // NOTA: El webhook de Mercado Pago es el único que crea la inscripción
+        // Aquí solo verificamos que existe (con reintentos para esperar al webhook)
+        console.log(`🔍 Verificando inscripción del usuario ${user.id} en curso ${externalRef}...`);
+        
+        let enrolled = false;
+        let retries = 0;
+        const maxRetries = 15; // ~30 segundos (esperar webhook)
+        
+        while (!enrolled && retries < maxRetries) {
+          const { data: enrollment } = await supabase
+            .from("enrollments")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("course_id", externalRef)
+            .single();
+          
+          if (enrollment) {
+            console.log("✅ Inscripción confirmada");
+            enrolled = true;
+            setEnrolledCourseId(externalRef);
+          } else {
+            retries++;
+            if (retries < maxRetries) {
+              console.log(`⏳ Esperando inscripción... (intento ${retries}/${maxRetries})`);
+              await new Promise(resolve => setTimeout(resolve, 2000)); // Esperar 2 segundos
+            }
+          }
+        }
+        
+        if (!enrolled) {
+          console.error("❌ La inscripción no se completó en el tiempo esperado");
+          setEnrollmentError("La inscripción tardó más de lo esperado. Por favor intenta en unos momentos.");
         }
 
         setIsVerifying(false);
@@ -65,7 +86,7 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
       }
     };
 
-    verifyAndEnroll();
+    verifyEnrollment();
   }, []);
 
   return (
