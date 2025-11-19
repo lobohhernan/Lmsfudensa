@@ -128,7 +128,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
               .eq('course_id', courseId)
               .order('last_accessed_at', { ascending: false })
               .limit(1)
-              .single();
+              .maybeSingle();
             
             currentLesson = lastProgress?.lessons?.title || 'Lección 1';
           } catch (lastProgressErr) {
