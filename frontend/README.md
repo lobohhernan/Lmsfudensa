@@ -1,11 +1,24 @@
 
-  # LMS Prototipo FUDENSA
+# Frontend - FUDENSA
 
-  This is a code bundle for LMS Prototipo FUDENSA. The original project is available at https://www.figma.com/design/w3DuUV7ltcerZrOFVGGafw/LMS-Prototipo-FUDENSA.
+Aplicación React moderna para FUDENSA.
 
-  ## Running the code
+## 🚀 Inicio Rápido
 
-  Run `npm i` to install the dependencies.
+```bash
+npm install
+npm run dev
+```
 
-  Run `npm run dev` to start the development server.
+Disponible en `http://localhost:5173`
+
+## 🔧 Scripts
+
+- `npm run dev` - Desarrollar
+- `npm run build` - Producción
+- `npm run preview` - Preview
+
+## 📖 Documentación
+
+Ver [README.md](../README.md) principal.
   
