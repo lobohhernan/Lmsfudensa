@@ -25,6 +25,7 @@ import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
 import { isUserEnrolled, enrollUser } from "../lib/enrollments";
 import { resolveCourseSlugToId } from "../lib/courseResolver"
+import { createMercadoPagoPreference, redirectToMercadoPago } from "../lib/mercadopago";
 
 interface CheckoutProps {
   onNavigate?: (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => void;
@@ -37,7 +38,6 @@ interface CheckoutProps {
 export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, userData, isInitializing = false }: CheckoutProps) {
   const [step, setStep] = useState(1);
   const [country, setCountry] = useState("AR");
-  // paymentMethod removed (not used)
   const [couponCode, setCouponCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [courseData, setCourseData] = useState<any>(null);
@@ -162,45 +162,95 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
   const price = courseData?.price || 0;
   const currency = currencies[country] || currencies.US;
 
-  const handlePayment = () => {
-    setIsProcessing(true);
+  const handlePayment = async () => {
+    console.log("🔥 BOTÓN CLICKEADO: handlePayment ejecutándose...");
+    console.log("Estado actual:", { userData, courseData, courseId, isProcessing });
+    
+    try {
+      setIsProcessing(true);
+      console.log("✅ isProcessing establecido a true");
+      
+      if (!userData) {
+        console.error("❌ userData vacío:", userData);
+        toast.error("Datos de usuario incompletos.");
+        setIsProcessing(false);
+        return;
+      }
+      
+      if (!courseData) {
+        console.error("❌ courseData vacío:", courseData);
+        toast.error("Datos del curso incompletos.");
+        setIsProcessing(false);
+        return;
+      }
+      
+      if (!courseId) {
+        console.error("❌ courseId vacío:", courseId);
+        toast.error("ID del curso no disponible.");
+        setIsProcessing(false);
+        return;
+      }
 
-    // Simular procesamiento de pago
-    setTimeout(() => {
-      (async () => {
-        try {
-          // Intentar inscribir al usuario en el curso
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user && courseId) {
-            const res = await enrollUser(user.id, courseId);
-            if (res.success) {
-              debug("✅ Usuario inscrito correctamente en el curso");
-              toast.success("¡Pago procesado exitosamente!");
-              
-              setIsProcessing(false);
-              
-              // ✅ REDIRIGIR DIRECTO A LA PRIMERA LECCIÓN DEL CURSO
-              // El certificado solo se mostrará al completar el curso + evaluación
-              setTimeout(() => {
-                onNavigate?.("lesson", courseId, courseSlug, "1");
-              }, 800);
-            } else {
-              console.warn("No se pudo inscribir automáticamente:", res.error);
-              toast.error("Error al procesar la inscripción");
-              setIsProcessing(false);
-            }
-          } else {
-            console.warn("No hay usuario autenticado o courseId no disponible para inscribir");
-            toast.error("Error de autenticación");
-            setIsProcessing(false);
-          }
-        } catch (err) {
-          console.error("Error durante el flujo de pago/inscripción:", err);
-          toast.error("Ocurrió un error procesando la inscripción");
-          setIsProcessing(false);
-        }
-      })();
-    }, 2000);
+      // Obtener userId del usuario autenticado
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        console.error("❌ Usuario no autenticado");
+        toast.error("Debes estar autenticado para comprar.");
+        setIsProcessing(false);
+        return;
+      }
+
+      console.log("💳 Iniciando pago con Checkout Pro...");
+      console.log("Datos que se enviarán:", {
+        courseId,
+        title: courseData.title,
+        price: courseData.price,
+        email: userData.email,
+        name: userData.name,
+        userId: authUser.id
+      });
+      
+      // Crear preferencia en Mercado Pago
+      const initPoint = await createMercadoPagoPreference(
+        courseId,
+        courseData.title,
+        courseData.price,
+        userData.email,
+        userData.name,
+        authUser.id
+      );
+
+      console.log("📍 initPoint recibido:", initPoint);
+
+      if (!initPoint) {
+        console.error("❌ initPoint es null o vacío");
+        toast.error("No se pudo crear la preferencia de pago. Intenta de nuevo.");
+        setIsProcessing(false);
+        return;
+      }
+
+      // Guardar datos de pago pendiente para procesamiento vía webhook
+      // Mercado Pago NO usa auto_return con localhost
+      // El webhook notificará cuando el pago sea completado
+      sessionStorage.setItem("mp_pending_course", courseId);
+      sessionStorage.setItem("mp_pending_email", userData.email);
+      
+      console.log("🔄 Redirigiendo a Mercado Pago...");
+      console.log("✅ Preferencia creada, redirigiendo a Mercado Pago...");
+      
+      // Redirigir a Mercado Pago
+      redirectToMercadoPago(initPoint);
+      console.log("URL de redirección:", initPoint);
+      
+      // Redirigir directamente a Mercado Pago (CHECKOUT PRO)
+      redirectToMercadoPago(initPoint);
+      
+    } catch (err) {
+      console.error("❌ Error en handlePayment:", err);
+      console.error("Error details:", err instanceof Error ? err.message : String(err));
+      toast.error("Error al procesar el pago");
+      setIsProcessing(false);
+    }
   };
 
   // Loading state
@@ -369,36 +419,38 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
             {step === 2 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Método de Pago</CardTitle>
+                  <CardTitle>Confirmar Compra</CardTitle>
                   <CardDescription>
-                    Selecciona tu método de pago preferido
+                    Serás redirigido a Mercado Pago para completar el pago de forma segura
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3 rounded-lg border-2 border-[#00A8FF] bg-[#00A8FF]/5 p-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded bg-[#00A8FF]">
-                        <span className="font-bold text-white">MP</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-[#0F172A]">Mercado Pago</p>
-                        <p className="text-sm text-[#64748B]">
-                          Paga con tarjetas de crédito/débito, efectivo (Rapipago/Pago Fácil) o dinero en cuenta
-                        </p>
-                      </div>
-                      <CheckCircle className="h-6 w-6 text-[#00A8FF]" />
-                    </div>
+                  <div className="rounded-lg bg-blue-50 p-4 border border-blue-200">
+                    <p className="text-sm text-blue-900">
+                      📋 <strong>{courseData?.title}</strong>
+                    </p>
+                    <p className="text-sm text-blue-700 mt-2">
+                      💰 Total: <strong>${price.toLocaleString('es-AR')}</strong> ARS
+                    </p>
+                  </div>
 
-                    <div className="rounded-lg bg-[#F8FAFC] p-4 text-sm text-[#64748B]">
-                      <p className="mb-2 font-semibold text-[#0F172A]">Métodos aceptados:</p>
-                      <ul className="space-y-1">
-                        <li>• Visa, Mastercard, American Express</li>
-                        <li>• Tarjetas de débito</li>
-                        <li>• Efectivo (Rapipago, Pago Fácil)</li>
-                        <li>• Saldo en Mercado Pago</li>
-                        <li>• Cuotas sin interés disponibles</li>
-                      </ul>
-                    </div>
+                  <Separator />
+
+                  <div className="rounded-lg bg-[#F8FAFC] p-4 text-sm text-[#64748B]">
+                    <p className="mb-2 font-semibold text-[#0F172A]">Métodos de pago disponibles:</p>
+                    <ul className="space-y-1">
+                      <li>✓ Visa, Mastercard, American Express</li>
+                      <li>✓ Tarjetas de débito</li>
+                      <li>✓ Efectivo (Rapipago, Pago Fácil)</li>
+                      <li>✓ Saldo en Mercado Pago</li>
+                      <li>✓ Cuotas sin interés disponibles</li>
+                    </ul>
+                  </div>
+
+                  <div className="rounded-lg bg-green-50 p-4 border border-green-200">
+                    <p className="text-sm text-green-900">
+                      🔒 Pago 100% seguro y encriptado por Mercado Pago
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -456,7 +508,7 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
 
                 {step === 1 && (
                   <Button
-                    className="w-full"
+                    className="w-full bg-[#0B5FFF] hover:bg-[#0B5FFF]/90"
                     size="lg"
                     onClick={() => setStep(2)}
                   >
@@ -468,7 +520,7 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                 {step === 2 && (
                   <>
                     <Button
-                      className="w-full"
+                      className="w-full bg-[#0B5FFF] hover:bg-[#0B5FFF]/90"
                       size="lg"
                       onClick={handlePayment}
                       disabled={isProcessing}
@@ -476,11 +528,11 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                       {isProcessing ? (
                         <>
                           <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                          Procesando pago...
+                          Redirigiendo...
                         </>
                       ) : (
                         <>
-                          Confirmar Pago
+                          Ir a Mercado Pago
                           <CreditCard className="ml-2 h-5 w-5" />
                         </>
                       )}

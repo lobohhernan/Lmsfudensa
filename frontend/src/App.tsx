@@ -8,6 +8,11 @@ import { CourseCatalog } from "./pages/CourseCatalog";
 import { CourseDetail } from "./pages/CourseDetail";
 import { LessonPlayer } from "./pages/LessonPlayer";
 import { Checkout } from "./pages/Checkout";
+import { PaymentCallback } from "./pages/PaymentCallback";
+import MercadoPagoSuccess from "./pages/MercadoPagoSuccess";
+import MercadoPagoRedirect from "./pages/MercadoPagoRedirect";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
+import CheckoutFailure from "./pages/CheckoutFailure";
 import { UserProfile } from "./pages/UserProfile";
 import { AdminPanel } from "./pages/AdminPanel";
 import { DesignSystem } from "./pages/DesignSystem";
@@ -37,6 +42,11 @@ type Page =
   | "course"
   | "lesson"
   | "checkout"
+  | "payment-callback"
+  | "mp-success"
+  | "mp-redirect"
+  | "checkout-success"
+  | "checkout-failure"
   | "profile"
   | "admin"
   | "design"
@@ -44,13 +54,53 @@ type Page =
   | "about"
   | "contact";
 
-// Función para parsear la ruta desde el pathname (sin hash)
+// Función para parsear la ruta desde el pathname y hash
 function parseRouteFromPath(): {
   page: Page;
   courseId?: string;
   courseSlug?: string;
   lessonId?: string;
 } {
+  // Detectar parámetros de Mercado Pago en query string
+  const urlParams = new URLSearchParams(window.location.search);
+  const mpPaymentId = urlParams.get("payment_id");
+  const mpExternalRef = urlParams.get("external_reference");
+  const mpStatus = urlParams.get("status") || "approved"; // Mercado Pago envía status=approved o status=pending/rejected
+
+  // Si hay parámetros de Mercado Pago, determinar si fue éxito o fracaso
+  if (mpPaymentId && (mpExternalRef || mpStatus)) {
+    // Si está aprobado (o no rechazado explícitamente), es éxito
+    if (mpStatus === "approved" || mpStatus === "pending" || !mpStatus) {
+      return { page: 'checkout-success' };
+    } else if (mpStatus === "rejected" || mpStatus === "cancelled") {
+      return { page: 'checkout-failure' };
+    }
+  }
+
+  // Primero verificar si hay hash (/#/...)
+  const hash = window.location.hash.substring(2); // Remove '#/'
+  if (hash) {
+    const hashParts = hash.split('/').filter(Boolean);
+    
+    // Ruta de redirección de Mercado Pago
+    if (hashParts[0] === 'mp-redirect') {
+      return { page: 'mp-redirect' };
+    }
+    
+    // Rutas de checkout
+    if (hashParts[0] === 'checkout') {
+      if (hashParts[1] === 'success') {
+        return { page: 'checkout-success' };
+      }
+      if (hashParts[1] === 'failure') {
+        return { page: 'checkout-failure' };
+      }
+      if (hashParts[1]) {
+        return { page: 'checkout', courseSlug: hashParts[1] };
+      }
+    }
+  }
+
   const pathname = window.location.pathname;
   const parts = pathname.split('/').filter(Boolean);
 
@@ -92,6 +142,14 @@ function parseRouteFromPath(): {
       page: 'checkout',
       courseSlug: parts[1],
     };
+  }
+
+  if (parts[0] === 'payment-callback') {
+    return { page: 'payment-callback' };
+  }
+
+  if (parts[0] === 'mp-success') {
+    return { page: 'mp-success' };
   }
 
   if (parts[0] === 'perfil') {
@@ -188,6 +246,14 @@ export default function App() {
       // Checkout: /checkout/nombre-del-curso
       window.history.pushState(null, "", `/checkout/${currentCourseSlug}`);
       document.title = `Checkout | FUDENSA`;
+    } else if (currentPage === "payment-callback") {
+      // Payment Callback: /payment-callback
+      window.history.pushState(null, "", `/payment-callback`);
+      document.title = `Procesando Pago | FUDENSA`;
+    } else if (currentPage === "mp-success") {
+      // Mercado Pago Success: /mp-success
+      window.history.pushState(null, "", `/mp-success`);
+      document.title = `Confirmando Pago | FUDENSA`;
     } else if (currentPage === "admin") {
       // Admin: /admin/panel
       window.history.pushState(null, "", "/admin/panel");
@@ -273,52 +339,14 @@ export default function App() {
         debug('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
         
         if (session?.user) {
-          debug('🔐 [App] Usuario autenticado, consultando perfil...')
+          debug('🔐 [App] Usuario autenticado')
           
-          // ⚠️ IMPORTANTE: NO BLOQUEAR si falla profiles
-          // Los cursos deben cargar independientemente
-          let userData_: { email: string; name: string };
-          
-          try {
-            // Obtener perfil completo con TIMEOUT de 1 segundo (reducido)
-            const profilePromise = supabase
-              .from("profiles")
-              .select("full_name, email")
-              .eq("id", session.user.id)
-              .single();
-            
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout profiles')), 3000) // ⏱️ 3 segundos max
-            );
-            
-            const result = await Promise.race([profilePromise, timeoutPromise]) as any;
-            const profile = result?.data;
-            const profileError = result?.error;
-            
-            debug('🔐 [App] Respuesta profiles:', { hasProfile: !!profile, error: profileError?.message });
-
-            if (profile) {
-              debug('✅ [App] Perfil encontrado:', profile.full_name)
-              userData_ = {
-                email: profile.email || session.user.email || "",
-                name: profile.full_name || session.user.email?.split('@')[0] || "Usuario",
-              };
-            } else {
-              // Si no tiene perfil, usar los datos del auth (esto es OK)
-              debug('⚠️ [App] No hay perfil en DB, usando datos de auth')
-              userData_ = {
-                email: session.user.email || "",
-                name: session.user.email?.split('@')[0] || "Usuario",
-              };
-            }
-          } catch (err: any) {
-            // ✅ Si falla profiles, NO IMPORTA, usar datos de auth
-            debug('⚠️ [App] Error en profiles (ignorado):', err.message);
-            userData_ = {
-              email: session.user.email || "",
-              name: session.user.email?.split('@')[0] || "Usuario",
-            };
-          }
+          // ✅ NO consultar profiles en el path crítico
+          // Usar datos del auth directamente (rápido)
+          const userData_: { email: string; name: string } = {
+            email: session.user.email || "",
+            name: session.user.email?.split('@')[0] || "Usuario",
+          };
           
           debug('✅ [App] Login exitoso:', userData_.email)
           setIsLoggedIn(true);
@@ -357,49 +385,16 @@ export default function App() {
         authTimeoutRef.current = null
       }
       if (session?.user) {
-        try {
-          // Timeout en onAuthStateChange también
-          const profilePromise = supabase
-            .from("profiles")
-            .select("full_name, email")
-            .eq("id", session.user.id)
-            .single();
-          
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout profiles')), 3000) // ⏱️ 3 segundos max
-          );
-          
-          const result = await Promise.race([profilePromise, timeoutPromise]) as any;
-          const profile = result?.data;
-
-          let userData_: { email: string; name: string };
-          
-          if (profile) {
-            userData_ = {
-              email: profile.email || session.user.email || "",
-              name: profile.full_name || session.user.email?.split('@')[0] || "Usuario",
-            };
-          } else {
-            userData_ = {
-              email: session.user.email || "",
-              name: session.user.email?.split('@')[0] || "Usuario",
-            };
-          }
-          
-          setIsLoggedIn(true);
-          setUserData(userData_);
-          sessionStorage.setItem('user_session', JSON.stringify(userData_));
-        } catch (error) {
-          logError("Error cargando perfil:", error);
-          // Aunque falle el perfil, mantener la sesión autenticada
-          const userData_ = {
-            email: session.user.email || "",
-            name: session.user.email?.split('@')[0] || "Usuario",
-          };
-          setIsLoggedIn(true);
-          setUserData(userData_);
-          sessionStorage.setItem('user_session', JSON.stringify(userData_));
-        }
+        // ✅ NO consultar profiles en onAuthStateChange
+        // Usar datos del auth directamente (rápido)
+        const userData_ = {
+          email: session.user.email || "",
+          name: session.user.email?.split('@')[0] || "Usuario",
+        };
+        
+        setIsLoggedIn(true);
+        setUserData(userData_);
+        sessionStorage.setItem('user_session', JSON.stringify(userData_));
       } else {
         setIsLoggedIn(false);
         setUserData(null);
@@ -598,6 +593,11 @@ export default function App() {
               isInitializing={isInitializing}
             />
           )}
+          {currentPage === "payment-callback" && <PaymentCallback />}
+          {currentPage === "mp-success" && <MercadoPagoSuccess onNavigate={handleNavigate} />}
+          {currentPage === "mp-redirect" && <MercadoPagoRedirect onNavigate={handleNavigate} />}
+          {currentPage === "checkout-success" && <CheckoutSuccess onNavigate={handleNavigate} />}
+          {currentPage === "checkout-failure" && <CheckoutFailure onNavigate={handleNavigate} />}
           {currentPage === "profile" && <UserProfile onNavigate={handleNavigate} />}
           {currentPage === "design" && <DesignSystem />}
           {currentPage === "about" && <AboutUs onNavigate={handleNavigate} />}
