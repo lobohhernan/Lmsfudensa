@@ -261,17 +261,6 @@ npx supabase functions deploy mercadopago-webhook --no-verify-jwt
 - [README Frontend](./frontend/README.md) - Instrucciones específicas del frontend
 - [README Backend](./backend/README.md) - Instrucciones del backend
 
----
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Para cambios importantes:
-
-1. Fork el repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
 
 ---
 
@@ -281,15 +270,20 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ---
 
-## 👨‍💻 Autor
+## 👨‍💻 Autores
 
 **Hernán Lobo**
 - GitHub: [@lobohhernan](https://github.com/lobohhernan)
+**Santiago Martinez**
+- GitHub: [@SantiCampero](https://github.com/SantiCampero)
+**Maximiliano Massey**
+- GitHub: [@MaximilianoMassey](https://github.com/MaximilianoMassey)
+
 - Proyecto Final: UTN - Trabajo Final Profesional
 
 ---
 
-## 🙏 Agradecimientos
+## Agradecimientos
 
 - [Supabase](https://supabase.com) - Backend as a Service
 - [Netlify](https://netlify.com) - Hosting y CI/CD
@@ -299,6 +293,3 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ---
 
-<p align="center">
-  Hecho con ❤️ para la educación en línea
-</p>
