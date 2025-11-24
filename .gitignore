@@ -76,8 +76,7 @@ temp/
 *.bak
 *.swp
 
-# NPM/Yarn config
-.npmrc
+# NPM/Yarn config (comentado: .npmrc se necesita para JSR registry)
 .yarnrc
 
 # Scripts de debugging locales (no para producción)
