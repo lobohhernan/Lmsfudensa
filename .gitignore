@@ -2,18 +2,23 @@
 node_modules/
 frontend/node_modules/
 backend/node_modules/
+.playwright-mcp/
 
 # Archivos de entorno (contienen claves secretas)
 .env
 .env.local
 .env.*.local
 .env.production.local
+frontend/.env.local*
+backend/.env.local*
 
 # Build y distribución
 dist/
 build/
 frontend/dist/
+frontend/build/
 backend/dist/
+backend/build/
 
 # IDE
 .vscode/
@@ -23,6 +28,7 @@ backend/dist/
 *~
 *.sublime-project
 *.sublime-workspace
+.DS_Store
 
 # VS Code específico
 .vscode/settings.json
@@ -44,21 +50,60 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+function.log
+*.log.old
 
-# Lockfiles
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
+# Lockfiles (comentado: algunos proyectos los necesitan)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
 
 # Caché
 .cache/
 .next/
 .nuxt/
+.vite/
+.eslintcache
 
-# Supabase local (si aplica)
+# Supabase local
 supabase/.env.local
+supabase/secrets.json
 
 # Temporales
 *.tmp
 .temp/
 temp/
+*.bak
+*.swp
+
+# NPM/Yarn config
+.npmrc
+.yarnrc
+
+# Scripts de debugging locales (no para producción)
+verificar_db.ps1
+verificar_db_simple.ps1
+test_supabase.ps1
+ver_logs.bat
+backend/scripts/test_*.ps1
+backend/scripts/debug_*.ps1
+
+# Archivos de prueba local
+*.test.local
+.test-cache
+
+# IDE específicos
+*.iml
+.DS_Store
+.AppleDouble
+.LSOverride
+*.sublime-workspace
+
+# Certificados/Keys (si se generan localmente)
+*.pem
+*.key
+*.cert
+
+# Archivos generados por Supabase
+supabase/.branches/
+supabase/seed.sql.bak
