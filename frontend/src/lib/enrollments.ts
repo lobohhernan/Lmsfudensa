@@ -13,18 +13,18 @@ export async function isUserEnrolled(
   try {
     const { data, error } = await supabase
       .from("enrollments")
-      .select("id")
+      .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
-      .eq("course_id", courseId)
-      .single();
+      .eq("course_id", courseId);
 
-    // PGRST116 = no se encontraron filas (no está inscrito)
-    if (error && error.code !== "PGRST116") {
+    // Si hay error, log y retorna false
+    if (error) {
       console.error("Error checking enrollment:", error);
       return false;
     }
 
-    return !!data;
+    // Si no hay error y data no es null, está inscrito
+    return data !== null && data.length > 0;
   } catch (err) {
     console.error("Error in isUserEnrolled:", err);
     return false;
