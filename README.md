@@ -274,8 +274,10 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 **Hernán Lobo**
 - GitHub: [@lobohhernan](https://github.com/lobohhernan)
+- 
 **Santiago Martinez**
 - GitHub: [@SantiCampero](https://github.com/SantiCampero)
+- 
 **Maximiliano Massey**
 - GitHub: [@MaximilianoMassey](https://github.com/MaximilianoMassey)
 
