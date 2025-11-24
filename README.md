@@ -1,6 +1,6 @@
 # 🎓 FUDENSA - Plataforma de Educación en Línea
 
-[![Deploy Status](https://img.shields.io/badge/Deploy-Netlify-00C7B7?style=flat-square&logo=netlify)](https://fudensa.netlify.app)
+[![Deploy Status](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020?style=flat-square&logo=cloudflare)](https://fudensa.pages.dev)
 [![GitHub](https://img.shields.io/badge/GitHub-lobohhernan-181717?style=flat-square&logo=github)](https://github.com/lobohhernan/Lmsfudensa)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
@@ -66,15 +66,15 @@ FUDENSA es una plataforma de educación en línea moderna, escalable y segura co
 - **ORM**: PostgREST API
 
 ### DevOps
-- **Deployment Frontend**: Netlify
+- **Deployment Frontend**: Cloudflare Pages
 - **Deployment Backend**: Supabase Edge Functions
-- **CI/CD**: Git push automático
+- **CI/CD**: Git push automático desde main
 - **Versionamiento**: GitHub
 
 ### Servicios Externos
 - **Mercado Pago API** - Procesamiento de pagos
 - **Supabase** - Backend as a Service
-- **Netlify** - Hosting frontend
+- **Cloudflare Pages** - Hosting frontend
 
 ---
 
@@ -231,11 +231,13 @@ Lmsfudensa/
 
 ## 🚢 Deploy
 
-### Frontend (Netlify)
+### Frontend (Cloudflare Pages)
 ```bash
-# El deploy es automático al hacer push a la rama Deploy
-git push origin Deploy
+# El deploy es automático al hacer push a la rama main
+git push origin main
 ```
+
+**URL en Producción**: [https://fudensa.pages.dev](https://fudensa.pages.dev)
 
 ### Backend (Edge Functions)
 ```bash
@@ -274,12 +276,12 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 **Hernán Lobo**
 - GitHub: [@lobohhernan](https://github.com/lobohhernan)
-- 
-**Santiago Martinez**
-- GitHub: [@SantiCampero](https://github.com/SantiCampero)
-- 
+
 **Maximiliano Massey**
 - GitHub: [@MaximilianoMassey](https://github.com/MaximilianoMassey)
+
+**Santiago Martinez**
+- GitHub: [@SantiCampero](https://github.com/SantiCampero)
 
 - Proyecto Final: UTN - Trabajo Final Profesional
 
@@ -287,11 +289,11 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ## Agradecimientos
 
-- [Supabase](https://supabase.com) - Backend as a Service
-- [Netlify](https://netlify.com) - Hosting y CI/CD
-- [Tailwind CSS](https://tailwindcss.com) - Utilidades CSS
-- [Shadcn UI](https://ui.shadcn.com) - Componentes React
+- [Cloudflare Pages](https://pages.cloudflare.com) - Hosting y CI/CD
 - [Mercado Pago](https://mercadopago.com) - Procesamiento de pagos
+- [Shadcn UI](https://ui.shadcn.com) - Componentes React
+- [Supabase](https://supabase.com) - Backend as a Service
+- [Tailwind CSS](https://tailwindcss.com) - Utilidades CSS
 
 ---
 
