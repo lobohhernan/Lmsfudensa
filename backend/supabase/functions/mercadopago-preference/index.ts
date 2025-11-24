@@ -64,7 +64,6 @@ serve(async (req: Request) => {
         pending: `${baseUrl}/`,
       },
       auto_return: "approved",
-      // external_reference ahora contiene tanto courseId como userId
       external_reference: JSON.stringify({
         courseId: body.courseId,
         userId: body.userId,

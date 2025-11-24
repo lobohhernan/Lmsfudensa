@@ -230,17 +230,12 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
       }
 
       // Guardar datos de pago pendiente para procesamiento vía webhook
-      // Mercado Pago NO usa auto_return con localhost
-      // El webhook notificará cuando el pago sea completado
+      // El webhook de Mercado Pago notificará cuando el pago sea completado
       sessionStorage.setItem("mp_pending_course", courseId);
       sessionStorage.setItem("mp_pending_email", userData.email);
       
-      console.log("🔄 Redirigiendo a Mercado Pago...");
       console.log("✅ Preferencia creada, redirigiendo a Mercado Pago...");
-      
-      // Redirigir a Mercado Pago
-      redirectToMercadoPago(initPoint);
-      console.log("URL de redirección:", initPoint);
+      console.log("🔗 URL de redirección:", initPoint);
       
       // Redirigir directamente a Mercado Pago (CHECKOUT PRO)
       redirectToMercadoPago(initPoint);
