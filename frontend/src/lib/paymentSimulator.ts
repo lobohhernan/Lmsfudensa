@@ -108,40 +108,18 @@ async function createOrUpdateEnrollment(
 
   if (existingEnrollment) {
     console.warn(
-      "⚠️ [PAYMENT SIMULATOR] Enrollment already exists, updating..."
+      "⚠️ [PAYMENT SIMULATOR] Enrollment already exists, skipping update..."
     );
-
-    // Update if already exists
-    const { error: updateError } = await supabase
-      .from("enrollments")
-      .update({
-        status: "active",
-        payment_id: paymentId,
-        enrolled_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId)
-      .eq("course_id", courseId);
-
-    if (updateError) {
-      console.error(
-        "❌ [PAYMENT SIMULATOR] Error updating enrollment:",
-        updateError
-      );
-      throw updateError;
-    }
-
-    console.log("✅ [PAYMENT SIMULATOR] Enrollment updated");
+    console.log("✅ [PAYMENT SIMULATOR] Enrollment already active");
     return;
   }
 
-  // Create new enrollment
+  // Create new enrollment with only the columns that exist in the table
   const { data: enrollment, error: enrollError } = await supabase
     .from("enrollments")
     .insert({
       user_id: userId,
       course_id: courseId,
-      status: "active",
-      payment_id: paymentId,
       enrolled_at: new Date().toISOString(),
     })
     .select();
