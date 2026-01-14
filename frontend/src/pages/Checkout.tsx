@@ -26,6 +26,7 @@ import { debug, error as logError } from '../lib/logger'
 import { isUserEnrolled, enrollUser } from "../lib/enrollments";
 import { resolveCourseSlugToId } from "../lib/courseResolver"
 import { createMercadoPagoPreference, redirectToMercadoPago } from "../lib/mercadopago";
+import { PaymentTestButtons } from "../components/PaymentTestButtons";
 
 interface CheckoutProps {
   onNavigate?: (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => void;
@@ -44,8 +45,20 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [courseId, setCourseId] = useState<string | undefined>(initialCourseId);
+  const [userId, setUserId] = useState<string | null>(null);
 
   console.log('🛒 [Checkout] Props:', { courseId, courseSlug, hasUserData: !!userData, isInitializing });
+
+  // Get authenticated user ID for testing features
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    getUser();
+  }, []);
 
   // ✅ PASO 1: Resolver courseSlug a courseId si es necesario
   useEffect(() => {
@@ -532,6 +545,28 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                         </>
                       )}
                     </Button>
+
+                    {/* Testing Payment Buttons - Development Only */}
+                    {userId && courseId && userData && (
+                      <PaymentTestButtons
+                        userId={userId}
+                        courseId={courseId}
+                        userEmail={userData.email}
+                        onPaymentSimulated={(status) => {
+                          if (status === "approved") {
+                            toast.success("Pago simulado y procesado exitosamente");
+                            setTimeout(() => {
+                              onNavigate?.("lesson", courseId, courseSlug, "1");
+                            }, 1500);
+                          } else if (status === "pending") {
+                            toast.info("Pago pendiente - aguardando confirmación");
+                          } else {
+                            toast.error("Pago rechazado - intenta nuevamente");
+                          }
+                        }}
+                      />
+                    )}
+
                     <Button
                       variant="ghost"
                       className="w-full"
