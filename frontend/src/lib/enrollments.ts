@@ -11,22 +11,41 @@ export async function isUserEnrolled(
   courseId: string
 ): Promise<boolean> {
   try {
-    const { data, error } = await supabase
+    console.log(`🔍 [isUserEnrolled] Verificando inscripción: usuario ${userId} en curso ${courseId}`);
+    
+    // Intento 1: Consulta simple con select
+    const { data, error, status, statusText } = await supabase
       .from("enrollments")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("user_id", userId)
       .eq("course_id", courseId);
 
-    // Si hay error, log y retorna false
+    console.log(`[isUserEnrolled] Response status: ${status}, statusText: ${statusText}`);
+    
     if (error) {
-      console.error("Error checking enrollment:", error);
+      console.error("❌ [isUserEnrolled] Error checking enrollment:", {
+        message: error.message,
+        code: error.code,
+        status,
+        statusText,
+        details: error
+      });
       return false;
     }
 
-    // Si no hay error y data no es null, está inscrito
-    return data !== null && data.length > 0;
+    console.log(`[isUserEnrolled] Query result - data:`, data, `- length:`, data?.length);
+    
+    const enrolled = data !== null && data.length > 0;
+    
+    if (enrolled) {
+      console.log(`✅ [isUserEnrolled] Usuario IS inscrito (encontré ${data.length} registro/s)`);
+    } else {
+      console.log(`ℹ️  [isUserEnrolled] Usuario NOT inscrito (sin registros)`);
+    }
+    
+    return enrolled;
   } catch (err) {
-    console.error("Error in isUserEnrolled:", err);
+    console.error("❌ [isUserEnrolled] Exception in isUserEnrolled:", err);
     return false;
   }
 }

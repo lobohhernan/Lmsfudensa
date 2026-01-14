@@ -6,14 +6,14 @@ import { Badge } from "../components/ui/badge";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
-import { resolveCourseSlugToId } from "../lib/courseResolver"
+import { resolveCourseSlugToId, resolveCourseIdToSlug } from "../lib/courseResolver"
 import { isUserEnrolled } from "../lib/enrollments"
 import { useState, useEffect } from "react";
 
 interface CourseDetailProps {
   courseId?: string;
   courseSlug?: string;
-  onNavigate?: (page: string, courseId?: string) => void;
+  onNavigate?: (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => void;
   isLoggedIn?: boolean;
   onAuthRequired?: (page: string, courseId?: string) => void;
 }
@@ -24,6 +24,9 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [courseId, setCourseId] = useState<string | undefined>(initialCourseId);
+  const [currentSlug, setCurrentSlug] = useState<string | undefined>(courseSlug);
+  const [userEnrolled, setUserEnrolled] = useState(false);
+  const [checkingEnrollment, setCheckingEnrollment] = useState(false);
 
   // ✅ PASO 1: Resolver courseSlug a courseId si es necesario
   useEffect(() => {
@@ -39,6 +42,7 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
         if (resolvedId) {
           debug(`✅ [CourseDetail] Slug resuelto: ${courseSlug} → ${resolvedId}`);
           setCourseId(resolvedId);
+          setCurrentSlug(courseSlug);
         } else {
           setError(`No se encontró curso con slug: ${courseSlug}`);
           setLoading(false);
@@ -52,6 +56,68 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
     
     resolveSlug();
   }, [courseSlug, courseId]);
+
+  // ✅ PASO 1.5: Resolver courseId a slug si tenemos ID pero no slug
+  useEffect(() => {
+    const resolveIdToSlug = async () => {
+      // Si ya tenemos slug, no hacer nada
+      if (currentSlug) return;
+      
+      // Si tenemos courseId pero no slug, resolver
+      if (courseId && !currentSlug) {
+        debug(`🔄 [CourseDetail] Resolviendo courseId a slug: ${courseId}`);
+        const resolvedSlug = await resolveCourseIdToSlug(courseId);
+        
+        if (resolvedSlug) {
+          debug(`✅ [CourseDetail] CourseId resuelto: ${courseId} → ${resolvedSlug}`);
+          setCurrentSlug(resolvedSlug);
+        } else {
+          debug(`⚠️ [CourseDetail] No se pudo resolver slug para courseId: ${courseId}`);
+          // No es un error crítico, continuar sin slug
+        }
+      }
+    };
+    
+    resolveIdToSlug();
+  }, [courseId, currentSlug]);
+
+  // ✅ PASO 1.7: Verificar si el usuario está inscrito (solo si está logueado)
+  useEffect(() => {
+    const checkUserEnrollment = async () => {
+      if (!isLoggedIn || !courseId) {
+        setUserEnrolled(false);
+        return;
+      }
+
+      try {
+        setCheckingEnrollment(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          setUserEnrolled(false);
+          return;
+        }
+        
+        debug(`🔍 [CourseDetail] Verificando inscripción: usuario ${user.id} en curso ${courseId}`);
+        const enrolled = await isUserEnrolled(user.id, courseId);
+        
+        if (enrolled) {
+          debug(`✅ [CourseDetail] Usuario inscrito en curso`);
+        } else {
+          debug(`ℹ️ [CourseDetail] Usuario NO inscrito en curso`);
+        }
+        
+        setUserEnrolled(enrolled);
+      } catch (err) {
+        logError("Error verificando inscripción:", err);
+        setUserEnrolled(false);
+      } finally {
+        setCheckingEnrollment(false);
+      }
+    };
+    
+    checkUserEnrollment();
+  }, [courseId, isLoggedIn]);
 
   // ✅ PASO 2: Cargar datos del curso cuando tengamos courseId
   useEffect(() => {
@@ -128,9 +194,12 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
     if (!isLoggedIn) {
       // Usuario no autenticado, abrir modal de login
       onAuthRequired?.("checkout", courseId);
+    } else if (userEnrolled) {
+      // Usuario ya inscrito, ir a la primera lección
+      onNavigate?.("lesson", courseId, currentSlug, "1");
     } else {
-      // Usuario autenticado, ir directamente a checkout
-      onNavigate?.("checkout", courseId);
+      // Usuario autenticado pero no inscrito, ir directamente a checkout
+      onNavigate?.("checkout", courseId, currentSlug);
     }
   };
 
@@ -212,12 +281,13 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
 
                   <div className="space-y-2 border-t pt-4">
                     <Button
-                      className="w-full"
+                      className={`w-full ${userEnrolled ? 'bg-[#16A34A] hover:bg-[#15803d]' : ''}`}
                       size="lg"
                       onClick={handleEnrollClick}
+                      disabled={checkingEnrollment}
                     >
                       <Award className="mr-2 h-5 w-5" />
-                      Inscribirme Ahora
+                      {checkingEnrollment ? 'Verificando...' : userEnrolled ? 'Empezar Curso' : 'Inscribirme Ahora'}
                     </Button>
                   </div>
 
@@ -316,10 +386,11 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
                   </div>
                   
                   <Button
-                    className="w-full bg-[#0066FF] hover:bg-[#0052CC]"
+                    className={`w-full ${userEnrolled ? 'bg-[#16A34A] hover:bg-[#15803d]' : 'bg-[#0066FF] hover:bg-[#0052CC]'}`}
                     onClick={handleEnrollClick}
+                    disabled={checkingEnrollment}
                   >
-                    Inscribirme Ahora
+                    {checkingEnrollment ? 'Verificando...' : userEnrolled ? 'Empezar Curso' : 'Inscribirme Ahora'}
                   </Button>
                   
                   <p className="text-xs text-[#64748B] text-center">

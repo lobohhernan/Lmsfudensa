@@ -231,12 +231,10 @@ async function createEnrollment(
   if (existingEnrollment) {
     console.warn("⚠️ [WEBHOOK] Inscripción ya existe, actualizando...");
     
-    // Actualizar si ya existe
+    // Actualizar si ya existe (solo enrolled_at, sin status ni payment_id que no existen)
     const { error: updateError } = await supabase
       .from("enrollments")
       .update({
-        status: "active",
-        payment_id: paymentId,
         enrolled_at: new Date().toISOString(),
       })
       .eq("user_id", userId)
@@ -251,14 +249,12 @@ async function createEnrollment(
     return;
   }
 
-  // Crear inscripción nueva
+  // Crear inscripción nueva (solo con columnas que existen)
   const { data: enrollment, error: enrollError } = await supabase
     .from("enrollments")
     .insert({
       user_id: userId,
       course_id: courseId,
-      status: "active",
-      payment_id: paymentId,
       enrolled_at: new Date().toISOString(),
     })
     .select();

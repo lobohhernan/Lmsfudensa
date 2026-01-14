@@ -75,6 +75,10 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
+          // Add a small delay to ensure enrollment is synced from payment simulation
+          // This handles the case where a payment was just simulated
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
           const enrolled = await isUserEnrolled(user.id, courseId);
           
           if (!enrolled) {

@@ -552,12 +552,22 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                         userId={userId}
                         courseId={courseId}
                         userEmail={userData.email}
-                        onPaymentSimulated={(status) => {
+                        onPaymentSimulated={async (status) => {
                           if (status === "approved") {
                             toast.success("Pago simulado y procesado exitosamente");
+                            // Wait longer to ensure enrollment is saved and synced
                             setTimeout(() => {
-                              onNavigate?.("lesson", courseId, courseSlug, "1");
-                            }, 1500);
+                              // Use courseData slug (from loaded course) or courseSlug prop
+                              const slug = courseData?.slug || courseSlug;
+                              console.log("🎓 [Checkout] Redirigiendo con slug:", slug, "courseId:", courseId);
+                              
+                              if (slug) {
+                                onNavigate?.("lesson", courseId, slug, "1");
+                              } else {
+                                console.error("❌ No slug available for navigation", { courseData, courseSlug });
+                                toast.error("Error al redirigir al curso. Por favor, intenta nuevamente.");
+                              }
+                            }, 2500);
                           } else if (status === "pending") {
                             toast.info("Pago pendiente - aguardando confirmación");
                           } else {
