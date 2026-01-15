@@ -7,7 +7,7 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { Progress } from "../components/ui/progress";
 import cprTrainingImage from "../assets/section-home.png";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 
 interface HomeProps {
@@ -45,6 +45,42 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
   const { courses: allCourses, loading, error } = useCoursesRealtime();
   const [coursesInProgress, setCoursesInProgress] = useState<any[]>([]);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+  const continueLearningSectionRef = useRef<HTMLDivElement>(null);
+
+  // Función para hacer scroll suave a la sección de Continuar Aprendiendo
+  const scrollToContinueLearning = () => {
+    if (continueLearningSectionRef.current) {
+      const targetElement = continueLearningSectionRef.current;
+      const targetPosition = targetElement.getBoundingClientRect().top + window.scrollY;
+      const windowHeight = window.innerHeight;
+      const elementHeight = targetElement.offsetHeight;
+      const scrollPosition = targetPosition - (windowHeight - elementHeight) / 2;
+
+      const startPosition = window.scrollY;
+      const distance = scrollPosition - startPosition;
+      const duration = 1000; // 1 segundo
+      let start: number | null = null;
+
+      const smoothScroll = (currentTime: number) => {
+        if (start === null) start = currentTime;
+        const elapsed = currentTime - start;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function para movimiento más suave (ease-in-out)
+        const easeProgress = progress < 0.5 
+          ? 2 * progress * progress 
+          : -1 + (4 - 2 * progress) * progress;
+
+        window.scrollTo(0, startPosition + distance * easeProgress);
+
+        if (elapsed < duration) {
+          requestAnimationFrame(smoothScroll);
+        }
+      };
+
+      requestAnimationFrame(smoothScroll);
+    }
+  };
 
   // ✅ Cargar cursos inscritos REALES del usuario autenticado
   useEffect(() => {
@@ -215,7 +251,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                     <Button
                       size="lg"
                       className="bg-[#FCD34D] text-[#1e467c] hover:bg-[#FDE047] shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
-                      onClick={() => onNavigate?.("lesson")}
+                      onClick={scrollToContinueLearning}
                     >
                       <Play className="mr-2 h-5 w-5" />
                       Continuar Aprendiendo
@@ -255,9 +291,9 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
         </div>
       </section>
 
-      {/* Courses In Progress - Only show when logged in AND has enrollments */}
-      {isLoggedIn && coursesInProgress.length > 0 && (
-        <section className="border-b bg-white py-12">
+      {/* Courses In Progress - Only show when logged in */}
+      {isLoggedIn && (
+        <section ref={continueLearningSectionRef} className="border-b bg-white py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-6 flex items-end justify-between">
               <div>
