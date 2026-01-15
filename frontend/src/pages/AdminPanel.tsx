@@ -943,6 +943,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Nombre</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Especialización</TableHead>
@@ -956,24 +957,24 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <TableBody>
                     {teachersLoading ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-4">
+                        <TableCell colSpan={9} className="text-center py-4">
                           <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
                     ) : realtimeTeachers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={9} className="text-center py-4 text-gray-500">
                           No hay profesores registrados aún
                         </TableCell>
                       </TableRow>
                     ) : filteredTeachers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={9} className="text-center py-4 text-gray-500">
                           No se encontraron profesores para "{teacherQuery}"
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredTeachers.map((teacher) => (
+                      filteredTeachers.map((teacher, index) => (
                         <TableRow 
                           key={teacher.id}
                           className={`transition-all duration-500 ${
@@ -982,6 +983,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               : "opacity-100 bg-transparent"
                           }`}
                         >
+                          <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                           <TableCell className="text-[#0F172A] font-medium">{teacher.full_name}</TableCell>
                           <TableCell className="text-sm">{teacher.email}</TableCell>
                           <TableCell>{teacher.specialization || "-"}</TableCell>
@@ -1067,6 +1069,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Nombre</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>País</TableHead>
@@ -1079,25 +1082,26 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <TableBody>
                     {usersLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
+                        <TableCell colSpan={8} className="text-center py-4">
                           <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
                     ) : usersError ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4 text-red-600">
+                        <TableCell colSpan={8} className="text-center py-4 text-red-600">
                           Error cargando usuarios: {usersError}
                         </TableCell>
                       </TableRow>
                     ) : usersList.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
                           No hay usuarios registrados aún
                         </TableCell>
                       </TableRow>
                     ) : (
-                      usersList.map((user) => (
+                      usersList.map((user, index) => (
                         <TableRow key={user.id}>
+                          <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                           <TableCell className="text-[#0F172A] font-medium">{user.full_name || "Sin nombre"}</TableCell>
                           <TableCell className="text-sm">{user.email}</TableCell>
                           <TableCell>{user.country || "-"}</TableCell>
@@ -1147,6 +1151,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Usuario</TableHead>
@@ -1156,8 +1161,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paymentsData.map((payment) => (
+                    {paymentsData.map((payment, index) => (
                       <TableRow key={payment.id}>
+                        <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                         <TableCell>
                           <Badge
                             variant={payment.status === "Pagado" ? "default" : "secondary"}
@@ -1257,6 +1263,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Fecha de Emisión</TableHead>
                       <TableHead>Estudiante</TableHead>
                       <TableHead>Curso</TableHead>
@@ -1268,26 +1275,27 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <TableBody>
                     {certificatesLoading ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
+                        <TableCell colSpan={7} className="text-center py-8">
                           <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#55a5c7]" />
                           <p className="text-sm text-[#64748B] mt-2">Cargando certificados...</p>
                         </TableCell>
                       </TableRow>
                     ) : certificatesError ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-[#EF4444]">
+                        <TableCell colSpan={7} className="text-center py-8 text-[#EF4444]">
                           Error: {certificatesError}
                         </TableCell>
                       </TableRow>
                     ) : realtimeCertificates.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-[#64748B]">
+                        <TableCell colSpan={7} className="text-center py-8 text-[#64748B]">
                           No hay certificados emitidos aún
                         </TableCell>
                       </TableRow>
                     ) : (
-                      realtimeCertificates.map((cert) => (
+                      realtimeCertificates.map((cert, index) => (
                         <TableRow key={cert.id}>
+                          <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                           <TableCell>{new Date(cert.issue_date).toLocaleDateString("es-AR")}</TableCell>
                           <TableCell className="text-[#0F172A]">{cert.student_name}</TableCell>
                           <TableCell>{cert.course_title}</TableCell>
