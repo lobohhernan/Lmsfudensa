@@ -39,7 +39,6 @@ interface CheckoutProps {
 export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, userData, isInitializing = false }: CheckoutProps) {
   const [step, setStep] = useState(1);
   const [country, setCountry] = useState("AR");
-  const [couponCode, setCouponCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [courseData, setCourseData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -405,22 +404,6 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                     </Select>
                   </CardContent>
                 </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cupón de Descuento</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Ingresa tu código"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                      />
-                      <Button variant="outline">Aplicar</Button>
-                    </div>
-                  </CardContent>
-                </Card>
               </>
             )}
 
@@ -481,10 +464,6 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                     <span className="text-[#0F172A]">
                       $ {price.toLocaleString('es-AR')}
                     </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#64748B]">Descuento</span>
-                    <span className="text-[#22C55E]">-$ 0</span>
                   </div>
                   <Separator className="bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
                   <div className="flex justify-between">
