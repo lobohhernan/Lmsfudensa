@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Download,
   Eye,
+  Loader2,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
@@ -60,6 +61,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
   const [showCertificatePreview, setShowCertificatePreview] = useState(false);
   const [certificatePreviewUrl, setCertificatePreviewUrl] = useState<string>("");
   const [certificateHash, setCertificateHash] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
   const certificateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -115,6 +117,8 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
         // No hay evaluación disponible - mostrar mensaje
         setEvaluationData([]);
         setCourseTitle("Curso");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -557,6 +561,20 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
   }
 
   // Check if there are questions
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center py-8">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 text-[#0B5FFF] animate-spin" />
+          <div className="text-center">
+            <p className="text-[#0F172A] font-medium">Cargando evaluación</p>
+            <p className="text-[#64748B] text-sm mt-1">Un momento por favor...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (evaluationData.length === 0) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">

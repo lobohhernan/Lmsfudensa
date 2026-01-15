@@ -174,12 +174,24 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
     loadData();
   }, [courseId]);
 
+  // ✅ Si currentLesson es "1" (valor por defecto) pero tenemos lecciones cargadas,
+  // usar el ID de la primera lección real en lugar de la cadena "1"
+  useEffect(() => {
+    if (lessons.length > 0 && currentLesson === "1") {
+      const firstLessonId = lessons[0].id;
+      if (firstLessonId !== "1") {
+        setCurrentLesson(firstLessonId);
+        console.log(`✅ [LessonPlayer] Defaulting to first lesson: ${firstLessonId}`);
+      }
+    }
+  }, [lessons]);
+
   const currentLessonData = lessons.find((l) => l.id === currentLesson);
   const currentIndex = lessons.findIndex((l) => l.id === currentLesson);
   const isCurrentLessonCompleted = currentLessonData?.completed || false;
 
-  // Función para marcar la lección actual como completada
-  const handleMarkComplete = async () => {
+  // Función para alternar el estado de completado (marcar/desmarcar)
+  const handleToggleComplete = async () => {
     try {
       setSavingProgress(true);
       
@@ -195,34 +207,68 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
         return;
       }
 
-      // ✅ Guardar en base de datos usando la función SQL
-      const { error: saveError } = await supabase.rpc('mark_lesson_complete', {
-        p_user_id: user.id,
-        p_course_id: courseId,
-        p_lesson_id: currentLesson
-      });
+      // Si la lección está completada, desmarcarla; si no, marcarla como completada
+      if (isCurrentLessonCompleted) {
+        // ✅ Desmarcar como completada (eliminar del progreso)
+        const { error: deleteError } = await supabase
+          .from('user_progress')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('course_id', courseId)
+          .eq('lesson_id', currentLesson);
 
-      if (saveError) {
-        console.error('❌ Error guardando progreso:', saveError);
-        toast.error("Error al guardar tu progreso");
-        return;
+        if (deleteError) {
+          console.error('❌ Error al desmarcar:', deleteError);
+          toast.error("Error al guardar tu progreso");
+          return;
+        }
+
+        // ✅ Actualizar estado local
+        setCompletedLessons(prev => {
+          const updated = new Set(prev);
+          updated.delete(currentLesson);
+          return updated;
+        });
+        setLessons(prevLessons => 
+          prevLessons.map(lesson => 
+            lesson.id === currentLesson 
+              ? { ...lesson, completed: false }
+              : lesson
+          )
+        );
+
+        console.log(`✅ [LessonPlayer] Progreso actualizado: Lección ${currentLesson} desmarcada como completada`);
+        toast.success("Lección desmarcada como completada");
+      } else {
+        // ✅ Marcar como completada
+        const { error: saveError } = await supabase.rpc('mark_lesson_complete', {
+          p_user_id: user.id,
+          p_course_id: courseId,
+          p_lesson_id: currentLesson
+        });
+
+        if (saveError) {
+          console.error('❌ Error guardando progreso:', saveError);
+          toast.error("Error al guardar tu progreso");
+          return;
+        }
+
+        // ✅ Actualizar estado local
+        setCompletedLessons(prev => new Set(prev).add(currentLesson));
+        setLessons(prevLessons => 
+          prevLessons.map(lesson => 
+            lesson.id === currentLesson 
+              ? { ...lesson, completed: true }
+              : lesson
+          )
+        );
+
+        console.log(`✅ [LessonPlayer] Progreso guardado: Lección ${currentLesson} completada`);
+        toast.success("¡Lección completada! Tu progreso ha sido guardado");
       }
 
-      // ✅ Actualizar estado local
-      setCompletedLessons(prev => new Set(prev).add(currentLesson));
-      setLessons(prevLessons => 
-        prevLessons.map(lesson => 
-          lesson.id === currentLesson 
-            ? { ...lesson, completed: true }
-            : lesson
-        )
-      );
-
-      console.log(`✅ [LessonPlayer] Progreso guardado: Lección ${currentLesson} completada`);
-      toast.success("¡Lección completada! Tu progreso ha sido guardado");
-
     } catch (err: any) {
-      console.error('❌ Error al marcar como completada:', err);
+      console.error('❌ Error al actualizar progreso:', err);
       toast.error("Error al guardar tu progreso");
     } finally {
       setSavingProgress(false);
@@ -323,11 +369,11 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-4">
-                <Button 
-                  onClick={handleMarkComplete}
+                <Button
+                  onClick={handleToggleComplete}
                   variant={isCurrentLessonCompleted ? "default" : "default"}
                   className={isCurrentLessonCompleted ? "bg-[#22C55E] hover:bg-[#16A34A]" : ""}
-                  disabled={savingProgress || isCurrentLessonCompleted}
+                  disabled={savingProgress}
                 >
                   {savingProgress ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />

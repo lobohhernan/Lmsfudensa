@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Progress } from "../components/ui/progress";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { Skeleton } from "../components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -246,10 +247,13 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0B5FFF]" />
-          <p className="text-[#64748B]">Cargando tu perfil...</p>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center py-8">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 text-[#0B5FFF] animate-spin" />
+          <div className="text-center">
+            <p className="text-[#0F172A] font-medium">Cargando tu perfil</p>
+            <p className="text-[#64748B] text-sm mt-1">Un momento por favor...</p>
+          </div>
         </div>
       </div>
     );
@@ -395,14 +399,23 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
           {/* My Certificates */}
           <TabsContent value="certificates" className="space-y-6">
             {certificatesLoading ? (
-              <Card>
-                <CardContent className="flex min-h-[300px] items-center justify-center p-12">
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#0B5FFF]" />
-                    <p className="text-[#64748B]">Cargando certificados...</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
+                    {/* Skeleton de imagen - h-48 para tarjeta vertical */}
+                    <Skeleton className="h-48 w-full" />
+                    <div className="p-4 space-y-3">
+                      {/* Skeleton de título */}
+                      <Skeleton className="h-5 w-3/4" />
+                      {/* Skeleton de descripción */}
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-4/5" />
+                      {/* Skeleton de nivel */}
+                      <Skeleton className="h-4 w-1/3 mt-2" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
             ) : userCertificates.length === 0 ? (
               <Card>
                 <CardContent className="flex min-h-[300px] flex-col items-center justify-center p-12 text-center">

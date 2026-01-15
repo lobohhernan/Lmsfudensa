@@ -1,8 +1,9 @@
-import { Clock, BarChart3, Award, Play, CheckCircle, Users } from "lucide-react";
+import { Clock, BarChart3, Award, Play, CheckCircle, Users, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
+import { Skeleton } from "../components/ui/skeleton";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
@@ -176,8 +177,14 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Cargando curso...</div>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center py-8">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 text-[#0B5FFF] animate-spin" />
+          <div className="text-center">
+            <p className="text-[#0F172A] font-medium">Cargando curso</p>
+            <p className="text-[#64748B] text-sm mt-1">Un momento por favor...</p>
+          </div>
+        </div>
       </div>
     );
   }

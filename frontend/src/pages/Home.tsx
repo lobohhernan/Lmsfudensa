@@ -5,6 +5,7 @@ import { Card, CardContent } from "../components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { Progress } from "../components/ui/progress";
+import { Skeleton } from "../components/ui/skeleton";
 import cprTrainingImage from "../assets/section-home.png";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
 import { useState, useEffect, useRef } from "react";
@@ -313,8 +314,29 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
             </div>
 
             {loadingEnrollments ? (
-              <div className="text-center py-8">
-                <p className="text-[#64748B]">Cargando tus cursos...</p>
+              <div className="grid gap-6 sm:grid-cols-2">
+                {[...Array(2)].map((_, i) => (
+                  <Card key={i} className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
+                    <div className="flex flex-col sm:flex-row">
+                      {/* Skeleton de imagen - h-48 para layout horizontal */}
+                      <div className="relative h-48 w-full sm:h-auto sm:w-48 flex-shrink-0">
+                        <Skeleton className="h-full w-full" />
+                      </div>
+                      <div className="flex flex-1 flex-col p-4 gap-3">
+                        {/* Skeleton de título */}
+                        <Skeleton className="h-5 w-3/4" />
+                        {/* Skeleton de lección actual */}
+                        <Skeleton className="h-4 w-1/2" />
+                        <div className="mt-auto space-y-3">
+                          {/* Skeleton de progreso */}
+                          <Skeleton className="h-4 w-full" />
+                          {/* Skeleton de botón */}
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
             ) : (
               <div className="grid gap-6 sm:grid-cols-2">
@@ -373,8 +395,8 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                     </div>
                   </div>
                 </Card>
-              ))}
-            </div>
+                ))}
+              </div>
             )}
           </div>
         </section>
@@ -406,12 +428,23 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {loading && (
-              <div className="col-span-full text-center py-12">
-                <div className="inline-flex items-center gap-3 text-[#1e467c]">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#1e467c]/30 border-t-[#1e467c]"></div>
-                  <span className="text-lg font-medium">Cargando cursos...</span>
-                </div>
-              </div>
+              <>
+                {[...Array(displayCourses.length || 3)].map((_, i) => (
+                  <Card key={i} className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
+                    {/* Skeleton de imagen */}
+                    <Skeleton className="h-48 w-full" />
+                    <div className="p-4 space-y-3">
+                      {/* Skeleton de título */}
+                      <Skeleton className="h-5 w-3/4" />
+                      {/* Skeleton de descripción */}
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-4/5" />
+                      {/* Skeleton de nivel */}
+                      <Skeleton className="h-4 w-1/3 mt-2" />
+                    </div>
+                  </Card>
+                ))}
+              </>
             )}
             {error && (
               <div className="col-span-full text-center py-12">

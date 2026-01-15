@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { CourseCard } from "../components/CourseCard";
+import { Card } from "../components/ui/card";
+import { Skeleton } from "../components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -125,13 +127,22 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
           </div>
           
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="mb-4 inline-block animate-spin">
-                  <div className="h-8 w-8 border-4 border-[#0B5FFF] border-r-transparent rounded-full"></div>
-                </div>
-                <p className="text-gray-500">Cargando cursos...</p>
-              </div>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {[...Array(4)].map((_, i) => (
+                <Card key={i} className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
+                  {/* Skeleton de imagen - h-48 para tarjeta vertical */}
+                  <Skeleton className="h-48 w-full" />
+                  <div className="p-4 space-y-3">
+                    {/* Skeleton de título */}
+                    <Skeleton className="h-5 w-3/4" />
+                    {/* Skeleton de descripción */}
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-4/5" />
+                    {/* Skeleton de nivel */}
+                    <Skeleton className="h-4 w-1/3 mt-2" />
+                  </div>
+                </Card>
+              ))}
             </div>
           ) : filteredCourses.length === 0 ? (
             <div className="flex items-center justify-center py-12">

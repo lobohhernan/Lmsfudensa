@@ -168,7 +168,6 @@ export function AppNavbar({
                     <DropdownMenuItem
                       onClick={() => {
                         onNavigate?.("profile");
-                        toast.success("Navegando a tu perfil");
                       }}
                       className="cursor-pointer text-white hover:bg-white/10"
                     >
@@ -292,7 +291,6 @@ export function AppNavbar({
                         onClick={() => {
                           onNavigate?.("profile");
                           setMobileMenuOpen(false);
-                          toast.success("Navegando a tu perfil");
                         }}
                         className="h-auto rounded-xl border border-white/20 bg-white/8 py-3.5 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_2px_8px_0_rgba(0,0,0,0.1)] transition-all hover:border-white/30 hover:bg-white/15 hover:text-white active:scale-[0.98] w-full justify-start"
                       >
