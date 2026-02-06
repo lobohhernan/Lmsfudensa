@@ -356,17 +356,6 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
             <div className="mb-6">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <h1 className="text-[#0F172A]">{currentLessonData?.title}</h1>
-                {currentLessonData?.youtubeId && (
-                  <a
-                    href={`https://www.youtube.com/watch?v=${currentLessonData.youtubeId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#0066FF] transition-colors"
-                  >
-                    <Youtube className="h-4 w-4" />
-                    Ver en YouTube
-                  </a>
-                )}
               </div>
               <div className="flex flex-wrap items-center gap-4">
                 <Button
