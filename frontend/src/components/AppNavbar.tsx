@@ -2,7 +2,7 @@ import { Search, Menu, X, User, LogOut, UserCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Dialog,
@@ -77,6 +77,56 @@ export function AppNavbar({
     }
   };
 
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleNavigate = useCallback((page: string) => {
+    onNavigate?.(page);
+  }, [onNavigate]);
+
+  const handleMobileMenuToggle = useCallback(() => {
+    setMobileMenuOpen((prev) => !prev);
+  }, []);
+
+  const handleProfileNav = useCallback(() => {
+    handleNavigate("profile");
+    setMobileMenuOpen(false);
+  }, [handleNavigate]);
+
+  const handleLogout = useCallback(async () => {
+    debug("🔽 Click en Cerrar Sesión");
+    try {
+      debug("Ejecutando supabase.auth.signOut()...");
+      await supabase.auth.signOut();
+      debug("✅ signOut completado");
+      debug("Llamando a onLogout()...");
+      onLogout?.();
+      debug("✅ onLogout() ejecutado");
+      setMobileMenuOpen(false);
+    } catch (error) {
+      logError("❌ Error en logout:", error);
+      toast.error("Error al cerrar sesión");
+    }
+  }, [onLogout]);
+
+  const handleLoginOpen = useCallback(() => {
+    setIsRegistering(false);
+    setLoginOpen(true);
+  }, []);
+
+  const handleCatalogNav = useCallback(() => {
+    handleNavigate("catalog");
+    setMobileMenuOpen(false);
+  }, [handleNavigate]);
+
+  const handleAboutNav = useCallback(() => {
+    handleNavigate("about");
+    setMobileMenuOpen(false);
+  }, [handleNavigate]);
+
+  const handleContactNav = useCallback(() => {
+    handleNavigate("contact");
+    setMobileMenuOpen(false);
+  }, [handleNavigate]);
+
   // Calcular iniciales del usuario
   const getUserInitials = () => {
     if (!currentUser?.name) return "US";
@@ -130,7 +180,7 @@ export function AppNavbar({
             {/* Logo */}
             <div className="flex items-center gap-8">
               <button
-                onClick={() => onNavigate?.("home")}
+                onClick={handleNavigate.bind(null, "home")}
                 className="flex items-center transition-all duration-200 hover:scale-[1.02] hover:opacity-80"
               >
                 <img 
@@ -143,19 +193,19 @@ export function AppNavbar({
               {/* Desktop Navigation */}
               <div className="hidden items-center gap-2 md:flex">
                 <button
-                  onClick={() => onNavigate?.("catalog")}
+                  onClick={() => handleNavigate("catalog")}
                   className="rounded-lg px-4 py-2 text-white/90 transition-all duration-200 hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
                 >
                   Cursos
                 </button>
                 <button
-                  onClick={() => onNavigate?.("about")}
+                  onClick={() => handleNavigate("about")}
                   className="rounded-lg px-4 py-2 text-white/90 transition-all duration-200 hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
                 >
                   Sobre Nosotros
                 </button>
                 <button
-                  onClick={() => onNavigate?.("contact")}
+                  onClick={() => handleNavigate("contact")}
                   className="rounded-lg px-4 py-2 text-white/90 transition-all duration-200 hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
                 >
                   Contacto
@@ -183,9 +233,7 @@ export function AppNavbar({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 border-white/10 bg-[#1e467c]/95 backdrop-blur-xl">
                     <DropdownMenuItem
-                      onClick={() => {
-                        onNavigate?.("profile");
-                      }}
+                      onClick={handleProfileNav}
                       className="cursor-pointer text-white hover:bg-white/10"
                     >
                       <UserCircle className="mr-2 h-4 w-4" />
@@ -193,23 +241,7 @@ export function AppNavbar({
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem
-                      onClick={async () => {
-                        debug("🔽 Click en Cerrar Sesión (Desktop)");
-                        try {
-                          // Cerrar sesión en Supabase
-                          debug("Ejecutando supabase.auth.signOut()...");
-                          await supabase.auth.signOut();
-                          debug("✅ signOut completado");
-
-                          // Llamar al callback de logout del padre
-                          debug("Llamando a onLogout()...");
-                          onLogout?.();
-                          debug("✅ onLogout() ejecutado");
-                        } catch (error) {
-                          logError("❌ Error en logout:", error);
-                          toast.error("Error al cerrar sesión");
-                        }
-                      }}
+                      onClick={handleLogout}
                       className="cursor-pointer text-red-300 hover:bg-red-500/20 hover:text-red-200"
                     >
                       <LogOut className="mr-2 h-4 w-4" />
@@ -220,10 +252,7 @@ export function AppNavbar({
               ) : (
                 <Button
                   variant="ghost"
-                  onClick={() => {
-                    setIsRegistering(false);
-                    setLoginOpen(true);
-                  }}
+                  onClick={handleLoginOpen}
                   className="rounded-lg border border-white/15 bg-white/5 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] transition-all hover:bg-white/15 hover:text-white"
                 >
                   Iniciar Sesión
@@ -234,7 +263,8 @@ export function AppNavbar({
             {/* Mobile Menu Button */}
             <button
               className="flex h-10 w-10 items-center justify-center rounded-lg text-white transition-all duration-200 hover:bg-white/10 active:scale-95 md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={handleMobileMenuToggle}
+              aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
@@ -266,28 +296,19 @@ export function AppNavbar({
                 className="relative z-10 space-y-1 px-4 py-4 max-h-[calc(100vh-4rem)] overflow-y-auto"
               >
                 <button
-                  onClick={() => {
-                    onNavigate?.("catalog");
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={handleCatalogNav}
                   className="block w-full rounded-xl px-4 py-3.5 text-left text-white/95 transition-all duration-200 hover:bg-white/20 hover:text-white hover:shadow-[inset_0_2px_4px_0_rgba(255,255,255,0.1)] active:scale-[0.98]"
                 >
                   Cursos
                 </button>
                 <button
-                  onClick={() => {
-                    onNavigate?.("about");
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={handleAboutNav}
                   className="block w-full rounded-xl px-4 py-3.5 text-left text-white/95 transition-all duration-200 hover:bg-white/20 hover:text-white hover:shadow-[inset_0_2px_4px_0_rgba(255,255,255,0.1)] active:scale-[0.98]"
                 >
                   Sobre Nosotros
                 </button>
                 <button
-                  onClick={() => {
-                    onNavigate?.("contact");
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={handleContactNav}
                   className="block w-full rounded-xl px-4 py-3.5 text-left text-white/95 transition-all duration-200 hover:bg-white/20 hover:text-white hover:shadow-[inset_0_2px_4px_0_rgba(255,255,255,0.1)] active:scale-[0.98]"
                 >
                   Contacto
@@ -308,10 +329,7 @@ export function AppNavbar({
                       </div>
                       <Button
                         variant="ghost"
-                        onClick={() => {
-                          onNavigate?.("profile");
-                          setMobileMenuOpen(false);
-                        }}
+                        onClick={handleProfileNav}
                         className="h-auto rounded-xl border border-white/20 bg-white/8 py-3.5 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_2px_8px_0_rgba(0,0,0,0.1)] transition-all hover:border-white/30 hover:bg-white/15 hover:text-white active:scale-[0.98] w-full justify-start"
                       >
                         <UserCircle className="mr-2 h-5 w-5" />
@@ -319,26 +337,7 @@ export function AppNavbar({
                       </Button>
                       <Button
                         variant="ghost"
-                        onClick={async () => {
-                          debug("🔽 Click en Cerrar Sesión (Mobile)");
-                          try {
-                            // Cerrar sesión en Supabase
-                            debug("Ejecutando supabase.auth.signOut()...");
-                            await supabase.auth.signOut();
-                            debug("✅ signOut completado");
-
-                            // Llamar al callback de logout
-                            debug("Llamando a onLogout()...");
-                            onLogout?.();
-                            debug("✅ onLogout() ejecutado");
-
-                            // Cerrar menú móvil
-                            setMobileMenuOpen(false);
-                          } catch (error) {
-                            logError("❌ Error en logout:", error);
-                            toast.error("Error al cerrar sesión");
-                          }
-                        }}
+                        onClick={handleLogout}
                         className="h-auto rounded-lg py-3 text-red-200 transition-all hover:bg-red-500/20 hover:text-red-100 active:scale-[0.98] w-full justify-start"
                       >
                         <LogOut className="mr-2 h-5 w-5" />
@@ -692,3 +691,5 @@ export function AppNavbar({
     </>
   );
 }
+
+export const AppNavbarMemoized = memo(AppNavbar);

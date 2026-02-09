@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import { Button } from "./ui/button";
 import { AlertCircle, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -11,7 +11,7 @@ interface PaymentTestButtonsProps {
   onPaymentSimulated?: (status: "approved" | "pending" | "rejected") => void;
 }
 
-export function PaymentTestButtons({
+function PaymentTestButtonsComponent({
   userId,
   courseId,
   userEmail,
@@ -25,7 +25,7 @@ export function PaymentTestButtons({
   //   return null;
   // }
 
-  const handleSimulation = async (
+  const handleSimulation = useCallback(async (
     status: "approved" | "pending" | "rejected"
   ) => {
     try {
@@ -50,7 +50,7 @@ export function PaymentTestButtons({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [userId, courseId, userEmail, onPaymentSimulated]);
 
   return (
     <div className="w-full rounded-xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100 p-6 mt-6 shadow-md">
@@ -108,3 +108,5 @@ export function PaymentTestButtons({
     </div>
   );
 }
+
+export const PaymentTestButtons = memo(PaymentTestButtonsComponent);
