@@ -1,8 +1,14 @@
 // components/CertificateTemplate.tsx
 import { forwardRef } from "react";
-import firmaMariaImg from "figma:asset/93fb65c60964c4fd2af7191af141992cd0edfa1c.png";
-import firmaEstebanImg from "figma:asset/8ff5fda1303461ce550e6b0900e7dc6bcd7fce1a.png";
-import caduceoImg from "figma:asset/83ce44e6f1ef2c1e350a4b446694c175d0b24de9.png";
+
+// Note: Figma asset imports removed for production build compatibility
+// Original imports used special figma: scheme that breaks Vite build
+// const firmaMariaImg = "figma:asset/93fb65c60964c4fd2af7191af141992cd0edfa1c.png";
+// const firmaEstebanImg = "figma:asset/8ff5fda1303461ce550e6b0900e7dc6bcd7fce1a.png";
+// const caduceoImg = "figma:asset/83ce44e6f1ef2c1e350a4b446694c175d0b24de9.png";
+
+// Placeholder SVGs - in production, replace with actual image URLs
+const placeholderSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='100'%3E%3Crect fill='%23eee' width='200' height='100'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='12' fill='%23999'%3ESignature%3C/text%3E%3C/svg%3E";
 
 export interface CertificateData {
   studentName: string;
@@ -159,9 +165,9 @@ export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplat
           {data.issueDate}
         </div>
 
-        {/* ===== Caduceo (imagen exacta) ===== */}
+        {/* ===== Caduceo (placeholder) ===== */}
         <img
-          src={caduceoImg}
+          src={placeholderSvg}
           alt="Caduceo"
           style={{
             position: "absolute",
@@ -185,7 +191,7 @@ export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplat
         {/* Izquierda */}
         <div style={{ position: "absolute", left: 320, bottom: 430, width: 700, height: 4, backgroundColor: inner }} />
         <img
-          src={firmaMariaImg}
+          src={placeholderSvg}
           alt="Firma Lic. Maria Elisa Villoldo"
           style={{
             position: "absolute",
@@ -207,7 +213,7 @@ export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplat
         {/* Derecha */}
         <div style={{ position: "absolute", right: 320, bottom: 430, width: 700, height: 4, backgroundColor: inner }} />
         <img
-          src={firmaEstebanImg}
+          src={placeholderSvg}
           alt="Firma Dr. Esteban J. Lobo Campero"
           style={{
             position: "absolute",
