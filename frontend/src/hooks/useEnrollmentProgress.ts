@@ -140,8 +140,8 @@ export function useEnrollmentProgress(
 
         // ✅ Todas las enrollments se procesan en paralelo
         const mapped = await Promise.all(
-          (enrollments || []).map((enrollment: Enrollment) =>
-            computeEnrollmentProgress(user.id, enrollment)
+          (enrollments || []).map((enrollment) =>
+            computeEnrollmentProgress(user.id, enrollment as unknown as Enrollment)
           )
         )
 
@@ -195,8 +195,8 @@ export function useEnrollmentProgress(
 
       const { data: enrollments } = await query
       const mapped = await Promise.all(
-        (enrollments || []).map((enrollment: Enrollment) =>
-          computeEnrollmentProgress(user.id, enrollment)
+        (enrollments || []).map((enrollment) =>
+          computeEnrollmentProgress(user.id, enrollment as unknown as Enrollment)
         )
       )
       setCourses(mapped)

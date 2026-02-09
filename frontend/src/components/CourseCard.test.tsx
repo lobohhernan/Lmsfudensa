@@ -1,23 +1,28 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
-import { CourseCard } from './CourseCard'
+import { CourseCard, type CourseCardProps } from './CourseCard'
 
 describe('CourseCard Snapshot Tests', () => {
-  const mockCourse = {
+  const mockCourse: Omit<CourseCardProps, 'onClick'> = {
     id: 'course-1',
     title: 'RCP Adultos AHA 2020',
-    description: 'Curso completo de RCP para adultos',
-    category: 'RCP',
-    level: 'Básico',
+    image: 'https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400',
     duration: '8 horas',
-    price: 150,
-    slug: 'rcp-adultos-aha-2020',
+    level: 'Básico',
     certified: true,
   }
 
   it('matches snapshot with all properties', () => {
     const { container } = render(
-      <CourseCard course={mockCourse} onClick={() => {}} />
+      <CourseCard
+        id={mockCourse.id}
+        title={mockCourse.title}
+        image={mockCourse.image}
+        duration={mockCourse.duration}
+        level={mockCourse.level}
+        certified={mockCourse.certified}
+        onClick={() => {}}
+      />
     )
 
     expect(container.firstChild).toMatchSnapshot()
@@ -27,15 +32,22 @@ describe('CourseCard Snapshot Tests', () => {
     const minimalCourse = {
       id: 'course-2',
       title: 'Mi Curso',
-      description: 'Descripción del curso',
-      category: 'General',
-      level: 'Intermedio',
+      image: 'https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400',
       duration: '4 horas',
-      slug: 'mi-curso',
+      level: 'Intermedio' as const,
+      certified: false,
     }
 
     const { container } = render(
-      <CourseCard course={minimalCourse} onClick={() => {}} />
+      <CourseCard
+        id={minimalCourse.id}
+        title={minimalCourse.title}
+        image={minimalCourse.image}
+        duration={minimalCourse.duration}
+        level={minimalCourse.level}
+        certified={minimalCourse.certified}
+        onClick={() => {}}
+      />
     )
 
     expect(container.firstChild).toMatchSnapshot()
@@ -43,10 +55,26 @@ describe('CourseCard Snapshot Tests', () => {
 
   it('maintains snapshot consistency', () => {
     const { container: container1 } = render(
-      <CourseCard course={mockCourse} onClick={() => {}} />
+      <CourseCard
+        id={mockCourse.id}
+        title={mockCourse.title}
+        image={mockCourse.image}
+        duration={mockCourse.duration}
+        level={mockCourse.level}
+        certified={mockCourse.certified}
+        onClick={() => {}}
+      />
     )
     const { container: container2 } = render(
-      <CourseCard course={mockCourse} onClick={() => {}} />
+      <CourseCard
+        id={mockCourse.id}
+        title={mockCourse.title}
+        image={mockCourse.image}
+        duration={mockCourse.duration}
+        level={mockCourse.level}
+        certified={mockCourse.certified}
+        onClick={() => {}}
+      />
     )
 
     expect(container1.firstChild).toMatchSnapshot()

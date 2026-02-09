@@ -1,4 +1,7 @@
-import { test, expect } from '@playwright/test'
+/// <reference types="@playwright/test" />
+import { test, expect, Page } from '@playwright/test'
+
+type TestContext = { page: Page }
 
 /**
  * E2E Tests for Critical LMS Fudensa Flows
@@ -10,13 +13,13 @@ import { test, expect } from '@playwright/test'
  */
 
 test.describe('LMS Fudensa - Critical User Flows', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }: TestContext) => {
     // Navigate to app and wait for stable state
     await page.goto('http://localhost:5173', { waitUntil: 'networkidle' })
   })
 
   test.describe('Flow 1: Landing Page & Course Discovery', () => {
-    test('should display course list on landing page', async ({ page }) => {
+    test('should display course list on landing page', async ({ page }: TestContext) => {
       // User opens app → sees courses
       const courseCards = page.locator('[data-testid="course-card"]')
       
@@ -26,7 +29,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
       expect(count).toBeGreaterThan(0)
     })
 
-    test('should navigate to course details', async ({ page }) => {
+    test('should navigate to course details', async ({ page }: TestContext) => {
       // User clicks course → sees full details
       const firstCourse = page.locator('[data-testid="course-card"]').first()
       await firstCourse.click()
@@ -38,7 +41,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
       await expect(page.locator('h1')).toBeVisible()
     })
 
-    test('should filter courses by level', async ({ page }) => {
+    test('should filter courses by level', async ({ page }: TestContext) => {
       // User filters → sees only matching courses
       const levelFilter = page.locator('select[name="level"], [data-testid="level-filter"]')
       
@@ -51,7 +54,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
       }
     })
 
-    test('should search courses by title', async ({ page }) => {
+    test('should search courses by title', async ({ page }: TestContext) => {
       // User searches → sees filtered results
       const searchInput = page.locator('input[placeholder*="buscar"], input[placeholder*="search"]')
       
@@ -66,7 +69,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
   })
 
   test.describe('Flow 2: Contact Form', () => {
-    test('should submit contact form successfully', async ({ page }) => {
+    test('should submit contact form successfully', async ({ page }: TestContext) => {
       // User navigates to contact
       const contactLink = page.locator('a[href="/contact"], a:has-text("contacto"), a:has-text("contact")')
       
@@ -88,7 +91,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
       await expect(page.locator('text=gracias|éxito|enviado|thank|success')).toBeVisible({ timeout: 5000 })
     })
 
-    test('should validate required fields', async ({ page }) => {
+    test('should validate required fields', async ({ page }: TestContext) => {
       // Navigate to contact page
       const contactLink = page.locator('a:has-text("contacto"), a:has-text("contact")')
       
@@ -106,7 +109,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
   })
 
   test.describe('Flow 3: Authentication', () => {
-    test('should navigate to login page', async ({ page }) => {
+    test('should navigate to login page', async ({ page }: TestContext) => {
       // User clicks login
       const loginLink = page.locator('a[href*="login"], a:has-text("login"), a:has-text("iniciar")')
       
@@ -120,7 +123,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
       }
     })
 
-    test('should show forgot password link', async ({ page }) => {
+    test('should show forgot password link', async ({ page }: TestContext) => {
       // User on login page
       const loginLink = page.locator('a:has-text("login"), a:has-text("iniciar")')
       
@@ -135,7 +138,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
   })
 
   test.describe('Flow 4: Course Enrollment & Payment', () => {
-    test('should show payment button on course detail', async ({ page }) => {
+    test('should show payment button on course detail', async ({ page }: TestContext) => {
       // Navigate to any course
       const courseCard = page.locator('[data-testid="course-card"]').first()
       await courseCard.click()
@@ -151,7 +154,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
   })
 
   test.describe('Flow 5: Admin/Teacher Forms', () => {
-    test('should have admin access link', async ({ page }) => {
+    test('should have admin access link', async ({ page }: TestContext) => {
       // Look for admin panel
       const adminLink = page.locator('a[href*="admin"], a:has-text("admin")')
       
@@ -162,13 +165,13 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
   })
 
   test.describe('Flow 6: Navigation & Layout', () => {
-    test('should have main navigation', async ({ page }) => {
+    test('should have main navigation', async ({ page }: TestContext) => {
       // Verify main nav exists
       const navbar = page.locator('nav, [data-testid="navbar"]')
       await expect(navbar).toBeVisible()
     })
 
-    test('should have footer', async ({ page }) => {
+    test('should have footer', async ({ page }: TestContext) => {
       // Scroll to bottom
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
       
@@ -177,7 +180,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
       await expect(footer).toBeVisible()
     })
 
-    test('should be responsive on mobile', async ({ page }) => {
+    test('should be responsive on mobile', async ({ page }: TestContext) => {
       // Set mobile viewport
       await page.setViewportSize({ width: 375, height: 667 })
       
@@ -195,7 +198,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
   })
 
   test.describe('Flow 7: Performance & Stability', () => {
-    test('should load page within reasonable time', async ({ page }) => {
+    test('should load page within reasonable time', async ({ page }: TestContext) => {
       // Measure navigation performance
       const startTime = Date.now()
       
@@ -208,7 +211,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
       expect(loadTime).toBeLessThan(5000)
     })
 
-    test('should handle back button navigation', async ({ page }) => {
+    test('should handle back button navigation', async ({ page }: TestContext) => {
       // Navigate to course
       const courseCard = page.locator('[data-testid="course-card"]').first()
       await courseCard.click()
@@ -223,7 +226,7 @@ test.describe('LMS Fudensa - Critical User Flows', () => {
       await expect(courseCard).toBeVisible()
     })
 
-    test('should handle missing pages gracefully', async ({ page }) => {
+    test('should handle missing pages gracefully', async ({ page }: TestContext) => {
       // Navigate to non-existent page
       await page.goto('http://localhost:5173/non-existent-page', { waitUntil: 'networkidle' })
       

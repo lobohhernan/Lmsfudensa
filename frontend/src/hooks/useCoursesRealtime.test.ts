@@ -22,7 +22,7 @@ describe('Hooks Best Practices - Realtime Pattern', () => {
   })
 
   it('should track errors', () => {
-    const mockHook = { error: null }
+    const mockHook: { error: Error | null } = { error: null }
     
     expect(mockHook.error).toBeNull()
     mockHook.error = new Error('Connection failed')

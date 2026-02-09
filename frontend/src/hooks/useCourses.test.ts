@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // Tests para patrones de hooks sin dependencias de Supabase
 describe('Hooks Best Practices - useCourses Pattern', () => {
@@ -18,7 +18,7 @@ describe('Hooks Best Practices - useCourses Pattern', () => {
 
   it('hook should provide error handling', () => {
     // Patrón: Manejo de errores
-    const mockState = { error: null }
+    const mockState: { error: Error | null } = { error: null }
     expect(mockState).toHaveProperty('error')
     mockState.error = new Error('Test')
     expect(mockState.error).toBeInstanceOf(Error)

@@ -16,8 +16,41 @@ exports[`CourseCard Snapshot Tests > maintains snapshot consistency 1`] = `
       class="relative aspect-video overflow-hidden"
     >
       <img
+        alt="RCP Adultos AHA 2020"
         class="h-full w-full object-cover"
+        src="https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400"
       />
+      <div
+        class="absolute right-3 top-3"
+      >
+        <span
+          class="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden [a&]:hover:bg-primary/90 border border-white/30 bg-[#1e467c]/90 text-white backdrop-blur-md shadow-[0_4px_16px_0_rgba(30,70,124,0.3)]"
+          data-slot="badge"
+        >
+          <svg
+            class="lucide lucide-award mr-1 h-3 w-3"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"
+            />
+            <circle
+              cx="12"
+              cy="8"
+              r="6"
+            />
+          </svg>
+          Certificado
+        </span>
+      </div>
     </div>
   </div>
   <div
@@ -26,7 +59,9 @@ exports[`CourseCard Snapshot Tests > maintains snapshot consistency 1`] = `
   >
     <h3
       class="mb-3 line-clamp-2 text-[#0F172A] min-h-[3.5rem]"
-    />
+    >
+      RCP Adultos AHA 2020
+    </h3>
     <div
       class="flex flex-wrap items-center gap-3 mt-auto"
     >
@@ -56,7 +91,9 @@ exports[`CourseCard Snapshot Tests > maintains snapshot consistency 1`] = `
         </svg>
         <span
           class="text-sm"
-        />
+        >
+          8 horas
+        </span>
       </div>
       <div
         class="flex items-center gap-1 text-[#64748B]"
@@ -87,9 +124,11 @@ exports[`CourseCard Snapshot Tests > maintains snapshot consistency 1`] = `
           />
         </svg>
         <span
-          class="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+          class="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden [a&]:hover:bg-accent [a&]:hover:text-accent-foreground bg-[#22C55E] text-white"
           data-slot="badge"
-        />
+        >
+          Básico
+        </span>
       </div>
     </div>
   </div>
@@ -112,8 +151,41 @@ exports[`CourseCard Snapshot Tests > maintains snapshot consistency 2`] = `
       class="relative aspect-video overflow-hidden"
     >
       <img
+        alt="RCP Adultos AHA 2020"
         class="h-full w-full object-cover"
+        src="https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400"
       />
+      <div
+        class="absolute right-3 top-3"
+      >
+        <span
+          class="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden [a&]:hover:bg-primary/90 border border-white/30 bg-[#1e467c]/90 text-white backdrop-blur-md shadow-[0_4px_16px_0_rgba(30,70,124,0.3)]"
+          data-slot="badge"
+        >
+          <svg
+            class="lucide lucide-award mr-1 h-3 w-3"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"
+            />
+            <circle
+              cx="12"
+              cy="8"
+              r="6"
+            />
+          </svg>
+          Certificado
+        </span>
+      </div>
     </div>
   </div>
   <div
@@ -122,7 +194,9 @@ exports[`CourseCard Snapshot Tests > maintains snapshot consistency 2`] = `
   >
     <h3
       class="mb-3 line-clamp-2 text-[#0F172A] min-h-[3.5rem]"
-    />
+    >
+      RCP Adultos AHA 2020
+    </h3>
     <div
       class="flex flex-wrap items-center gap-3 mt-auto"
     >
@@ -152,7 +226,9 @@ exports[`CourseCard Snapshot Tests > maintains snapshot consistency 2`] = `
         </svg>
         <span
           class="text-sm"
-        />
+        >
+          8 horas
+        </span>
       </div>
       <div
         class="flex items-center gap-1 text-[#64748B]"
@@ -183,9 +259,11 @@ exports[`CourseCard Snapshot Tests > maintains snapshot consistency 2`] = `
           />
         </svg>
         <span
-          class="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+          class="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden [a&]:hover:bg-accent [a&]:hover:text-accent-foreground bg-[#22C55E] text-white"
           data-slot="badge"
-        />
+        >
+          Básico
+        </span>
       </div>
     </div>
   </div>
@@ -208,8 +286,41 @@ exports[`CourseCard Snapshot Tests > matches snapshot with all properties 1`] = 
       class="relative aspect-video overflow-hidden"
     >
       <img
+        alt="RCP Adultos AHA 2020"
         class="h-full w-full object-cover"
+        src="https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400"
       />
+      <div
+        class="absolute right-3 top-3"
+      >
+        <span
+          class="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden [a&]:hover:bg-primary/90 border border-white/30 bg-[#1e467c]/90 text-white backdrop-blur-md shadow-[0_4px_16px_0_rgba(30,70,124,0.3)]"
+          data-slot="badge"
+        >
+          <svg
+            class="lucide lucide-award mr-1 h-3 w-3"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"
+            />
+            <circle
+              cx="12"
+              cy="8"
+              r="6"
+            />
+          </svg>
+          Certificado
+        </span>
+      </div>
     </div>
   </div>
   <div
@@ -218,7 +329,9 @@ exports[`CourseCard Snapshot Tests > matches snapshot with all properties 1`] = 
   >
     <h3
       class="mb-3 line-clamp-2 text-[#0F172A] min-h-[3.5rem]"
-    />
+    >
+      RCP Adultos AHA 2020
+    </h3>
     <div
       class="flex flex-wrap items-center gap-3 mt-auto"
     >
@@ -248,7 +361,9 @@ exports[`CourseCard Snapshot Tests > matches snapshot with all properties 1`] = 
         </svg>
         <span
           class="text-sm"
-        />
+        >
+          8 horas
+        </span>
       </div>
       <div
         class="flex items-center gap-1 text-[#64748B]"
@@ -279,9 +394,11 @@ exports[`CourseCard Snapshot Tests > matches snapshot with all properties 1`] = 
           />
         </svg>
         <span
-          class="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+          class="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden [a&]:hover:bg-accent [a&]:hover:text-accent-foreground bg-[#22C55E] text-white"
           data-slot="badge"
-        />
+        >
+          Básico
+        </span>
       </div>
     </div>
   </div>
@@ -304,7 +421,9 @@ exports[`CourseCard Snapshot Tests > matches snapshot with minimal properties 1`
       class="relative aspect-video overflow-hidden"
     >
       <img
+        alt="Mi Curso"
         class="h-full w-full object-cover"
+        src="https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400"
       />
     </div>
   </div>
@@ -314,7 +433,9 @@ exports[`CourseCard Snapshot Tests > matches snapshot with minimal properties 1`
   >
     <h3
       class="mb-3 line-clamp-2 text-[#0F172A] min-h-[3.5rem]"
-    />
+    >
+      Mi Curso
+    </h3>
     <div
       class="flex flex-wrap items-center gap-3 mt-auto"
     >
@@ -344,7 +465,9 @@ exports[`CourseCard Snapshot Tests > matches snapshot with minimal properties 1`
         </svg>
         <span
           class="text-sm"
-        />
+        >
+          4 horas
+        </span>
       </div>
       <div
         class="flex items-center gap-1 text-[#64748B]"
@@ -375,9 +498,11 @@ exports[`CourseCard Snapshot Tests > matches snapshot with minimal properties 1`
           />
         </svg>
         <span
-          class="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+          class="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden [a&]:hover:bg-accent [a&]:hover:text-accent-foreground bg-[#F59E0B] text-white"
           data-slot="badge"
-        />
+        >
+          Intermedio
+        </span>
       </div>
     </div>
   </div>

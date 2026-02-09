@@ -112,9 +112,8 @@ export const CourseFormSchema = z.object({
     .max(100, 'La categoría no puede exceder 100 caracteres'),
   
   level: z
-    .enum(['Básico', 'Intermedio', 'Avanzado'], {
-      errorMap: () => ({ message: 'Selecciona un nivel válido' }),
-    }),
+    .enum(['Básico', 'Intermedio', 'Avanzado'])
+    .default('Básico'),
   
   duration: z
     .string()
@@ -211,9 +210,7 @@ export const CheckoutFormSchema = z.object({
     .min(1, 'Debe seleccionarse un curso'),
   
   paymentMethod: z
-    .enum(['mercadopago', 'bank_transfer', 'credit_card'], {
-      errorMap: () => ({ message: 'Selecciona un método de pago válido' }),
-    })
+    .enum(['mercadopago', 'bank_transfer', 'credit_card'])
     .optional(),
 });
 
@@ -232,7 +229,7 @@ export const validateFormData = async <T>(
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors: Record<string, string[]> = {};
-      error.errors.forEach((err) => {
+      error.issues.forEach((err: z.ZodIssue) => {
         const path = err.path.join('.');
         if (!errors[path]) {
           errors[path] = [];

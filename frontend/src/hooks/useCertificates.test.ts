@@ -15,7 +15,7 @@ describe('Hooks Best Practices - useCertificates Pattern', () => {
   })
 
   it('hook should handle errors', () => {
-    const mockHook = { error: null }
+    const mockHook: { error: Error | null } = { error: null }
     
     mockHook.error = new Error('Test error')
     expect(mockHook.error).toBeInstanceOf(Error)
