@@ -1,4 +1,4 @@
-# Netlify Redirects para SPA con History API (sin hash)
-# Redirigir todas las rutas a index.html para SPA routing
+# Cloudflare Pages: SPA Routing Configuration
+# Redirige todas las rutas no encontradas a index.html para permitir SPA routing
 
-/* /index.html 200
+/*  /index.html  200
