@@ -186,8 +186,8 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-6 flex items-end justify-between">
               <div>
-                <h2 id="continue-learning-heading" className="heading-h4 mb-2 text-[#0F172A]">Continuar Aprendiendo</h2>
-                <p className="body-sm text-[#64748B]">
+                <h2 id="continue-learning-heading" className="heading-h4 mb-2 text-gray-900">Continuar Aprendiendo</h2>
+                <p className="body-sm text-gray-600">
                   Retoma tus cursos donde los dejaste
                 </p>
               </div>
@@ -229,9 +229,9 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
             ) : (
               <div className="grid gap-6 sm:grid-cols-2" role="list" aria-label="Cursos en progreso">
                 {coursesInProgress.map((course) => (
-                <Card key={course.id} role="listitem" className="group relative overflow-hidden border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 cursor-pointer">
+                <Card key={course.id} role="listitem" className="group relative overflow-hidden border border-info-200 bg-gradient-to-br from-white to-info-50 backdrop-blur-sm transition-all duration-300 hover:border-info-300 hover:shadow-[0_8px_32px_0_rgba(14,165,233,0.15)] hover:scale-105 cursor-pointer">
                   {/* Glass effect top highlight */}
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-info-200 to-transparent" />
                   <div className="flex flex-col sm:flex-row">
                     <div className="relative h-48 w-full sm:h-auto sm:w-48">
                       <ImageWithFallback
@@ -254,17 +254,17 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                       </div>
                     </div>
                     <div className="flex flex-1 flex-col p-6 bg-white/30 backdrop-blur-sm">
-                      <h3 className="mb-3 text-[#0F172A] line-clamp-2">{course.title}</h3>
-                      <div className="mb-3 flex items-center gap-2 text-sm text-[#64748B]">
+                      <h3 className="mb-3 text-gray-900 line-clamp-2">{course.title}</h3>
+                      <div className="mb-3 flex items-center gap-2 text-sm text-gray-600">
                         <Clock className="h-4 w-4" />
                         <span>Lección actual: {course.currentLesson}</span>
                       </div>
                       <div className="mt-auto space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-[#64748B]">
+                          <span className="text-gray-600">
                             {course.completedLessons} de {course.totalLessons} lecciones
                           </span>
-                          <span className="font-semibold text-[#0B5FFF]">{course.progress}%</span>
+                          <span className="font-semibold text-info-500">{course.progress}%</span>
                         </div>
                         <Progress value={course.progress} className="h-2" />
                         <Button
@@ -295,7 +295,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex items-end justify-between">
             <div>
-              <h2 id="featured-courses-heading" className="heading-h3 mb-2 text-[#0F172A">
+              <h2 id="featured-courses-heading" className="heading-h3 mb-2 text-gray-900">
                 {isLoggedIn ? "Cursos Recomendados para Ti" : "Cursos Destacados"}
               </h2>
               <p className="body-sm text-[#64748B]">
@@ -377,40 +377,40 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 id="benefits-heading" className="sr-only">Por qué elegir FUDENSA</h2>
           <div className="grid gap-8 md:grid-cols-3" role="list" aria-label="Beneficios de la plataforma">
-            <Card role="listitem" className="group relative border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+            <Card role="listitem" className="group relative border border-info-200 bg-gradient-to-br from-white to-info-50 backdrop-blur-sm transition-all duration-300 hover:border-info-300 hover:shadow-[0_8px_32px_0_rgba(14,165,233,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-info-200 to-transparent" />
               <CardContent className="space-y-3 p-6 text-center bg-white/20 flex flex-col items-center h-full">
-                <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-[#0B5FFF]/30 bg-[#0B5FFF]/20 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
-                  <CheckCircle className="h-8 w-8 text-[#0B5FFF]" />
+                <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-info-300 bg-info-100 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                  <CheckCircle className="h-8 w-8 text-info-500" />
                 </div>
-              <h3 className="heading-h6 text-[#0F172A] min-h-[2rem] flex items-center">100% Online</h3>
-                <p className="body-sm text-[#64748B] flex-1">
+              <h3 className="heading-h6 text-gray-900 min-h-[2rem] flex items-center">100% Online</h3>
+                <p className="body-sm text-gray-600 flex-1">
                   Estudia desde cualquier lugar, a tu propio ritmo y en tus horarios
                 </p>
               </CardContent>
             </Card>
 
-            <Card role="listitem" className="group relative border border-[#16A34A]/20 bg-gradient-to-br from-white to-[#16A34A]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#16A34A]/40 hover:shadow-[0_8px_32px_0_rgba(22,163,74,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#16A34A]/30 to-transparent" />
+            <Card role="listitem" className="group relative border border-success-200 bg-gradient-to-br from-white to-success-50 backdrop-blur-sm transition-all duration-300 hover:border-success-300 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-success-200 to-transparent" />
               <CardContent className="space-y-3 p-6 text-center bg-white/20 flex flex-col items-center h-full">
-                <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-[#16A34A]/30 bg-[#16A34A]/20 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
-                  <Award className="h-8 w-8 text-[#16A34A]" />
+                <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-success-300 bg-success-100 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                  <Award className="h-8 w-8 text-success-600" />
                 </div>
-                <h3 className="heading-h6 text-[#0F172A] min-h-[2rem] flex items-center">Cursos Certificados</h3>
-                <p className="body-sm text-[#64748B] flex-1">
+                <h3 className="heading-h6 text-gray-900 min-h-[2rem] flex items-center">Cursos Certificados</h3>
+                <p className="body-sm text-gray-600 flex-1">
                   Obtén certificaciones avaladas para sumar a tu perfil profesional
                 </p>
               </CardContent>
             </Card>
 
-            <Card role="listitem" className="group relative border border-[#22C55E]/20 bg-gradient-to-br from-white to-[#22C55E]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#22C55E]/40 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#22C55E]/30 to-transparent" />
+            <Card role="listitem" className="group relative border border-success-200 bg-gradient-to-br from-white to-success-50 backdrop-blur-sm transition-all duration-300 hover:border-success-300 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-success-200 to-transparent" />
               <CardContent className="space-y-3 p-6 text-center bg-white/20 flex flex-col items-center h-full">
-                <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-[#22C55E]/30 bg-[#22C55E]/20 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
-                  <MessageCircle className="h-8 w-8 text-[#22C55E]" />
+                <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-success-300 bg-success-100 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                  <MessageCircle className="h-8 w-8 text-success-600" />
                 </div>
-                <h3 className="heading-h6 text-[#0F172A] min-h-[2rem] flex items-center">Soporte WhatsApp</h3>
-                <p className="body-sm text-[#64748B] flex-1">
+                <h3 className="heading-h6 text-gray-900 min-h-[2rem] flex items-center">Soporte WhatsApp</h3>
+                <p className="body-sm text-gray-600 flex-1">
                   Asistencia inmediata por WhatsApp para todas tus consultas
                 </p>
               </CardContent>
@@ -431,7 +431,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
 
           <div className="grid gap-6 md:grid-cols-3" role="list" aria-label="Testimonios de estudiantes">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} role="listitem" className="group relative border border-[#F59E0B]/20 bg-gradient-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#F59E0B]/40 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
+              <Card key={index} role="listitem" className="group relative border border-warning-200 bg-gradient-to-br from-white to-warning-50 backdrop-blur-sm transition-all duration-300 hover:border-warning-300 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/30 to-transparent" />
                 <CardContent className="space-y-4 p-6 bg-white/20 flex flex-col h-full">
                   <div className="flex gap-1 flex-shrink-0">
