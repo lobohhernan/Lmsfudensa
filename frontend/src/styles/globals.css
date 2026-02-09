@@ -373,3 +373,66 @@ html {
   font-size: 48px;
   line-height: 1.2;
 }
+
+/* Mobile Responsive Typography Overrides */
+@media (max-width: 640px) {
+  .hero-h1 {
+    font-size: 32px; /* Reduce from 48px to 32px on mobile */
+    line-height: 1.1;
+  }
+
+  .heading-h1 {
+    font-size: var(--text-4xl); /* Reduce from 5xl to 4xl */
+    line-height: var(--leading-tight);
+  }
+
+  .heading-h2 {
+    font-size: var(--text-3xl); /* Reduce from 4xl to 3xl */
+    line-height: var(--leading-tight);
+  }
+
+  .heading-h3 {
+    font-size: var(--text-2xl); /* Reduce from 3xl to 2xl */
+    line-height: var(--leading-normal);
+  }
+
+  .heading-h4 {
+    font-size: var(--text-xl); /* Reduce from 2xl to xl */
+    line-height: var(--leading-normal);
+  }
+
+  .body-lg {
+    font-size: var(--text-base); /* Reduce from lg to base */
+    line-height: var(--leading-normal);
+  }
+
+  /* Touch-friendly button sizing */
+  button {
+    min-height: 44px; /* Apple/Google touch target minimum */
+    min-width: 44px;
+    padding: 0.625rem 1rem; /* Slightly increased padding on mobile */
+  }
+
+  /* Reduce heading letter-spacing on mobile for better fit */
+  .heading-h1,
+  .heading-h2,
+  .heading-h3 {
+    letter-spacing: 0;
+  }
+}
+
+/* Touch interaction improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover effects on touch devices */
+  button {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  /* Improved active state for touch */
+  button:active,
+  a:active {
+    opacity: 0.7;
+  }
+}

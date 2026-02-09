@@ -125,21 +125,21 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
         </div>
         
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 lg:py-32 w-full">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-32 w-full">
           <div className="flex items-center justify-center">
-            <div className="max-w-3xl space-y-6 lg:space-y-8 text-center">
+            <div className="max-w-3xl space-y-4 sm:space-y-6 lg:space-y-8 text-center">
               <h1 className="hero-h1 drop-shadow-lg">
                 Formación profesional en salud certificada
               </h1>
               <p className="body-lg text-white font-[Montserrat] drop-shadow-md">
                 Cursos online certificados en RCP, primeros auxilios y atención médica de emergencia. Reconocidos internacionalmente y 100% a tu ritmo con soporte continuo.
               </p>
-              <div className="flex flex-col gap-4 sm:flex-row justify-center mt-6 lg:mt-8">
+              <div className="flex flex-col gap-3 sm:gap-4 justify-center mt-6 lg:mt-8">
                 {isLoggedIn ? (
                   <>
                     <Button
                       size="lg"
-                      className="bg-[#FCD34D] text-[#1e467c] hover:bg-[#FDE047] shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                      className="w-full sm:w-auto bg-[#FCD34D] text-[#1e467c] hover:bg-[#FDE047] shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
                       onClick={scrollToContinueLearning}
                     >
                       <Play className="mr-2 h-5 w-5" />
@@ -148,7 +148,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105"
+                      className="w-full sm:w-auto border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105"
                       onClick={() => onNavigate?.("catalog")}
                     >
                       Explorar más cursos
@@ -158,7 +158,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                   <>
                     <Button
                       size="lg"
-                      className="bg-[#FCD34D] text-[#1e467c] hover:bg-[#FDE047] shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                      className="w-full sm:w-auto bg-[#FCD34D] text-[#1e467c] hover:bg-[#FDE047] shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
                       onClick={() => onNavigate?.("catalog")}
                     >
                       Explorar Cursos
@@ -167,7 +167,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)]"
+                      className="w-full sm:w-auto border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)]"
                       onClick={() => onNavigate?.("contact")}
                     >
                       Contáctanos
