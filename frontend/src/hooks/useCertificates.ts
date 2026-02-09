@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { debug, error as logError } from '../lib/logger'
+import { debug, error as logError, getErrorMessage } from '../lib/logger'
 
 export interface Certificate {
   id: string;
@@ -35,9 +35,10 @@ export function useCertificates() {
 
       if (fetchError) throw fetchError;
       setCertificates(data || []);
-    } catch (err: any) {
-      logError("Error fetching certificates:", err);
-      setError(err.message || "Error al cargar certificados");
+    } catch (err: unknown) {
+      const message = getErrorMessage(err)
+      logError("Error fetching certificates:", message);
+      setError(message || "Error al cargar certificados");
     } finally {
       setLoading(false);
     }

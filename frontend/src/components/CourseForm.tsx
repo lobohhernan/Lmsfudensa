@@ -17,10 +17,11 @@ import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { toast } from "sonner";
 import type { FullCourse, CourseLesson, EvaluationQuestion } from "../lib/data";
+import type { Teacher } from "../lib/types";
 
 interface CourseFormProps {
   course?: FullCourse;
-  teachers: any[]; // Lista de profesores disponibles
+  teachers: Teacher[]; // Lista de profesores disponibles
   onSave: (course: FullCourse) => void;
   onCancel: () => void;
 }
@@ -69,7 +70,7 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
     ]
   );
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: unknown) => {
     setFormData({ ...formData, [field]: value });
   };
 
@@ -134,7 +135,7 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
     ]);
   };
 
-  const updateLesson = (index: number, field: keyof CourseLesson, value: any) => {
+  const updateLesson = (index: number, field: keyof CourseLesson, value: unknown) => {
     const updated = [...lessons];
     updated[index] = { ...updated[index], [field]: value };
     setLessons(updated);
@@ -160,7 +161,7 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
     ]);
   };
 
-  const updateQuestion = (index: number, field: keyof EvaluationQuestion, value: any) => {
+  const updateQuestion = (index: number, field: keyof EvaluationQuestion, value: unknown) => {
     const updated = [...questions];
     updated[index] = { ...updated[index], [field]: value };
     setQuestions(updated);

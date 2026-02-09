@@ -4,8 +4,14 @@ import { supabase } from "./supabase";
 
 declare global {
   interface Window {
-    MercadoPago?: any;
+    MercadoPago?: typeof MercadoPago;
   }
+}
+
+// Tipo para MercadoPago SDK
+interface MercadoPagoSDK {
+  bricksBuilder?: unknown;
+  checkout?: unknown;
 }
 
 /**

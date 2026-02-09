@@ -7,6 +7,7 @@ import { Progress } from "../components/ui/progress";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Skeleton } from "../components/ui/skeleton";
+import { FullCourse } from "../lib/data";
 import {
   Select,
   SelectContent,
@@ -27,7 +28,7 @@ interface UserProfileProps {
 }
 
 export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileProps) {
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<Record<string, unknown> | null>(null);
   const [userCertificates, setUserCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [certificatesLoading, setCertificatesLoading] = useState(true);
@@ -61,8 +62,9 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
         console.log("✅ [UserProfile] Certificados cargados:", certs?.length || 0);
         setUserCertificates(certs || []);
       }
-    } catch (err) {
-      console.error("❌ [UserProfile] Error en loadCertificates:", err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("❌ [UserProfile] Error en loadCertificates:", message);
       setUserCertificates([]);
     } finally {
       setCertificatesLoading(false);
@@ -260,7 +262,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
           {/* My Courses */}
           <TabsContent value="courses" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {userCourses.map((course: any) => (
+              {userCourses.map((course: FullCourse) => (
                 <Card key={course.id} className="overflow-hidden flex flex-col transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
                   <CardHeader className="p-0 shrink-0">
                     <div className="relative aspect-video overflow-hidden">

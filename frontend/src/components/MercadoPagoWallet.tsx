@@ -59,7 +59,7 @@ export function MercadoPagoWallet({
             valueProp: "security_details",
           },
         },
-        onSubmit: async (formData: any) => {
+        onSubmit: async (formData: unknown) => {
           console.log("✅ [MP Wallet] Formulario enviado:", formData);
           setLoading(true);
 
@@ -71,9 +71,10 @@ export function MercadoPagoWallet({
           // Si no, usar polling como fallback
           if (onSuccess) onSuccess();
         },
-        onError: (error: any) => {
-          console.error("❌ [MP Wallet] Error:", error);
-          if (onError) onError(error.message || "Error en Mercado Pago");
+        onError: (error: unknown) => {
+          const message = error instanceof Error ? error.message : (typeof error === 'object' && error !== null && 'message' in error ? String((error as Record<string, unknown>).message) : 'Error en Mercado Pago');
+          console.error("❌ [MP Wallet] Error:", message);
+          if (onError) onError(message);
         },
         onReady: () => {
           console.log("✅ [MP Wallet] Listo para usar");

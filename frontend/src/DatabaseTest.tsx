@@ -3,8 +3,8 @@ import { supabase } from './lib/supabase'
 import { debug, info, error as logError } from './lib/logger'
 
 export function DatabaseTest() {
-  const [courses, setCourses] = useState<any[]>([])
-  const [profiles, setProfiles] = useState<any[]>([])
+  const [courses, setCourses] = useState<Record<string, unknown>[]>([])
+  const [profiles, setProfiles] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,9 +44,10 @@ export function DatabaseTest() {
       setProfiles(profilesData || [])
 
       debug('✅ Test completado exitosamente')
-    } catch (err: any) {
-      logError('💥 Error general:', err)
-      setError(err?.message || String(err))
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      logError('💥 Error general:', message);
+      setError(message);
     } finally {
       setLoading(false)
     }

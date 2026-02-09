@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { Enrollment } from "./types";
 
 /**
  * Verifica si un usuario está inscrito en un curso específico
@@ -84,11 +85,12 @@ export async function enrollUser(
     }
 
     return { success: true };
-  } catch (err: any) {
-    console.error("Error in enrollUser:", err);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Error in enrollUser:", message);
     return {
       success: false,
-      error: err.message || "Error desconocido al inscribir usuario",
+      error: message || "Error desconocido al inscribir usuario",
     };
   }
 }
@@ -98,7 +100,7 @@ export async function enrollUser(
  * @param userId - UUID del usuario
  * @returns Array de cursos con datos de inscripción
  */
-export async function getUserEnrollments(userId: string): Promise<any[]> {
+export async function getUserEnrollments(userId: string): Promise<Enrollment[]> {
   try {
     const { data, error } = await supabase
       .from("enrollments")

@@ -20,8 +20,8 @@ interface CourseDetailProps {
 }
 
 export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate, isLoggedIn, onAuthRequired }: CourseDetailProps) {
-  const [courseData, setCourseData] = useState<any>(null);
-  const [lessons, setLessons] = useState<any[]>([]);
+  const [courseData, setCourseData] = useState<Record<string, unknown> | null>(null);
+  const [lessons, setLessons] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [courseId, setCourseId] = useState<string | undefined>(initialCourseId);
@@ -110,10 +110,11 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
         }
 
         setError(null);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelled) {
-          logError("Error cargando curso:", err);
-          setError(err.message || "Error al cargar los datos del curso");
+          const message = err instanceof Error ? err.message : String(err);
+          logError("Error cargando curso:", message);
+          setError(message || "Error al cargar los datos del curso");
         }
       } finally {
         if (!cancelled) {

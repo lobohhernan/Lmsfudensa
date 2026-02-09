@@ -124,9 +124,10 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
         debug("Curso cargado en checkout:", course);
         setCourseData(course);
         setError(null);
-      } catch (err: any) {
-        console.error("Error cargando curso:", err);
-        setError(err.message || "Error al cargar los datos del curso");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("Error cargando curso:", message);
+        setError(message || "Error al cargar los datos del curso");
       } finally {
         setLoading(false);
       }

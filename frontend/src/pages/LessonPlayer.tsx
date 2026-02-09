@@ -6,6 +6,7 @@ import { LessonList, Lesson } from "../components/LessonList";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { resolveCourseSlugToId } from "../lib/courseResolver"
 import { isUserEnrolled } from "../lib/enrollments"
+import { CourseLesson } from "../lib/data"
 import { toast } from "sonner"
 
 interface LessonPlayerProps {
@@ -24,7 +25,7 @@ interface LessonWithYoutube extends Lesson {
 
 export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug, lessonId }: LessonPlayerProps) {
   const [lessons, setLessons] = useState<LessonWithYoutube[]>([]);
-  const [courseData, setCourseData] = useState<any>(null);
+  const [courseData, setCourseData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentLesson, setCurrentLesson] = useState(lessonId || "1");
@@ -140,7 +141,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
           } else {
             // Crear Set de lecciones completadas para búsqueda O(1)
             completedIds = new Set(
-              (progressData || []).map((p: any) => p.lesson_id)
+              (progressData || []).map((p: Record<string, unknown>) => String(p.lesson_id))
             );
             console.log(`✅ [LessonPlayer] Progreso cargado: ${completedIds.size} lecciones completadas`);
           }
@@ -151,7 +152,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
         setCompletedLessons(completedIds);
 
         // Mapear a formato esperado y marcar completadas
-        const mappedLessons: LessonWithYoutube[] = (lessonsData || []).map((lesson: any) => ({
+        const mappedLessons: LessonWithYoutube[] = (lessonsData || []).map((lesson: CourseLesson) => ({
           id: lesson.id,
           title: lesson.title,
           duration: lesson.duration || "N/A",
@@ -163,9 +164,10 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
 
         setLessons(mappedLessons);
         setError(null);
-      } catch (err: any) {
-        console.error("Error cargando datos:", err);
-        setError(err.message || "Error al cargar el curso");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("Error cargando datos:", message);
+        setError(message || "Error al cargar el curso");
       } finally {
         setLoading(false);
       }
@@ -267,8 +269,9 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
         toast.success("¡Lección completada! Tu progreso ha sido guardado");
       }
 
-    } catch (err: any) {
-      console.error('❌ Error al actualizar progreso:', err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('❌ Error al actualizar progreso:', message);
       toast.error("Error al guardar tu progreso");
     } finally {
       setSavingProgress(false);

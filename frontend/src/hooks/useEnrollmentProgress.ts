@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { getErrorMessage } from '../lib/logger'
+import { Enrollment } from '../lib/types'
 
 export interface EnrollmentWithProgress {
   id: string
@@ -18,7 +20,7 @@ export interface EnrollmentWithProgress {
  */
 async function computeEnrollmentProgress(
   userId: string,
-  enrollment: any
+  enrollment: Enrollment
 ): Promise<EnrollmentWithProgress> {
   const courseId = enrollment.course_id
 
@@ -138,7 +140,7 @@ export function useEnrollmentProgress(
 
         // ✅ Todas las enrollments se procesan en paralelo
         const mapped = await Promise.all(
-          (enrollments || []).map((enrollment: any) =>
+          (enrollments || []).map((enrollment: Enrollment) =>
             computeEnrollmentProgress(user.id, enrollment)
           )
         )
@@ -146,10 +148,11 @@ export function useEnrollmentProgress(
         if (!cancelled) {
           setCourses(mapped)
         }
-      } catch (err: any) {
-        console.error('❌ Error en useEnrollmentProgress:', err)
+      } catch (err: unknown) {
+        const message = getErrorMessage(err)
+        console.error('❌ Error en useEnrollmentProgress:', message)
         if (!cancelled) {
-          setError(err.message || 'Error cargando cursos')
+          setError(message || 'Error cargando cursos')
           setCourses([])
         }
       } finally {
@@ -192,7 +195,7 @@ export function useEnrollmentProgress(
 
       const { data: enrollments } = await query
       const mapped = await Promise.all(
-        (enrollments || []).map((enrollment: any) =>
+        (enrollments || []).map((enrollment: Enrollment) =>
           computeEnrollmentProgress(user.id, enrollment)
         )
       )

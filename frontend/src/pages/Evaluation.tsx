@@ -111,9 +111,10 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
           toast.warning("Este curso no tiene evaluación configurada");
           setEvaluationData([]);
         }
-      } catch (error: any) {
-        console.error("Error en loadEvaluation:", error);
-        toast.error("Error al cargar evaluación: " + error.message);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("Error en loadEvaluation:", message);
+        toast.error("Error al cargar evaluación: " + message);
         // No hay evaluación disponible - mostrar mensaje
         setEvaluationData([]);
         setCourseTitle("Curso");
@@ -231,12 +232,12 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
           certificateId: certificate.hash.substring(0, 12).toUpperCase(),
         };
         setCertificateData(certData);
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         console.error("❌❌❌ [Evaluation] ERROR COMPLETO al emitir certificado:");
-        console.error("Error object:", error);
-        console.error("Error message:", error.message);
-        console.error("Error stack:", error.stack);
-        console.error("Error details:", JSON.stringify(error, null, 2));
+        console.error("Error message:", message);
+        console.error("Error details:", error);
+
         
         toast.error("Error al emitir el certificado", {
           description: error.message || "Intenta nuevamente",

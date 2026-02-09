@@ -32,7 +32,7 @@ export function TeacherForm({ teacher, onSave, onCancel }: TeacherFormProps) {
     }
   );
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: unknown) => {
     setFormData({ ...formData, [field]: value });
   };
 

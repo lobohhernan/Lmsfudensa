@@ -20,6 +20,7 @@ import {
   GraduationCap,
   Loader2,
 } from "lucide-react";
+import { CourseLesson, EvaluationQuestion } from "../lib/data";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -97,7 +98,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [contactUser, setContactUser] = useState<{ name: string; email: string } | null>(null);
   const [contactMessage, setContactMessage] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [usersList, setUsersList] = useState<any[]>([]);
+  const [usersList, setUsersList] = useState<Record<string, unknown>[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
@@ -132,7 +133,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   }, [realtimeTeachers, teacherQuery]);
 
   // Datos de ejemplo para secciones no implementadas
-  const paymentsData: any[] = [];
+  const paymentsData: Record<string, unknown>[] = [];
 
   // Map realtime courses to component state (memoized)
   const courseList = useMemo(() => realtimeCourses.map(course => ({
@@ -168,8 +169,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       
       setUsersList(data || []);
       debug("Usuarios cargados:", data?.length);
-    } catch (err: any) {
-      const msg = err?.message || String(err);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       setUsersError(msg);
       toast.error("Error al cargar usuarios: " + msg);
       console.error("Error completo:", err);
@@ -408,21 +409,21 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       }
 
       // Mapear lecciones a formato esperado por CourseForm
-      const mappedLessons = (lessonsData || []).map((lesson: any) => ({
+      const mappedLessons = (lessonsData || []).map((lesson: CourseLesson) => ({
         id: String(lesson.id),
         title: lesson.title,
         duration: lesson.duration || "",
         type: lesson.type || "video",
         completed: false,
         locked: false,
-        youtubeId: lesson.youtube_id || "", // ⚠️ Conversión snake_case -> camelCase
+        youtubeId: lesson.youtubeId || "", // ⚠️ Conversión snake_case -> camelCase
         description: lesson.description || "",
-        content: lesson.content || "",
+        content: lesson.description || "",
       }));
 
       // Mapear evaluaciones a formato esperado por CourseForm
       // No usar nombre 'eval' porque es una declaración reservada en ESM.
-      const mappedEvaluations = (evaluationsData || []).map((e: any) => {
+      const mappedEvaluations = (evaluationsData || []).map((e: EvaluationQuestion) => {
         // ✅ options es TEXT[] en PostgreSQL, viene como array directamente
         let optionsArray: string[] = [];
         

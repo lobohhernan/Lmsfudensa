@@ -58,8 +58,9 @@ export function Contact() {
         subject: "",
         message: "",
       });
-    } catch (error: any) {
-      console.error("Error al enviar mensaje:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Error al enviar mensaje:", message);
       toast.error("Error al enviar el mensaje", {
         description: "Intenta de nuevo más tarde",
       });

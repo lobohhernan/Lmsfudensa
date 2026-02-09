@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { SupabaseClient } from '@supabase/supabase-js'
 import { CACHE_KEYS } from '../lib/cacheManager'
 import { error as logError } from '../lib/logger'
 
@@ -66,7 +67,7 @@ export function useFetcher<T>({
 /**
  * Hook específico para cursos con refresh automático
  */
-export function useCoursesWithCache(supabase: any) {
+export function useCoursesWithCache(supabase: SupabaseClient) {
   return useFetcher({
     key: CACHE_KEYS.COURSES,
     fetcher: async () => {
@@ -81,7 +82,7 @@ export function useCoursesWithCache(supabase: any) {
 /**
  * Hook específico para usuarios con refresh automático
  */
-export function useUsersWithCache(supabase: any) {
+export function useUsersWithCache(supabase: SupabaseClient) {
   return useFetcher({
     key: CACHE_KEYS.USERS,
     fetcher: async () => {
@@ -96,7 +97,7 @@ export function useUsersWithCache(supabase: any) {
 /**
  * Hook específico para lecciones con refresh automático
  */
-export function useLessonsWithCache(supabase: any, courseId: string) {
+export function useLessonsWithCache(supabase: SupabaseClient, courseId: string) {
   return useFetcher({
     key: `${CACHE_KEYS.LESSONS}_${courseId}`,
     fetcher: async () => {

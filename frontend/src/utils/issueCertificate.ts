@@ -87,8 +87,9 @@ export async function issueCertificate(params: IssueCertificateParams) {
 
     info("✅ Certificado emitido:", data);
     return data;
-  } catch (err: any) {
-    logError("❌ Error en issueCertificate:", err);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logError("❌ Error en issueCertificate:", message);
     throw err;
   }
 }
