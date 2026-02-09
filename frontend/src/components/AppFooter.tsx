@@ -62,7 +62,7 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
     };
   }, []);
   return (
-    <footer className="relative border-t border-[#1e467c]/10 bg-gradient-to-b from-white to-[#1e467c]/5 backdrop-blur-sm">
+    <footer id="footer" className="relative border-t border-[#1e467c]/10 bg-gradient-to-b from-white to-[#1e467c]/5 backdrop-blur-sm" role="contentinfo">
       {/* Glass effect top highlight */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#1e467c]/20 to-transparent" />
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -76,7 +76,7 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
                 className="h-32 w-auto"
               />
             </div>
-            <p className="text-[#64748B]">
+            <p className="body-sm text-[#64748B]">
               Plataforma líder en educación certificada para profesionales de la salud
             </p>
             <div className="flex gap-3">
@@ -88,15 +88,21 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
               </a>
               <a
                 href="#"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e467c]/20 bg-white/60 backdrop-blur-sm text-[#64748B] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] transition-all hover:border-[#1e467c]/40 hover:bg-[#1e467c] hover:text-white hover:shadow-[0_4px_12px_0_rgba(30,70,124,0.2)]"
+                aria-label="Visita nuestro Instagram"
+                title="Instagram"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e467c]/20 bg-white/60 backdrop-blur-sm text-[#64748B] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] transition-all hover:border-[#1e467c]/40 hover:bg-[#1e467c] hover:text-white hover:shadow-[0_4px_12px_0_rgba(30,70,124,0.2)] group"
               >
                 <Instagram className="h-4 w-4" />
+                <span className="sr-only">Instagram</span>
               </a>
               <a
                 href="#"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e467c]/20 bg-white/60 backdrop-blur-sm text-[#64748B] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] transition-all hover:border-[#1e467c]/40 hover:bg-[#1e467c] hover:text-white hover:shadow-[0_4px_12px_0_rgba(30,70,124,0.2)]"
+                aria-label="Visita nuestro LinkedIn"
+                title="LinkedIn"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e467c]/20 bg-white/60 backdrop-blur-sm text-[#64748B] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] transition-all hover:border-[#1e467c]/40 hover:bg-[#1e467c] hover:text-white hover:shadow-[0_4px_12px_0_rgba(30,70,124,0.2)] group"
               >
                 <Linkedin className="h-4 w-4" />
+                <span className="sr-only">LinkedIn</span>
               </a>
               <a
                 href="#"
@@ -109,17 +115,17 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
 
           {/* Cursos */}
           <div>
-            <h3 className="mb-4 text-[#0F172A]">Cursos</h3>
+            <h3 className="heading-h6 mb-4 text-[#0F172A]">Cursos</h3>
             <ul className="space-y-3">
               {loading ? (
-                <li className="text-[#64748B] text-sm">Cargando cursos...</li>
+                <li className="body-sm text-[#64748B]">Cargando cursos...</li>
               ) : courses.length > 0 ? (
                 <>
                   {courses.map((course) => (
                     <li key={course.id}>
                       <button 
                         onClick={() => onNavigate?.("course", course.id)}
-                        className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                        className="body-sm text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
                       >
                         {course.title}
                       </button>
@@ -135,19 +141,19 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
                   </li>
                 </>
               ) : (
-                <li className="text-[#64748B] text-sm">No hay cursos disponibles</li>
+                <li className="body-sm text-[#64748B]">No hay cursos disponibles</li>
               )}
             </ul>
           </div>
 
           {/* Plataforma */}
           <div>
-            <h3 className="mb-4 text-[#0F172A]">Plataforma</h3>
+            <h3 className="heading-h6 mb-4 text-[#0F172A]">Plataforma</h3>
             <ul className="space-y-3">
               <li>
                 <button
                   onClick={() => onNavigate?.("about")}
-                  className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                  className="body-sm text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
                 >
                   Sobre Nosotros
                 </button>
@@ -155,7 +161,7 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
               <li>
                 <button
                   onClick={() => onNavigate?.("contact")}
-                  className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                  className="body-sm text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
                 >
                   Contacto
                 </button>
@@ -165,18 +171,18 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
 
           {/* Soporte */}
           <div>
-            <h3 className="mb-4 text-[#0F172A]">Soporte</h3>
+            <h3 className="heading-h6 mb-4 text-[#0F172A]">Soporte</h3>
             <ul className="space-y-3">
               <li>
                 <button
                   onClick={() => onNavigate?.("contact")}
-                  className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                  className="body-sm text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
                 >
                   Centro de Ayuda
                 </button>
               </li>
               <li>
-                <a href="https://wa.me/543815537057" target="_blank" rel="noopener noreferrer" className="text-[#64748B] hover:text-[#1e467c]">
+                <a href="https://wa.me/543815537057" target="_blank" rel="noopener noreferrer" className="body-sm text-[#64748B] hover:text-[#1e467c]">
                   WhatsApp
                 </a>
               </li>
@@ -184,8 +190,8 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
           </div>
         </div>
 
-        <div className="mt-8 border-t pt-8 text-center text-[#64748B]">
-          <p>© 2025 FUDENSA. Todos los derechos reservados.</p>
+        <div className="mt-8 border-t pt-8 text-center">
+          <p className="body-xs text-[#64748B]">© 2025 FUDENSA. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>

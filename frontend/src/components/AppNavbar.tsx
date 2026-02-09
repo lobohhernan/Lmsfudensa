@@ -108,6 +108,14 @@ export function AppNavbar({
 
   return (
     <>
+      {/* Skip Links - Keyboard navigation accessibility */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-0 focus:left-0 focus:z-50 focus:bg-[#1e467c] focus:text-white focus:px-4 focus:py-2">
+        Ir al contenido principal
+      </a>
+      <a href="#footer" className="sr-only focus:not-sr-only focus:fixed focus:top-8 focus:left-0 focus:z-50 focus:bg-[#1e467c] focus:text-white focus:px-4 focus:py-2">
+        Ir al pie de página
+      </a>
+      
       <nav className={`sticky top-0 z-50 w-full transition-all duration-300 ${
         mobileMenuOpen
           ? 'bg-[#1e467c]/95 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.5)]'
@@ -160,7 +168,11 @@ export function AppNavbar({
               {isLoggedIn ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center gap-2 rounded-lg text-white transition-all hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]">
+                    <Button 
+                      variant="ghost" 
+                      className="flex items-center gap-2 rounded-lg text-white transition-all hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
+                      aria-label={`Menú de usuario: ${currentUser?.name || "Usuario"}`}
+                    >
                       <Avatar className="h-8 w-8 ring-2 ring-white/20">
                         <AvatarFallback className="bg-[#0B5FFF] text-white">
                           {getUserInitials()}
@@ -248,6 +260,9 @@ export function AppNavbar({
                 animate={{ y: 0 }}
                 exit={{ y: -20 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
+                id="mobile-menu"
+                role="navigation"
+                aria-label="Navegación móvil"
                 className="relative z-10 space-y-1 px-4 py-4 max-h-[calc(100vh-4rem)] overflow-y-auto"
               >
                 <button

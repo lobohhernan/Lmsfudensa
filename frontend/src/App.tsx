@@ -525,7 +525,7 @@ export default function App() {
           onLoginModalChange={setShowAuthModal}
         />
 
-        <main className="flex-1">
+        <main id="main-content" className="flex-1" role="main">
           <LessonPlayer 
             onNavigate={handleNavigate} 
             courseId={currentCourseId}
@@ -554,7 +554,7 @@ export default function App() {
           onLoginModalChange={setShowAuthModal}
         />
 
-        <main className="flex-1">
+        <main id="main-content" className="flex-1" role="main">
           <Evaluation onNavigate={handleNavigate} courseId={currentCourseId} />
         </main>
 
@@ -578,7 +578,7 @@ export default function App() {
         onLoginModalChange={setShowAuthModal}
       />
       
-      <main className="flex-1">
+      <main id="main-content" className="flex-1" role="main">
         <Suspense fallback={<PageLoader />}>
           {currentPage === "home" && <Home onNavigate={handleNavigate} isLoggedIn={isLoggedIn} />}
           {currentPage === "catalog" && <CourseCatalog onNavigate={handleNavigate} />}

@@ -1317,8 +1317,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  aria-label="Acciones del certificado"
+                                >
                                   <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Opciones</span>
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">

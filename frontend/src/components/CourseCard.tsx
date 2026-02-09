@@ -13,6 +13,7 @@ export interface CourseCardProps {
   certified: boolean;
   students?: number;
   onClick?: () => void;
+  role?: string;
 }
 
 export const CourseCard = memo(function CourseCard({
@@ -23,6 +24,7 @@ export const CourseCard = memo(function CourseCard({
   certified,
   students,
   onClick,
+  role,
 }: CourseCardProps) {
   const levelColors = {
     Básico: "bg-[#22C55E] text-white",
@@ -32,6 +34,7 @@ export const CourseCard = memo(function CourseCard({
 
   return (
     <Card
+      role={role}
       className="group cursor-pointer overflow-hidden border border-gray-200/50 bg-white transition-all duration-300 hover:border-white/20 hover:bg-gradient-to-b hover:from-white/90 hover:to-white/70 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] hover:backdrop-blur-xl hover:scale-105 flex flex-col h-full"
       onClick={onClick}
     >

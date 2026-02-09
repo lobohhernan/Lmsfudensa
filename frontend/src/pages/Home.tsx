@@ -105,7 +105,8 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
         <div className="absolute inset-0">
           <img
             src={cprTrainingImage}
-            alt="Entrenamiento de RCP con maniquí"
+            alt="Grupo de profesionales de la salud practicando reanimación cardiopulmonar (RCP) utilizando un maniquí de entrenamiento realista"
+            loading="eager"
             className="h-full w-full object-cover"
           />
           {/* Vignette Effect - Brand Color */}
@@ -130,7 +131,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
               <h1 className="hero-h1 drop-shadow-lg">
                 Formación profesional en salud certificada
               </h1>
-              <p className="text-base sm:text-lg leading-relaxed text-white/95 font-[Montserrat] drop-shadow-md">
+              <p className="body-lg text-white font-[Montserrat] drop-shadow-md">
                 Cursos online certificados en RCP, primeros auxilios y atención médica de emergencia. Reconocidos internacionalmente y 100% a tu ritmo con soporte continuo.
               </p>
               <div className="flex flex-col gap-4 sm:flex-row justify-center mt-6 lg:mt-8">
@@ -181,12 +182,12 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
 
       {/* Courses In Progress - Only show when logged in */}
       {isLoggedIn && (
-        <section ref={continueLearningSectionRef} className="border-b bg-white py-12">
+        <section ref={continueLearningSectionRef} className="border-b bg-white py-12" role="region" aria-labelledby="continue-learning-heading">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-6 flex items-end justify-between">
               <div>
-                <h2 className="mb-2 text-[#0F172A]">Continuar Aprendiendo</h2>
-                <p className="text-[#64748B]">
+                <h2 id="continue-learning-heading" className="heading-h4 mb-2 text-[#0F172A]">Continuar Aprendiendo</h2>
+                <p className="body-sm text-[#64748B]">
                   Retoma tus cursos donde los dejaste
                 </p>
               </div>
@@ -226,9 +227,9 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                 ))}
               </div>
             ) : (
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div className="grid gap-6 sm:grid-cols-2" role="list" aria-label="Cursos en progreso">
                 {coursesInProgress.map((course) => (
-                <Card key={course.id} className="group relative overflow-hidden border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 cursor-pointer">
+                <Card key={course.id} role="listitem" className="group relative overflow-hidden border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 cursor-pointer">
                   {/* Glass effect top highlight */}
                   <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
                   <div className="flex flex-col sm:flex-row">
@@ -290,14 +291,14 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
       )}
 
       {/* Featured Courses */}
-      <section className="py-16">
+        <section className="border-b py-12" role="region" aria-labelledby="featured-courses-heading">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex items-end justify-between">
             <div>
-              <h2 className="mb-2 text-[#0F172A]">
+              <h2 id="featured-courses-heading" className="heading-h3 mb-2 text-[#0F172A">
                 {isLoggedIn ? "Cursos Recomendados para Ti" : "Cursos Destacados"}
               </h2>
-              <p className="text-[#64748B]">
+              <p className="body-sm text-[#64748B]">
                 {isLoggedIn 
                   ? "Basados en tu progreso y preferencias" 
                   : "Los cursos más populares de nuestra plataforma"}
@@ -313,7 +314,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
             </Button>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" role="list" aria-label="Cursos destacados">
             {loading && (
               <>
                 {[...Array(displayCourses.length || 3)].map((_, i) => (
@@ -351,6 +352,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
             {!loading && !error && displayCourses.length > 0 && displayCourses.map((course) => (
               <CourseCard
                 key={course.id}
+                role="listitem"
                 {...course}
                 onClick={() => onNavigate?.("course", course.id, course.slug)}
               />
@@ -371,43 +373,44 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
       </section>
 
       {/* Benefits */}
-      <section className="border-y bg-white py-16">
+      <section className="border-y bg-white py-16" role="region" aria-labelledby="benefits-heading">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-8 md:grid-cols-3">
-            <Card className="group relative border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
+          <h2 id="benefits-heading" className="sr-only">Por qué elegir FUDENSA</h2>
+          <div className="grid gap-8 md:grid-cols-3" role="list" aria-label="Beneficios de la plataforma">
+            <Card role="listitem" className="group relative border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
               <CardContent className="space-y-3 p-6 text-center bg-white/20 flex flex-col items-center h-full">
                 <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-[#0B5FFF]/30 bg-[#0B5FFF]/20 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                   <CheckCircle className="h-8 w-8 text-[#0B5FFF]" />
                 </div>
-                <h3 className="text-[#0F172A] min-h-[2rem] flex items-center">100% Online</h3>
-                <p className="text-[#64748B] flex-1">
+              <h3 className="heading-h6 text-[#0F172A] min-h-[2rem] flex items-center">100% Online</h3>
+                <p className="body-sm text-[#64748B] flex-1">
                   Estudia desde cualquier lugar, a tu propio ritmo y en tus horarios
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="group relative border border-[#16A34A]/20 bg-gradient-to-br from-white to-[#16A34A]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#16A34A]/40 hover:shadow-[0_8px_32px_0_rgba(22,163,74,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
+            <Card role="listitem" className="group relative border border-[#16A34A]/20 bg-gradient-to-br from-white to-[#16A34A]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#16A34A]/40 hover:shadow-[0_8px_32px_0_rgba(22,163,74,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#16A34A]/30 to-transparent" />
               <CardContent className="space-y-3 p-6 text-center bg-white/20 flex flex-col items-center h-full">
                 <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-[#16A34A]/30 bg-[#16A34A]/20 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                   <Award className="h-8 w-8 text-[#16A34A]" />
                 </div>
-                <h3 className="text-[#0F172A] min-h-[2rem] flex items-center">Cursos Certificados</h3>
-                <p className="text-[#64748B] flex-1">
+                <h3 className="heading-h6 text-[#0F172A] min-h-[2rem] flex items-center">Cursos Certificados</h3>
+                <p className="body-sm text-[#64748B] flex-1">
                   Obtén certificaciones avaladas para sumar a tu perfil profesional
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="group relative border border-[#22C55E]/20 bg-gradient-to-br from-white to-[#22C55E]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#22C55E]/40 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
+            <Card role="listitem" className="group relative border border-[#22C55E]/20 bg-gradient-to-br from-white to-[#22C55E]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#22C55E]/40 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#22C55E]/30 to-transparent" />
               <CardContent className="space-y-3 p-6 text-center bg-white/20 flex flex-col items-center h-full">
                 <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-[#22C55E]/30 bg-[#22C55E]/20 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                   <MessageCircle className="h-8 w-8 text-[#22C55E]" />
                 </div>
-                <h3 className="text-[#0F172A] min-h-[2rem] flex items-center">Soporte WhatsApp</h3>
-                <p className="text-[#64748B] flex-1">
+                <h3 className="heading-h6 text-[#0F172A] min-h-[2rem] flex items-center">Soporte WhatsApp</h3>
+                <p className="body-sm text-[#64748B] flex-1">
                   Asistencia inmediata por WhatsApp para todas tus consultas
                 </p>
               </CardContent>
@@ -417,18 +420,18 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
       </section>
 
       {/* Testimonials */}
-      <section className="py-16">
+      <section className="py-16" role="region" aria-labelledby="testimonials-heading">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 text-center">
-            <h2 className="mb-2 text-[#0F172A]">Lo que dicen nuestros estudiantes</h2>
-            <p className="text-[#64748B]">
+            <h2 id="testimonials-heading" className="heading-h4 mb-2 text-[#0F172A]">Lo que dicen nuestros estudiantes</h2>
+            <p className="body-sm text-[#64748B]">
               Miles de profesionales ya confían en FUDENSA
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3" role="list" aria-label="Testimonios de estudiantes">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} className="group relative border border-[#F59E0B]/20 bg-gradient-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#F59E0B]/40 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
+              <Card key={index} role="listitem" className="group relative border border-[#F59E0B]/20 bg-gradient-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#F59E0B]/40 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/30 to-transparent" />
                 <CardContent className="space-y-4 p-6 bg-white/20 flex flex-col h-full">
                   <div className="flex gap-1 flex-shrink-0">
@@ -439,15 +442,15 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                       />
                     ))}
                   </div>
-                  <p className="text-[#64748B] flex-1 line-clamp-4">{testimonial.content}</p>
+                  <p className="body-sm text-[#64748B] flex-1 line-clamp-4">{testimonial.content}</p>
                   <div className="flex items-center gap-3 pt-4 flex-shrink-0">
                     <Avatar>
                       <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
                       <AvatarFallback>{testimonial.name[0]}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <p className="text-sm text-[#0F172A] truncate">{testimonial.name}</p>
-                      <p className="text-xs text-[#64748B] truncate">{testimonial.role}</p>
+                      <p className="label-md text-[#0F172A] truncate">{testimonial.name}</p>
+                      <p className="body-xs text-[#64748B] truncate">{testimonial.role}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -467,7 +470,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
         
         <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
           <h2 className="mb-4 font-[Montserrat] font-bold text-[24px]">¿Listo para comenzar tu certificación?</h2>
-          <p className="mb-8 text-lg text-blue-100 font-[Montserrat]">
+          <p className="mb-8 text-lg text-white font-[Montserrat]">
             Únete a más de 50,000 profesionales certificados en toda América Latina
           </p>
           <Button
