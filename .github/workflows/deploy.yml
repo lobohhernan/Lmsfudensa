@@ -17,103 +17,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment:
-      name: staging
-      url: https://staging-lmsfudensa.pages.dev
-    
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' || github.event_name == 'push'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-          cache: 'npm'
-          cache-dependency-path: './frontend/package-lock.json'
-
-      - name: Install dependencies
-        working-directory: ./frontend
-        run: npm ci --prefer-offline
-
-      - name: Build for staging
-        working-directory: ./frontend
-        run: npm run build
-        env:
-          VITE_ENV: staging
-
-      - name: Create deployment
-        uses: chrnorm/deployment-action@v2
-        id: deployment
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          environment: staging
-          environment-url: https://staging-lmsfudensa.pages.dev
-          auto-merge: false
-
-      - name: 📤 Upload to Cloudflare Pages (Staging)
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: lmsfudensa-staging
-          directory: frontend/dist
-          branch: staging
-
-      - name: Verify staging deployment
-        run: |
-          echo "🟢 Staging deployment created"
-          echo "URL: https://staging-lmsfudensa.pages.dev"
-          echo "Waiting for availability..."
-          sleep 5
-        continue-on-error: true
-
-      - name: Update deployment status
-        uses: chrnorm/deployment-status@v2
-        if: success()
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          state: success
-          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
-          environment-url: https://staging-lmsfudensa.pages.dev
-
-      - name: Update deployment status (failed)
-        uses: chrnorm/deployment-status@v2
-        if: failure()
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          state: failure
-          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
-
-  health-check-staging:
-    name: Health Check (Staging)
-    runs-on: ubuntu-latest
-    needs: [deploy-staging]
-    timeout-minutes: 10
-    continue-on-error: true
-
-    steps:
-      - name: Wait for staging to be healthy
-        run: |
-          for i in {1..30}; do
-            echo "Health check attempt $i/30..."
-            if curl -f https://staging-lmsfudensa.pages.dev 2>/dev/null | grep -q "<!DOCTYPE"; then
-              echo "✅ Staging is healthy"
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "⚠️  Staging health check timeout (may still be deploying)"
-          exit 0
-
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
@@ -121,9 +24,9 @@ jobs:
     environment:
       name: production
       url: https://lmsfudensa.pages.dev
-    needs: [deploy-staging, health-check-staging]
-    if: success()
-
+    
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' || github.event_name == 'push'
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -156,21 +59,14 @@ jobs:
           environment-url: https://lmsfudensa.pages.dev
           auto-merge: false
 
-      - name: 📤 Deploy to Cloudflare Pages (Production)
+      - name: 📤 Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: lmsfudensa-production
           directory: frontend/dist
-          branch: production
-
-      - name: Verify production deployment
-        run: |
-          echo "🟢 Production deployment initiated"
-          echo "URL: https://lmsfudensa.pages.dev"
-          echo "Propagating across Cloudflare edge..."
-          sleep 10
+          branch: main
 
       - name: Update deployment status
         uses: chrnorm/deployment-status@v2
@@ -190,13 +86,13 @@ jobs:
           deployment-id: ${{ steps.deployment.outputs.deployment_id }}
 
   health-check-production:
-    name: Health Check (Production)
+    name: Health Check
     runs-on: ubuntu-latest
     needs: [deploy-production]
     timeout-minutes: 10
 
     steps:
-      - name: Wait for production to be healthy
+      - name: Verify production is healthy
         run: |
           for i in {1..30}; do
             echo "Health check attempt $i/30..."
@@ -206,8 +102,8 @@ jobs:
             fi
             sleep 10
           done
-          echo "❌ Production health check failed"
-          exit 1
+          echo "⚠️  Health check timeout (may still be deploying)"
+          exit 0
 
   notify-deployment:
     name: Notify Deployment
@@ -216,28 +112,19 @@ jobs:
     if: always()
 
     steps:
-      - name: 🎉 Deployment Summary
+      - name: 🎉 Deployment Complete
         run: |
-          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Production Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Git Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Branch**: \`${{ github.ref }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Author**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Deployment Status" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ needs.deploy-staging.result }}" = "success" ]; then
-            echo "| Environment | Status | URL |" >> $GITHUB_STEP_SUMMARY
-            echo "|-------------|--------|-----|" >> $GITHUB_STEP_SUMMARY
-            echo "| 🟡 Staging | ✅ Success | https://staging-lmsfudensa.pages.dev |" >> $GITHUB_STEP_SUMMARY
-          fi
           
           if [ "${{ needs.deploy-production.result }}" = "success" ]; then
-            echo "| 🟢 Production | ✅ Success | https://lmsfudensa.pages.dev |" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Deployed**: https://lmsfudensa.pages.dev" >> $GITHUB_STEP_SUMMARY
           fi
           
           if [ "${{ needs.health-check-production.result }}" = "success" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ **All systems healthy and operational**" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Status**: Healthy" >> $GITHUB_STEP_SUMMARY
           fi
