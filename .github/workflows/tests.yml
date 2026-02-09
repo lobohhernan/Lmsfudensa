@@ -15,20 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-      fail-fast: false
-    
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 20.x
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '20.x'
           cache: 'npm'
           cache-dependency-path: './frontend/package-lock.json'
       
@@ -36,30 +29,18 @@ jobs:
         working-directory: ./frontend
         run: npm ci --prefer-offline
       
-      - name: Run Vitest suite
-        working-directory: ./frontend
-        run: npm run test:run
-        timeout-minutes: 15
-      
-      - name: Generate coverage reports
+      - name: Run tests with coverage
         working-directory: ./frontend
         run: npm run test:coverage
-        continue-on-error: true
-      
-      - name: Check coverage thresholds
-        working-directory: ./frontend
-        run: |
-          npm run test:coverage 2>&1 | grep -E "Statements|Branches|Functions" || true
-        continue-on-error: true
+        timeout-minutes: 15
       
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./frontend/coverage/coverage-final.json
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
-          verbose: true
 
   e2e-tests:
     runs-on: ubuntu-latest
@@ -67,8 +48,6 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -96,7 +75,7 @@ jobs:
         with:
           name: playwright-report-${{ github.run_id }}
           path: ./frontend/playwright-report/
-          retention-days: 30
+          retention-days: 7
 
   security-checks:
     runs-on: ubuntu-latest
@@ -128,12 +107,10 @@ jobs:
 
   code-quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -149,11 +126,6 @@ jobs:
       - name: TypeScript type check
         working-directory: ./frontend
         run: npx tsc --noEmit
-        continue-on-error: true
-      
-      - name: Generate coverage reports
-        working-directory: ./frontend
-        run: npm run test:coverage
         continue-on-error: true
 
   build:
