@@ -1,0 +1,164 @@
+name: Tests & Quality
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Run Vitest suite
+        working-directory: ./frontend
+        run: npm run test:run
+      
+      - name: Generate coverage reports
+        working-directory: ./frontend
+        run: npm run test:coverage
+        continue-on-error: true
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./frontend/coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Install Playwright
+        working-directory: ./frontend
+        run: npx playwright install --with-deps
+      
+      - name: Run E2E tests
+        working-directory: ./frontend
+        run: npm run e2e
+      
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: ./frontend/playwright-report/
+          retention-days: 30
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Check for TypeScript errors
+        working-directory: ./frontend
+        run: npx tsc --noEmit
+        continue-on-error: true
+      
+      - name: Generate coverage reports
+        working-directory: ./frontend
+        run: npm run test:coverage
+        continue-on-error: true
+
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+      
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: ./frontend/build/
+          retention-days: 5
+
+  test-summary:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, e2e-tests, build]
+    if: always()
+    
+    steps:
+      - name: Unit Tests Status
+        run: |
+          if [ "${{ needs.unit-tests.result }}" = "success" ]; then
+            echo "✅ Unit Tests: PASSED"
+          else
+            echo "❌ Unit Tests: FAILED"
+          fi
+      
+      - name: E2E Tests Status
+        run: |
+          if [ "${{ needs.e2e-tests.result }}" = "success" ]; then
+            echo "✅ E2E Tests: PASSED"
+          else
+            echo "⚠️  E2E Tests: FAILED (may include known issues)"
+          fi
+      
+      - name: Build Status
+        run: |
+          if [ "${{ needs.build.result }}" = "success" ]; then
+            echo "✅ Build: PASSED"
+          else
+            echo "❌ Build: FAILED"
+          fi
