@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { toast } from "sonner";
 import type { Teacher } from "../hooks/useTeachers";
+import { TeacherFormSchema, validateFormData } from "../lib/validation";
 
 interface TeacherFormProps {
   teacher?: Teacher;
@@ -31,20 +32,43 @@ export function TeacherForm({ teacher, onSave, onCancel }: TeacherFormProps) {
       is_active: true,
     }
   );
+  const [errors, setErrors] = useState<Record<string, string[]>>({});
 
   const handleInputChange = (field: string, value: unknown) => {
     setFormData({ ...formData, [field]: value });
+    // Limpiar error cuando el usuario empieza a escribir
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: undefined });
+    }
   };
 
-  const handleSubmit = () => {
-    // Validation
-    if (!formData.full_name || !formData.email) {
-      toast.error("Por favor completa los campos obligatorios");
-      return;
-    }
+  const handleSubmit = async () => {
+    setErrors({});
 
-    // Call onSave and let the parent (AdminPanel) show success/error toasts
-    onSave(formData);
+    try {
+      // Validar datos antes de enviar
+      const validationResult = await validateFormData(TeacherFormSchema, {
+        full_name: formData.full_name,
+        email: formData.email,
+        specialization: formData.specialization || "",
+        years_of_experience: formData.years_of_experience,
+        hourly_rate: formData.hourly_rate,
+        rating: formData.rating,
+        is_active: formData.is_active,
+      });
+
+      if (!validationResult.success) {
+        setErrors(validationResult.errors || {});
+        toast.error("Por favor corrige los errores en el formulario");
+        return;
+      }
+
+      // Call onSave and let the parent (AdminPanel) show success/error toasts
+      onSave(formData);
+    } catch (error) {
+      console.error("Error en validación:", error);
+      toast.error("Error al validar el formulario");
+    }
   };
 
   return (
@@ -82,7 +106,11 @@ export function TeacherForm({ teacher, onSave, onCancel }: TeacherFormProps) {
                 value={formData.full_name}
                 onChange={(e) => handleInputChange("full_name", e.target.value)}
                 placeholder="Dr. Juan Pérez"
+                className={errors.full_name ? 'border-red-500' : ''}
               />
+              {errors.full_name && (
+                <p className="text-sm text-red-500">{errors.full_name[0]}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email *</Label>
@@ -92,7 +120,11 @@ export function TeacherForm({ teacher, onSave, onCancel }: TeacherFormProps) {
                 value={formData.email}
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 placeholder="juan@example.com"
+                className={errors.email ? 'border-red-500' : ''}
               />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email[0]}</p>
+              )}
             </div>
           </div>
 

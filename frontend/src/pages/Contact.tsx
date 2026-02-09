@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
+import { ContactFormSchema, validateFormData } from "../lib/validation";
 
 export function Contact() {
   const [formData, setFormData] = useState({
@@ -23,13 +24,33 @@ export function Contact() {
     subject: "",
     message: "",
   });
+  const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleInputChange = (field: string, value: unknown) => {
+    setFormData({ ...formData, [field]: value });
+    // Limpiar error cuando el usuario empieza a escribir
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: undefined });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrors({});
 
     try {
+      // Validar datos antes de enviar
+      const validationResult = await validateFormData(ContactFormSchema, formData);
+      
+      if (!validationResult.success) {
+        setErrors(validationResult.errors || {});
+        toast.error("Por favor corrige los errores en el formulario");
+        setIsLoading(false);
+        return;
+      }
+
       // Guardar mensaje en Supabase
       const { error } = await supabase
         .from("contact_messages")
@@ -170,12 +191,15 @@ export function Contact() {
                         id="name"
                         value={formData.name}
                         onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
+                          handleInputChange('name', e.target.value)
                         }
                         placeholder="Tu nombre"
-                        className="h-12"
+                        className={`h-12 ${errors.name ? 'border-red-500' : ''}`}
                         required
                       />
+                      {errors.name && (
+                        <p className="text-sm text-red-500">{errors.name[0]}</p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -185,12 +209,15 @@ export function Contact() {
                         type="email"
                         value={formData.email}
                         onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
+                          handleInputChange('email', e.target.value)
                         }
                         placeholder="tu@email.com"
-                        className="h-12"
+                        className={`h-12 ${errors.email ? 'border-red-500' : ''}`}
                         required
                       />
+                      {errors.email && (
+                        <p className="text-sm text-red-500">{errors.email[0]}</p>
+                      )}
                     </div>
                   </div>
 
@@ -202,11 +229,14 @@ export function Contact() {
                         type="tel"
                         value={formData.phone}
                         onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
+                          handleInputChange('phone', e.target.value)
                         }
                         placeholder="+54 9 11 1234-5678"
-                        className="h-12"
+                        className={`h-12 ${errors.phone ? 'border-red-500' : ''}`}
                       />
+                      {errors.phone && (
+                        <p className="text-sm text-red-500">{errors.phone[0]}</p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -214,11 +244,11 @@ export function Contact() {
                       <Select
                         value={formData.subject}
                         onValueChange={(value) =>
-                          setFormData({ ...formData, subject: value })
+                          handleInputChange('subject', value)
                         }
                         required
                       >
-                        <SelectTrigger id="subject" className="h-12">
+                        <SelectTrigger id="subject" className={`h-12 ${errors.subject ? 'border-red-500' : ''}`}>
                           <SelectValue placeholder="Selecciona un asunto" />
                         </SelectTrigger>
                         <SelectContent>
@@ -230,6 +260,9 @@ export function Contact() {
                           <SelectItem value="corporativo">Planes Corporativos</SelectItem>
                         </SelectContent>
                       </Select>
+                      {errors.subject && (
+                        <p className="text-sm text-red-500">{errors.subject[0]}</p>
+                      )}
                     </div>
                   </div>
 
@@ -239,13 +272,17 @@ export function Contact() {
                       id="message"
                       value={formData.message}
                       onChange={(e) =>
-                        setFormData({ ...formData, message: e.target.value })
+                        handleInputChange('message', e.target.value)
                       }
                       placeholder="Escribe tu mensaje aquí..."
                       rows={8}
-                      className="resize-none"
+                      className={`resize-none ${errors.message ? 'border-red-500' : ''}`}
                       required
                     />
+                    {errors.message && (
+                      <p className="text-sm text-red-500">{errors.message[0]}</p>
+                    )}
+                    <p className="text-xs text-[#64748B]">{formData.message.length} / 5000</p>
                   </div>
 
                   <div className="flex justify-center">
