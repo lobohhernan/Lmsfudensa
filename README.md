@@ -145,7 +145,73 @@ La aplicación estará disponible en `http://localhost:5173`
 
 ---
 
-## 📋 Estructura del Proyecto
+## � Deployment & CI/CD
+
+### Automatic Deployment Pipeline
+
+El proyecto utiliza **GitHub Actions** para automatizar testing y deployment:
+
+```
+Push to main
+    ↓
+Tests (Unit + E2E)
+    ↓
+Security Checks
+    ↓
+Build Verification
+    ↓ (if all pass)
+Deploy to Staging
+    ↓ (health check)
+Deploy to Production
+```
+
+### Workflow Stages
+
+1. **Tests & Quality** (`.github/workflows/tests.yml`)
+   - Unit tests: Vitest (67 tests)
+   - E2E tests: Playwright (17 tests, 3 browsers)
+   - Security: Vulnerability scans
+   - Code Quality: TypeScript strict mode
+   - Build verification
+
+2. **Deploy to Production** (`.github/workflows/deploy.yml`)
+   - Staging deployment with health checks
+   - Production deployment
+   - Automatic health verification
+   - Deployment tracking in GitHub
+
+### Deploy to Production
+
+```bash
+# 1. Asegúrate que los tests pasen
+npm run test:run      # frontend
+npm run e2e          # frontend
+
+# 2. Push a main
+git push origin main
+
+# 3. Monitorea en GitHub
+# Actions → Deploy to Production
+```
+
+### Configuration
+
+Para habilitar deployments a Cloudflare Pages:
+
+1. Configura secrets en GitHub:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+
+2. Ver [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) para instrucciones completas
+
+### Deployment URLs
+
+- **Staging**: https://staging-lmsfudensa.pages.dev
+- **Production**: https://lmsfudensa.pages.dev
+
+---
+
+## �📋 Estructura del Proyecto
 
 ```
 Lmsfudensa/
