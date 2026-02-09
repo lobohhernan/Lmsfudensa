@@ -93,11 +93,16 @@ export function AppNavbar({
   const needsSolidNavbar = solidNavbarPages.includes(currentPage);
 
   useEffect(() => {
+    const scrolledRef = { current: scrolled };
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+      const isScrolled = window.scrollY > 20;
+      if (isScrolled !== scrolledRef.current) {
+        scrolledRef.current = isScrolled;
+        setScrolled(isScrolled);
+      }
     };
     
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 

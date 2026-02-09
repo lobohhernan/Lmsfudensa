@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   LayoutDashboard,
   BookOpen,
@@ -118,8 +118,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   // Use realtime hook for certificates
   const { certificates: realtimeCertificates, loading: certificatesLoading, error: certificatesError } = useCertificatesRealtime();
 
-  // Search/filter state for teachers
-  const filteredTeachers = (() => {
+  // Search/filter state for teachers (memoized)
+  const filteredTeachers = useMemo(() => {
     const q = teacherQuery.trim().toLowerCase();
     if (!q) return realtimeTeachers;
     return realtimeTeachers.filter((t) => {
@@ -129,13 +129,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         ((t.specialization || "").toLowerCase().includes(q))
       );
     });
-  })();
+  }, [realtimeTeachers, teacherQuery]);
 
   // Datos de ejemplo para secciones no implementadas
   const paymentsData: any[] = [];
 
-  // Map realtime courses to component state
-  const courseList = realtimeCourses.map(course => ({
+  // Map realtime courses to component state (memoized)
+  const courseList = useMemo(() => realtimeCourses.map(course => ({
     id: course.id,
     title: course.title,
     slug: course.slug,
@@ -151,7 +151,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     rating: course.rating || 0,
     reviews: course.reviews || 0,
     instructorId: course.instructor_id,
-  }));
+  })), [realtimeCourses]);
 
   // Cargar usuarios desde Supabase
   const loadUsers = async () => {

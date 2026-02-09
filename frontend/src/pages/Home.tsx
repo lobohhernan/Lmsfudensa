@@ -8,11 +8,12 @@ import { Progress } from "../components/ui/progress";
 import { Skeleton } from "../components/ui/skeleton";
 import cprTrainingImage from "../assets/section-home.png";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
-import { useState, useEffect, useRef } from "react";
-import { supabase } from "../lib/supabase";
+import { useEnrollmentProgress } from "../hooks/useEnrollmentProgress";
+import { useMemo, useRef } from "react";
+import { debug } from "../lib/logger";
 
 interface HomeProps {
-  onNavigate?: (page: string, courseId?: string, courseSlug?: string) => void;
+  onNavigate?: (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => void;
   isLoggedIn?: boolean;
 }
 
@@ -44,8 +45,7 @@ const testimonials = [
 
 export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
   const { courses: allCourses, loading, error } = useCoursesRealtime();
-  const [coursesInProgress, setCoursesInProgress] = useState<any[]>([]);
-  const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+  const { courses: coursesInProgress, loading: loadingEnrollments } = useEnrollmentProgress(isLoggedIn, 2);
   const continueLearningSectionRef = useRef<HTMLDivElement>(null);
 
   // Función para hacer scroll suave a la sección de Continuar Aprendiendo
@@ -82,124 +82,11 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
       requestAnimationFrame(smoothScroll);
     }
   };
-
-  // ✅ Cargar cursos inscritos REALES del usuario autenticado
-  useEffect(() => {
-    const loadUserEnrollments = async () => {
-      if (!isLoggedIn) {
-        setCoursesInProgress([]);
-        return;
-      }
-
-      try {
-        setLoadingEnrollments(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          setCoursesInProgress([]);
-          return;
-        }
-
-        // Obtener enrollments con datos del curso
-        const { data: enrollments, error: enrollError } = await supabase
-          .from('enrollments')
-          .select(`
-            id,
-            course_id,
-            enrolled_at,
-            last_accessed_at,
-            courses (
-              id,
-              title,
-              slug,
-              image,
-              description
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('last_accessed_at', { ascending: false })
-          .limit(2);
-
-        if (enrollError) {
-          console.error('❌ Error cargando enrollments:', enrollError);
-          setCoursesInProgress([]);
-          return;
-        }
-
-        // ✅ Calcular progreso real para cada curso
-        const mapped = await Promise.all((enrollments || []).map(async (enrollment: any) => {
-          const courseId = enrollment.course_id;
-          
-          // Contar lecciones totales del curso
-          const { count: totalLessons } = await supabase
-            .from('lessons')
-            .select('*', { count: 'exact', head: true })
-            .eq('course_id', courseId);
-          
-          // Contar lecciones completadas por el usuario
-          let completedLessons = 0;
-          try {
-            const { count } = await supabase
-              .from('user_progress')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-              .eq('course_id', courseId)
-              .eq('completed', true);
-            completedLessons = count || 0;
-          } catch (progressErr) {
-            console.warn('⚠️ Error cargando progreso, continuando sin él:', progressErr);
-            completedLessons = 0;
-          }
-          
-          const total = totalLessons || 0;
-          const completed = completedLessons;
-          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-          
-          // Obtener última lección accedida
-          let currentLesson = 'Lección 1';
-          try {
-            const { data: lastProgress } = await supabase
-              .from('user_progress')
-              .select('lesson_id, lessons(title, order_index)')
-              .eq('user_id', user.id)
-              .eq('course_id', courseId)
-              .order('last_accessed_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            
-            currentLesson = lastProgress?.lessons?.title || 'Lección 1';
-          } catch (lastProgressErr) {
-            console.warn('⚠️ Error obteniendo última lección:', lastProgressErr);
-          }
-          
-          return {
-            id: courseId,
-            title: enrollment.courses?.title || 'Curso sin título',
-            slug: enrollment.courses?.slug || '',
-            image: enrollment.courses?.image || 'https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400',
-            progress,
-            currentLesson,
-            totalLessons: total,
-            completedLessons: completed,
-          };
-        }));
-
-        setCoursesInProgress(mapped);
-      } catch (err) {
-        console.error('❌ Error en loadUserEnrollments:', err);
-        setCoursesInProgress([]);
-      } finally {
-        setLoadingEnrollments(false);
-      }
-    };
-
-    loadUserEnrollments();
-  }, [isLoggedIn]);
   
-  console.log('🏠 [Home] Renderizando:', { coursesCount: allCourses.length, loading, error, isLoggedIn, enrollmentsCount: coursesInProgress.length })
+  debug('🏠 [Home] Renderizando:', { coursesCount: allCourses.length, loading, error, isLoggedIn, enrollmentsCount: coursesInProgress.length })
   
-  // Mostrar los primeros 6 cursos en la sección destacada
-  const displayCourses = allCourses.slice(0, 6).map(course => ({
+  // Mostrar los primeros 6 cursos en la sección destacada (memoized)
+  const displayCourses = useMemo(() => allCourses.slice(0, 6).map(course => ({
     id: course.id,
     title: course.title,
     slug: course.slug,
@@ -208,7 +95,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
     level: (course.level || "Básico") as "Básico" | "Intermedio" | "Avanzado",
     certified: course.certified || false,
     students: course.students,
-  }));
+  })), [allCourses]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">

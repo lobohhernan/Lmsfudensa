@@ -1,24 +1,26 @@
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense, startTransition } from "react";
 import { Palette, LayoutDashboard, Menu, Award, User, LogIn, LogOut } from "lucide-react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
 import { PageLoader } from "./components/PageLoader";
 import { Home } from "./pages/Home";
 import { CourseCatalog } from "./pages/CourseCatalog";
-import { CourseDetail } from "./pages/CourseDetail";
-import { LessonPlayer } from "./pages/LessonPlayer";
-import { Checkout } from "./pages/Checkout";
-import { PaymentCallback } from "./pages/PaymentCallback";
-import MercadoPagoSuccess from "./pages/MercadoPagoSuccess";
-import MercadoPagoRedirect from "./pages/MercadoPagoRedirect";
-import CheckoutSuccess from "./pages/CheckoutSuccess";
-import CheckoutFailure from "./pages/CheckoutFailure";
-import { UserProfile } from "./pages/UserProfile";
-import { AdminPanel } from "./pages/AdminPanel";
-import { DesignSystem } from "./pages/DesignSystem";
-import { Evaluation } from "./pages/Evaluation";
-import { AboutUs } from "./pages/AboutUs";
-import { Contact } from "./pages/Contact";
+
+// ✅ Code-splitting: lazy load de páginas no críticas para reducir bundle inicial
+const CourseDetail = lazy(() => import("./pages/CourseDetail").then(m => ({ default: m.CourseDetail })));
+const LessonPlayer = lazy(() => import("./pages/LessonPlayer").then(m => ({ default: m.LessonPlayer })));
+const Checkout = lazy(() => import("./pages/Checkout").then(m => ({ default: m.Checkout })));
+const PaymentCallback = lazy(() => import("./pages/PaymentCallback").then(m => ({ default: m.PaymentCallback })));
+const MercadoPagoSuccess = lazy(() => import("./pages/MercadoPagoSuccess"));
+const MercadoPagoRedirect = lazy(() => import("./pages/MercadoPagoRedirect"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
+const CheckoutFailure = lazy(() => import("./pages/CheckoutFailure"));
+const UserProfile = lazy(() => import("./pages/UserProfile").then(m => ({ default: m.UserProfile })));
+const AdminPanel = lazy(() => import("./pages/AdminPanel").then(m => ({ default: m.AdminPanel })));
+const DesignSystem = lazy(() => import("./pages/DesignSystem").then(m => ({ default: m.DesignSystem })));
+const Evaluation = lazy(() => import("./pages/Evaluation").then(m => ({ default: m.Evaluation })));
+const AboutUs = lazy(() => import("./pages/AboutUs").then(m => ({ default: m.AboutUs })));
+const Contact = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { Button } from "./components/ui/button";
@@ -292,10 +294,12 @@ export default function App() {
   useEffect(() => {
     const handlePopState = () => {
       const route = parseRouteFromPath();
-      setCurrentPage(route.page);
-      setCurrentCourseId(route.courseId);
-      setCurrentCourseSlug(route.courseSlug);
-      setCurrentLessonId(route.lessonId);
+      startTransition(() => {
+        setCurrentPage(route.page);
+        setCurrentCourseId(route.courseId);
+        setCurrentCourseSlug(route.courseSlug);
+        setCurrentLessonId(route.lessonId);
+      });
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -416,31 +420,37 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentPage]);
 
-  const handleNavigate = (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => {
-    setCurrentPage(page as Page);
-    if (courseId) {
-      setCurrentCourseId(courseId);
-    }
-    if (courseSlug) {
-      setCurrentCourseSlug(courseSlug);
-    }
-    if (lessonId) {
-      setCurrentLessonId(lessonId);
-    }
-  };
+  const handleNavigate = useCallback((page: string, courseId?: string, courseSlug?: string, lessonId?: string) => {
+    // startTransition evita que React.lazy suspenda sincrónicamente durante un clic,
+    // lo que causaría "A component suspended while responding to synchronous input".
+    startTransition(() => {
+      setCurrentPage(page as Page);
+      if (courseId) {
+        setCurrentCourseId(courseId);
+      }
+      if (courseSlug) {
+        setCurrentCourseSlug(courseSlug);
+      }
+      if (lessonId) {
+        setCurrentLessonId(lessonId);
+      }
+    });
+  }, []);
 
-  const handleLogin = (user: { email: string; name: string }) => {
+  const handleLogin = useCallback((user: { email: string; name: string }) => {
     setIsLoggedIn(true);
     setUserData(user);
     
     // Si había una navegación pendiente, ejecutarla
-    if (pendingNavigation) {
-      handleNavigate(pendingNavigation.page, pendingNavigation.courseId);
-      setPendingNavigation(null);
-    }
-  };
+    setPendingNavigation((prev) => {
+      if (prev) {
+        handleNavigate(prev.page, prev.courseId);
+      }
+      return null;
+    });
+  }, [handleNavigate]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       debug("🚪 Iniciando cierre de sesión...");
       
@@ -476,7 +486,7 @@ export default function App() {
       sessionStorage.removeItem('user_session');
       setCurrentPage("home");
     }
-  };
+  }, []);
 
   // Mostrar loader mientras se inicializa la sesión O mientras resolvemos la ruta
   if (isInitializing || isResolvingRoute) {

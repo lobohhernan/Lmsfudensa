@@ -46,7 +46,7 @@ export function useCertificates() {
   useEffect(() => {
     fetchCertificates();
 
-    // Suscripción realtime
+    // Suscripción realtime — updates quirúrgicos sin refetch completo
     const channel = supabase
       .channel("certificates-changes")
       .on(
@@ -57,8 +57,19 @@ export function useCertificates() {
           table: "certificates",
         },
         (payload) => {
-          debug("Certificates realtime event:", payload);
-          fetchCertificates(); // Refetch on any change
+          debug("Certificates realtime event:", payload.eventType);
+
+          if (payload.eventType === "INSERT") {
+            setCertificates((prev) => [payload.new as Certificate, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            const updated = payload.new as Certificate;
+            setCertificates((prev) =>
+              prev.map((c) => (c.id === updated.id ? updated : c))
+            );
+          } else if (payload.eventType === "DELETE") {
+            const deleted = payload.old as Certificate;
+            setCertificates((prev) => prev.filter((c) => c.id !== deleted.id));
+          }
         }
       )
       .subscribe();

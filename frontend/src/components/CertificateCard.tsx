@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, memo } from "react";
 import { Award, Calendar, Shield, Download, Eye } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { Button } from "./ui/button";
@@ -25,7 +25,7 @@ export interface CertificateCardProps {
   certificateId?: string;
 }
 
-export function CertificateCard({
+export const CertificateCard = memo(function CertificateCard({
   courseName,
   issueDate,
   hash,
@@ -133,10 +133,12 @@ export function CertificateCard({
         </Button>
       </CardFooter>
 
-      {/* Hidden Certificate Template for PDF Generation */}
-      <div className="fixed -left-[10000px] top-0">
-        <CertificateTemplate ref={certificateRef} data={certificateData} />
-      </div>
+      {/* Hidden Certificate Template — solo se monta cuando se necesita generar */}
+      {(showPreview || isGenerating) && (
+        <div className="fixed -left-[10000px] top-0">
+          <CertificateTemplate ref={certificateRef} data={certificateData} />
+        </div>
+      )}
 
       {/* Certificate Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
@@ -178,4 +180,4 @@ export function CertificateCard({
       </Dialog>
     </Card>
   );
-}
+});

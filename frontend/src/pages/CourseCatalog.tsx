@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { CourseCard } from "../components/CourseCard";
@@ -23,15 +23,15 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
   const [selectedLevel, setSelectedLevel] = useState<string>("");
   const { courses, loading } = useCourses();
 
-  // Filter courses
-  const filteredCourses = courses.filter((course) => {
+  // Filter courses (memoized)
+  const filteredCourses = useMemo(() => courses.filter((course) => {
     const matchesSearch = course.title
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesLevel =
       !selectedLevel || selectedLevel === "all" || course.level === selectedLevel;
     return matchesSearch && matchesLevel;
-  });
+  }), [courses, searchQuery, selectedLevel]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">

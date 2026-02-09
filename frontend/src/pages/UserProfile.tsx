@@ -19,6 +19,7 @@ import { supabase } from "../lib/supabase";
 import { debug } from '../lib/logger'
 import { CertificateCard } from "../components/CertificateCard";
 import type { Certificate } from "../hooks/useCertificates";
+import { useEnrollmentProgress } from "../hooks/useEnrollmentProgress";
 
 interface UserProfileProps {
   onNavigate?: (page: string, courseId?: string) => void;
@@ -27,10 +28,11 @@ interface UserProfileProps {
 
 export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileProps) {
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [userCourses, setUserCourses] = useState<any[]>([]);
   const [userCertificates, setUserCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [certificatesLoading, setCertificatesLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const { courses: userCourses, loading: coursesLoading } = useEnrollmentProgress(isLoggedIn);
   
   // Verificar si hay una pestaña específica solicitada
   const initialTab = sessionStorage.getItem('profileTab') || defaultTab;
@@ -113,89 +115,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
         setUserProfile(profile);
       }
 
-      // Cargar cursos del usuario desde ENROLLMENTS reales
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from("enrollments")
-        .select(`
-          id,
-          course_id,
-          enrolled_at,
-          last_accessed_at,
-          completed,
-          courses (
-            id,
-            title,
-            slug,
-            image,
-            description
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('last_accessed_at', { ascending: false });
-
-      if (!enrollmentsError && enrollments) {
-        // ✅ Calcular progreso real para cada curso (igual que en Home.tsx)
-        const mappedCourses = await Promise.all(enrollments.map(async (enrollment: any) => {
-          const courseId = enrollment.course_id;
-          
-          // Contar lecciones totales del curso
-          const { count: totalLessons } = await supabase
-            .from('lessons')
-            .select('*', { count: 'exact', head: true })
-            .eq('course_id', courseId);
-          
-          // Contar lecciones completadas por el usuario
-          let completedLessons = 0;
-          try {
-            const { count } = await supabase
-              .from('user_progress')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-              .eq('course_id', courseId)
-              .eq('completed', true);
-            completedLessons = count || 0;
-          } catch (progressErr) {
-            console.warn('⚠️ Error cargando progreso, continuando sin él:', progressErr);
-            completedLessons = 0;
-          }
-          
-          const total = totalLessons || 0;
-          const completed = completedLessons;
-          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-          
-          // Obtener última lección accedida
-          let currentLesson = 'Lección 1';
-          try {
-            const { data: lastProgress } = await supabase
-              .from('user_progress')
-              .select('lesson_id, lessons(title, order_index)')
-              .eq('user_id', user.id)
-              .eq('course_id', courseId)
-              .order('last_accessed_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            
-            currentLesson = (lastProgress?.lessons as any)?.title || 'Lección 1';
-          } catch (lastProgressErr) {
-            console.warn('⚠️ Error obteniendo última lección:', lastProgressErr);
-          }
-
-          return {
-            id: courseId,
-            title: enrollment.courses?.title || 'Curso sin título',
-            slug: enrollment.courses?.slug || '',
-            progress,
-            currentLesson,
-            totalLessons: total,
-            completedLessons: completed,
-            image: enrollment.courses?.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400",
-          };
-        }));
-        setUserCourses(mappedCourses);
-      } else {
-        console.error('❌ Error cargando enrollments:', enrollmentsError);
-        setUserCourses([]); // No cursos si no hay enrollments
-      }
+      // Enrollments ahora se cargan via useEnrollmentProgress hook
 
       // ✅ Cargar certificados del usuario
       await loadCertificates(user.id);

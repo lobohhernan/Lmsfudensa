@@ -29,151 +29,103 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
   const [userEnrolled, setUserEnrolled] = useState(false);
   const [checkingEnrollment, setCheckingEnrollment] = useState(false);
 
-  // ✅ PASO 1: Resolver courseSlug a courseId si es necesario
+  // ✅ Efecto consolidado: resuelve IDs, carga datos y verifica inscripción en paralelo
   useEffect(() => {
-    const resolveSlug = async () => {
-      // Si ya tenemos courseId, no hacer nada
-      if (courseId) return;
-      
-      // Si no tenemos courseId pero sí slug, resolver
-      if (!courseId && courseSlug) {
-        debug(`🔄 [CourseDetail] Resolviendo slug: ${courseSlug}`);
-        const resolvedId = await resolveCourseSlugToId(courseSlug);
-        
-        if (resolvedId) {
-          debug(`✅ [CourseDetail] Slug resuelto: ${courseSlug} → ${resolvedId}`);
-          setCourseId(resolvedId);
-          setCurrentSlug(courseSlug);
-        } else {
-          setError(`No se encontró curso con slug: ${courseSlug}`);
-          setLoading(false);
-        }
-      } else if (!courseId && !courseSlug) {
-        // No hay ni courseId ni courseSlug
-        setError("No se proporcionó información del curso");
-        setLoading(false);
-      }
-    };
-    
-    resolveSlug();
-  }, [courseSlug, courseId]);
+    let cancelled = false;
 
-  // ✅ PASO 1.5: Resolver courseId a slug si tenemos ID pero no slug
-  useEffect(() => {
-    const resolveIdToSlug = async () => {
-      // Si ya tenemos slug, no hacer nada
-      if (currentSlug) return;
-      
-      // Si tenemos courseId pero no slug, resolver
-      if (courseId && !currentSlug) {
-        debug(`🔄 [CourseDetail] Resolviendo courseId a slug: ${courseId}`);
-        const resolvedSlug = await resolveCourseIdToSlug(courseId);
-        
-        if (resolvedSlug) {
-          debug(`✅ [CourseDetail] CourseId resuelto: ${courseId} → ${resolvedSlug}`);
-          setCurrentSlug(resolvedSlug);
-        } else {
-          debug(`⚠️ [CourseDetail] No se pudo resolver slug para courseId: ${courseId}`);
-          // No es un error crítico, continuar sin slug
-        }
-      }
-    };
-    
-    resolveIdToSlug();
-  }, [courseId, currentSlug]);
-
-  // ✅ PASO 1.7: Verificar si el usuario está inscrito (solo si está logueado)
-  useEffect(() => {
-    const checkUserEnrollment = async () => {
-      if (!isLoggedIn || !courseId) {
-        setUserEnrolled(false);
-        return;
-      }
-
-      try {
-        setCheckingEnrollment(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          setUserEnrolled(false);
-          return;
-        }
-        
-        debug(`🔍 [CourseDetail] Verificando inscripción: usuario ${user.id} en curso ${courseId}`);
-        const enrolled = await isUserEnrolled(user.id, courseId);
-        
-        if (enrolled) {
-          debug(`✅ [CourseDetail] Usuario inscrito en curso`);
-        } else {
-          debug(`ℹ️ [CourseDetail] Usuario NO inscrito en curso`);
-        }
-        
-        setUserEnrolled(enrolled);
-      } catch (err) {
-        logError("Error verificando inscripción:", err);
-        setUserEnrolled(false);
-      } finally {
-        setCheckingEnrollment(false);
-      }
-    };
-    
-    checkUserEnrollment();
-  }, [courseId, isLoggedIn]);
-
-  // ✅ PASO 2: Cargar datos del curso cuando tengamos courseId
-  useEffect(() => {
-    // Esperar a tener courseId antes de cargar
-    if (!courseId) {
-      return;
-    }
-
-    const loadCourseData = async () => {
+    const loadCourse = async () => {
       try {
         setLoading(true);
-        debug("Cargando curso con ID:", courseId);
-        
-        // Cargar datos del curso
-        const { data: course, error: courseError } = await supabase
-          .from("courses")
-          .select("*")
-          .eq("id", courseId)
-          .single();
+        setCheckingEnrollment(true);
 
-        if (courseError) {
-          logError("Error al cargar curso:", courseError);
-          throw courseError;
+        // ── Paso 1: resolver courseId (si solo tenemos slug) ──
+        let resolvedId = initialCourseId;
+        let resolvedSlug = courseSlug;
+
+        if (!resolvedId && courseSlug) {
+          debug(`🔄 [CourseDetail] Resolviendo slug: ${courseSlug}`);
+          const id = await resolveCourseSlugToId(courseSlug);
+          if (!id) {
+            if (!cancelled) {
+              setError(`No se encontró curso con slug: ${courseSlug}`);
+              setLoading(false);
+            }
+            return;
+          }
+          resolvedId = id;
+          debug(`✅ [CourseDetail] Slug resuelto: ${courseSlug} → ${resolvedId}`);
+        } else if (!resolvedId) {
+          if (!cancelled) {
+            setError("No se proporcionó información del curso");
+            setLoading(false);
+          }
+          return;
         }
-        
-        debug("Curso cargado:", course);
-        setCourseData(course);
 
-        // Cargar lecciones del curso (ordenar por order_index, no 'order')
-        const { data: courseLessons, error: lessonsError } = await supabase
-          .from("lessons")
-          .select("*")
-          .eq("course_id", courseId)
+        // ── Paso 2: curso, lecciones, slug inverso e inscripción en paralelo ──
+        const coursePromise = supabase
+          .from("courses").select("*").eq("id", resolvedId).single();
+
+        const lessonsPromise = supabase
+          .from("lessons").select("*").eq("course_id", resolvedId)
           .order("order_index", { ascending: true });
 
-        if (lessonsError) {
-          logError("Error al cargar lecciones:", lessonsError);
-          // No bloquear si no hay lecciones
+        const slugPromise = resolvedSlug
+          ? Promise.resolve(resolvedSlug)
+          : resolveCourseIdToSlug(resolvedId);
+
+        const enrollPromise = isLoggedIn
+          ? supabase.auth.getUser()
+              .then(async ({ data: { user } }) => {
+                if (!user) return false;
+                debug(`🔍 [CourseDetail] Verificando inscripción: usuario ${user.id} en curso ${resolvedId}`);
+                return isUserEnrolled(user.id, resolvedId!);
+              })
+              .catch(() => false)
+          : Promise.resolve(false as boolean);
+
+        const [courseResult, lessonsResult, slug, enrolled] = await Promise.all([
+          coursePromise, lessonsPromise, slugPromise, enrollPromise,
+        ]);
+
+        if (cancelled) return;
+
+        // ── Procesar resultados ──
+        if (courseResult.error) {
+          logError("Error al cargar curso:", courseResult.error);
+          throw courseResult.error;
+        }
+
+        setCourseId(resolvedId);
+        setCourseData(courseResult.data);
+        setCurrentSlug(slug ?? undefined);
+        setUserEnrolled(!!enrolled);
+
+        if (lessonsResult.error) {
+          logError("Error al cargar lecciones:", lessonsResult.error);
           setLessons([]);
         } else {
-          debug("Lecciones cargadas:", courseLessons?.length || 0);
-          setLessons(courseLessons || []);
+          debug("Lecciones cargadas:", lessonsResult.data?.length || 0);
+          setLessons(lessonsResult.data || []);
         }
-        
+
         setError(null);
       } catch (err: any) {
-        console.error("Error cargando curso:", err);
-        setError(err.message || "Error al cargar los datos del curso");
+        if (!cancelled) {
+          logError("Error cargando curso:", err);
+          setError(err.message || "Error al cargar los datos del curso");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setCheckingEnrollment(false);
+        }
       }
     };
 
-    loadCourseData();
-  }, [courseId]);
+    loadCourse();
+    return () => { cancelled = true; };
+  }, [initialCourseId, courseSlug, isLoggedIn]);
 
   if (loading) {
     return (
