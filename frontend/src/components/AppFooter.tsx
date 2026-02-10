@@ -1,4 +1,4 @@
-import { Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
+import { Facebook, Instagram } from "lucide-react";
 import { useEffect, useState } from "react";
 import logoVertical from "../assets/logo-vertical.svg";
 import { supabase } from "../lib/supabase";
@@ -95,21 +95,6 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
                 <Instagram className="h-4 w-4" />
                 <span className="sr-only">Instagram</span>
               </a>
-              <a
-                href="#"
-                aria-label="Visita nuestro LinkedIn"
-                title="LinkedIn"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e467c]/20 bg-white/60 backdrop-blur-sm text-[#64748B] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] transition-all hover:border-[#1e467c]/40 hover:bg-[#1e467c] hover:text-white hover:shadow-[0_4px_12px_0_rgba(30,70,124,0.2)] group"
-              >
-                <Linkedin className="h-4 w-4" />
-                <span className="sr-only">LinkedIn</span>
-              </a>
-              <a
-                href="#"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e467c]/20 bg-white/60 backdrop-blur-sm text-[#64748B] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] transition-all hover:border-[#1e467c]/40 hover:bg-[#1e467c] hover:text-white hover:shadow-[0_4px_12px_0_rgba(30,70,124,0.2)]"
-              >
-                <Youtube className="h-4 w-4" />
-              </a>
             </div>
           </div>
 
@@ -134,9 +119,9 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
                   <li>
                     <button
                       onClick={() => onNavigate?.("catalog")}
-                      className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                      className="text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0 font-normal"
                     >
-                      Ver Todos los Cursos
+                      Ver todos los cursos
                     </button>
                   </li>
                 </>
@@ -191,7 +176,7 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
         </div>
 
         <div className="mt-8 border-t pt-8 text-center">
-          <p className="body-xs text-[#64748B]">© 2025 FUDENSA. Todos los derechos reservados.</p>
+          <p className="body-xs text-[#64748B]">© 2026 FUDENSA. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>
