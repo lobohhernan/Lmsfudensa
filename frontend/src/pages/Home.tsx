@@ -134,12 +134,12 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
               <p className="body-lg text-white font-[Montserrat] drop-shadow-md">
                 Cursos online certificados en RCP, primeros auxilios y atención médica de emergencia. Reconocidos internacionalmente y 100% a tu ritmo con soporte continuo.
               </p>
-              <div className="flex flex-col gap-3 sm:gap-4 justify-center mt-6 lg:mt-8">
+              <div className="flex flex-row flex-wrap gap-3 sm:gap-4 justify-center items-center mt-6 lg:mt-8">
                 {isLoggedIn ? (
                   <>
                     <Button
                       size="lg"
-                      className="w-full sm:w-auto bg-[#FCD34D] text-[#1e467c] hover:bg-[#FDE047] shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                      className="w-auto bg-[#FCD34D] text-[#1e467c] hover:bg-[#FDE047] shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
                       onClick={scrollToContinueLearning}
                     >
                       <Play className="mr-2 h-5 w-5" />
@@ -148,7 +148,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="w-full sm:w-auto border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105"
+                      className="w-auto border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105"
                       onClick={() => onNavigate?.("catalog")}
                     >
                       Explorar más cursos
@@ -158,7 +158,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                   <>
                     <Button
                       size="lg"
-                      className="w-full sm:w-auto bg-[#FCD34D] text-[#1e467c] hover:bg-[#FDE047] shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                      className="w-auto bg-[#FCD34D] text-[#1e467c] hover:bg-[#FDE047] shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
                       onClick={() => onNavigate?.("catalog")}
                     >
                       Explorar Cursos
@@ -167,7 +167,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="w-full sm:w-auto border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)]"
+                      className="w-auto border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)]"
                       onClick={() => onNavigate?.("contact")}
                     >
                       Contáctanos
@@ -377,44 +377,50 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 id="benefits-heading" className="sr-only">Por qué elegir FUDENSA</h2>
           <div className="grid gap-8 md:grid-cols-3" role="list" aria-label="Beneficios de la plataforma">
-            <Card role="listitem" className="group relative border border-info-200 bg-gradient-to-br from-white to-info-50 backdrop-blur-sm transition-all duration-300 hover:border-info-300 hover:shadow-[0_8px_32px_0_rgba(14,165,233,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-info-200 to-transparent" />
-              <CardContent className="space-y-3 p-6 text-center bg-white/20 flex flex-col items-center h-full">
-                <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-info-300 bg-info-100 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
-                  <CheckCircle className="h-8 w-8 text-info-500" />
-                </div>
-              <h3 className="heading-h6 text-gray-900 min-h-[2rem] flex items-center">100% Online</h3>
-                <p className="body-sm text-gray-600 flex-1">
-                  Estudia desde cualquier lugar, a tu propio ritmo y en tus horarios
-                </p>
-              </CardContent>
-            </Card>
+            <div className="relative group cursor-pointer">
+              <div className="absolute -inset-0.5 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <Card role="listitem" className="text-card-foreground flex flex-col gap-6 rounded-xl border relative transition-all duration-300 hover:scale-105 border-white/20 bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(30,70,124,0.1)]">
+                <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                    <CheckCircle className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold">100% Online</h3>
+                  <p className="text-pretty text-sm text-muted-foreground">
+                    Estudia desde cualquier lugar, a tu propio ritmo y en tus horarios
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
-            <Card role="listitem" className="group relative border border-success-200 bg-gradient-to-br from-white to-success-50 backdrop-blur-sm transition-all duration-300 hover:border-success-300 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-success-200 to-transparent" />
-              <CardContent className="space-y-3 p-6 text-center bg-white/20 flex flex-col items-center h-full">
-                <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-success-300 bg-success-100 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
-                  <Award className="h-8 w-8 text-success-600" />
-                </div>
-                <h3 className="heading-h6 text-gray-900 min-h-[2rem] flex items-center">Cursos Certificados</h3>
-                <p className="body-sm text-gray-600 flex-1">
-                  Obtén certificaciones avaladas para sumar a tu perfil profesional
-                </p>
-              </CardContent>
-            </Card>
+            <div className="relative group cursor-pointer">
+              <div className="absolute -inset-0.5 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <Card role="listitem" className="text-card-foreground flex flex-col gap-6 rounded-xl border relative transition-all duration-300 hover:scale-105 border-white/20 bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(30,70,124,0.1)]">
+                <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                    <Award className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold">Cursos Certificados</h3>
+                  <p className="text-pretty text-sm text-muted-foreground">
+                    Obtén certificaciones avaladas para sumar a tu perfil profesional
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
-            <Card role="listitem" className="group relative border border-success-200 bg-gradient-to-br from-white to-success-50 backdrop-blur-sm transition-all duration-300 hover:border-success-300 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-success-200 to-transparent" />
-              <CardContent className="space-y-3 p-6 text-center bg-white/20 flex flex-col items-center h-full">
-                <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-success-300 bg-success-100 backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
-                  <MessageCircle className="h-8 w-8 text-success-600" />
-                </div>
-                <h3 className="heading-h6 text-gray-900 min-h-[2rem] flex items-center">Soporte WhatsApp</h3>
-                <p className="body-sm text-gray-600 flex-1">
-                  Asistencia inmediata por WhatsApp para todas tus consultas
-                </p>
-              </CardContent>
-            </Card>
+            <div className="relative group cursor-pointer">
+              <div className="absolute -inset-0.5 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <Card role="listitem" className="text-card-foreground flex flex-col gap-6 rounded-xl border relative transition-all duration-300 hover:scale-105 border-white/20 bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(30,70,124,0.1)]">
+                <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                    <MessageCircle className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold">Soporte WhatsApp</h3>
+                  <p className="text-pretty text-sm text-muted-foreground">
+                    Asistencia inmediata por WhatsApp para todas tus consultas
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </section>
