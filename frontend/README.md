@@ -17,23 +17,9 @@ Disponible en `http://localhost:3000`
 ### Desarrollo
 - `npm run dev` - Servidor de desarrollo con HMR
 - `npm run build` - Build para producción
-- `npm run preview` - Vista previa del build
-
-### Testing
-- `npm run test` - Ejecutar tests en watch mode
-- `npm run test:run` - Ejecutar tests una sola vez
-- `npm run test:ui` - Vitest UI Dashboard
-- `npm run test:coverage` - Generar reporte de cobertura
-- `npm run e2e` - Ejecutar E2E tests (headless)
-- `npm run e2e:headed` - E2E tests con navegador visible
-- `npm run e2e:debug` - Debug de E2E tests
-- `npm run e2e:report` - Ver reporte de E2E tests
 
 ## 📚 Documentación
 
-- [TESTING.md](./TESTING.md) - Guía completa de testing
-- [E2E_TESTING.md](./E2E_TESTING.md) - Testing E2E con Playwright
-- [CLOUDFLARE_PAGES.md](./CLOUDFLARE_PAGES.md) - Configuración para Cloudflare Pages
 - [README.md](../README.md) - Documentación principal del proyecto
 
 ## 🏗️ Arquitectura
@@ -45,8 +31,7 @@ Disponible en `http://localhost:3000`
 - **Testing**: Vitest + @testing-library + Playwright
 - **Forms**: React Hook Form + Zod validation
 - **Backend**: Supabase (PostgreSQL + Auth + Edge Functions)
-
-## 🚢 Deploy
+ Deploy
 
 ### Cloudflare Pages (Recomendado)
 1. Conectar repositorio a Cloudflare
@@ -55,14 +40,12 @@ Disponible en `http://localhost:3000`
 4. Configurar variables de entorno en Cloudflare Dashboard
 
 Ver [CLOUDFLARE_PAGES.md](./CLOUDFLARE_PAGES.md) para más detalles.
-
+DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE
 ## 📊 Código de Calidad
 
 - **Coverage**: 40%+ (objetivo 50%+)
 - **Type Safety**: Strict mode habilitado
-- **Tests**: 67 unit tests + 17 E2E tests
-- **CI/CD**: GitHub Actions con testing automático
-
+- **CI/CD**: GitHub Actions con deployment
 ## 🔑 Variables de Entorno
 
 ```env
