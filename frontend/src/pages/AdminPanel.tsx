@@ -61,6 +61,7 @@ import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
 import { useTeachersRealtime } from "../hooks/useTeachers";
 import { useCertificatesRealtime } from "../hooks/useCertificates";
 import { TeacherForm } from "../components/TeacherForm";
+import { UserForm } from "../components/UserForm";
 import type { Teacher } from "../hooks/useTeachers";
 import logoHorizontal from "../assets/logo-horizontal.svg";
 import {
@@ -91,6 +92,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [showTeacherForm, setShowTeacherForm] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | undefined>();
   const [teacherQuery, setTeacherQuery] = useState<string>("");
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
   const [teacherToDelete, setTeacherToDelete] = useState<string | null>(null);
@@ -103,6 +106,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [usersError, setUsersError] = useState<string | null>(null);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
   const [deletingTeacherId, setDeletingTeacherId] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [certToDelete, setCertToDelete] = useState<{ id: string; studentName: string; courseTitle: string } | null>(null);
+  const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeCourses: 0,
@@ -132,8 +139,60 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     });
   }, [realtimeTeachers, teacherQuery]);
 
+  // Mapa dinámico: teacher.id → cursos que dicta
+  // Soporta tanto instructor_id=teacher.id (cursos nuevos) como instructor_id=profile.id (cursos legacy)
+  const teacherCoursesMap = useMemo(() => {
+    const map: Record<string, { id: string; title: string }[]> = {};
+
+    // Crear lookup inverso: instructor_id → teacher.id
+    // Para cursos legacy donde instructor_id es un profiles.id, mapeamos via teacher.user_id
+    const profileToTeacherId: Record<string, string> = {};
+    for (const teacher of realtimeTeachers) {
+      if (teacher.user_id) {
+        profileToTeacherId[teacher.user_id] = teacher.id;
+      }
+    }
+
+    for (const course of realtimeCourses) {
+      if (!course.instructor_id) continue;
+      const courseInfo = { id: course.id, title: course.title };
+
+      // Caso 1: instructor_id ya es un teacher.id (cursos nuevos)
+      const directMatch = realtimeTeachers.some(t => t.id === course.instructor_id);
+      if (directMatch) {
+        if (!map[course.instructor_id]) map[course.instructor_id] = [];
+        map[course.instructor_id].push(courseInfo);
+      }
+      // Caso 2: instructor_id es un profiles.id (cursos legacy) → mapear via user_id
+      else if (profileToTeacherId[course.instructor_id]) {
+        const teacherId = profileToTeacherId[course.instructor_id];
+        if (!map[teacherId]) map[teacherId] = [];
+        map[teacherId].push(courseInfo);
+      }
+    }
+    return map;
+  }, [realtimeCourses, realtimeTeachers]);
+
   // Datos de ejemplo para secciones no implementadas
   const paymentsData: Record<string, unknown>[] = [];
+
+  // Lookup: profiles.id → teacher.id (para cursos legacy)
+  const profileToTeacherIdMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const teacher of realtimeTeachers) {
+      if (teacher.user_id) map[teacher.user_id] = teacher.id;
+    }
+    return map;
+  }, [realtimeTeachers]);
+
+  // Resuelve instructor_id (puede ser profiles.id legacy o teacher.id) → siempre teacher.id
+  const resolveToTeacherId = (instructorId: string | null | undefined): string => {
+    if (!instructorId) return "";
+    // Si ya es un teacher.id directo
+    if (realtimeTeachers.some(t => t.id === instructorId)) return instructorId;
+    // Si es un profiles.id legacy, mapear a teacher.id
+    return profileToTeacherIdMap[instructorId] || instructorId;
+  };
 
   // Map realtime courses to component state (memoized)
   const courseList = useMemo(() => realtimeCourses.map(course => ({
@@ -151,8 +210,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     students: course.students ?? undefined,
     rating: course.rating || 0,
     reviews: course.reviews || 0,
-    instructorId: course.instructor_id,
-  })), [realtimeCourses]);
+    instructorId: resolveToTeacherId(course.instructor_id),
+  })), [realtimeCourses, profileToTeacherIdMap, realtimeTeachers]);
 
   // Cargar usuarios desde Supabase
   const loadUsers = async () => {
@@ -206,6 +265,38 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const handleSaveCourse = async (course: FullCourse) => {
     try {
       const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+
+      // Resolver teacher.id → ID compatible con instructor_id (FK a profiles)
+      // IMPORTANTE: instructor_id DEBE ser un ID de profiles, no de teachers
+      const resolveInstructorIdForDB = (teacherId: string | undefined | null): string | null => {
+        if (!teacherId) return null;
+        
+        const teacher = realtimeTeachers.find(t => t.id === teacherId);
+        
+        // El instructor DEBE tener user_id (que es el FK a profiles)
+        if (!teacher) {
+          console.warn(`⚠️ No se encontró teacher con id: ${teacherId}`);
+          return null;
+        }
+        
+        if (!teacher.user_id) {
+          console.warn(`⚠️ El teacher ${teacher.full_name} no tiene user_id asociado`);
+          // Recargar lista de teachers por si hay cambios recientes
+          refetchTeachers();
+          toast.error(`El profesor ${teacher.full_name} no está configurado correctamente. Recarga la página e intenta nuevamente.`);
+          return null;
+        }
+        
+        return teacher.user_id; // ✅ Usar siempre user_id (FK a profiles)
+      };
+
+      const dbInstructorId = resolveInstructorIdForDB(course.instructorId);
+      
+      // Validar que tenemos un instructor válido antes de continuar
+      if (!dbInstructorId && course.instructorId) {
+        console.error('❌ No se pudo resolver el instructor_id para la BD');
+        return; // El toast ya se mostró en resolveInstructorIdForDB
+      }
       
       if (editingCourse) {
         // Actualizar curso en Supabase
@@ -224,6 +315,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             duration: course.duration,
             level: course.level,
             certified: course.certified,
+            instructor_id: dbInstructorId,
           })
           .eq("id", course.id);
         
@@ -234,26 +326,17 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         }
         toast.success("✅ Curso actualizado exitosamente");
       } else {
-        // Obtener ID del instructor admin
-        const { data: adminData, error: adminError } = await client
-          .from("profiles")
-          .select("id")
-          .eq("full_name", "Dr. Test Instructor")
-          .single();
-        
-        let instructorId: string;
-        
-        if (adminError || !adminData) {
-          console.warn("⚠️ No se encontró instructor, usando primer profile disponible");
-          // Fallback: usar primer profile disponible
+        // Usar el instructorId resuelto
+        let instructorId = dbInstructorId;
+
+        // Fallback: si no se seleccionó instructor, buscar un profile disponible
+        if (!instructorId) {
           const { data: firstProfile } = await client.from("profiles").select("id").limit(1).single();
           if (!firstProfile) {
             toast.error("No hay perfiles en la base de datos");
             return;
           }
           instructorId = firstProfile.id;
-        } else {
-          instructorId = adminData.id;
         }
 
         // Crear nuevo curso en Supabase
@@ -580,6 +663,67 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         setDeletingCourseId(null);
         // No need to reload - realtime subscription will update the list automatically
       }
+      if (certToDelete) {
+        setDeletingCertId(certToDelete.id);
+        logAdminOperation('DELETE', 'certificates', { certId: certToDelete.id });
+
+        const { error } = await client
+          .from("certificates")
+          .delete()
+          .eq("id", certToDelete.id);
+
+        if (error) {
+          console.error("\u274c Error DELETE certificate:", error);
+          toast.error("Error al revocar certificado: " + error.message);
+          setDeletingCertId(null);
+          return;
+        }
+
+        toast.success(`\u2705 Certificado de "${certToDelete.studentName}" revocado exitosamente`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setDeletingCertId(null);
+        setCertToDelete(null);
+      }
+      if (userToDelete) {
+        setDeletingUserId(userToDelete.id);
+        logAdminOperation('DELETE', 'user', { userId: userToDelete.id, userName: userToDelete.name });
+
+        if (!isAdminClientConfigured()) {
+          toast.error("Se requiere la SERVICE_ROLE_KEY para eliminar usuarios");
+          setDeletingUserId(null);
+          return;
+        }
+
+        // 1. Eliminar perfil de la tabla profiles
+        const { error: profileError } = await supabaseAdmin
+          .from("profiles")
+          .delete()
+          .eq("id", userToDelete.id);
+
+        if (profileError) {
+          console.error("❌ Error DELETE profile:", profileError);
+          toast.error("Error al eliminar perfil: " + profileError.message);
+          setDeletingUserId(null);
+          return;
+        }
+
+        // 2. Eliminar usuario de auth (esto revoca todo acceso)
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userToDelete.id);
+
+        if (authError) {
+          console.error("❌ Error DELETE auth user:", authError);
+          toast.error("Error al eliminar usuario de auth: " + authError.message);
+          setDeletingUserId(null);
+          return;
+        }
+
+        toast.success(`✅ Usuario "${userToDelete.name}" eliminado exitosamente`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setDeletingUserId(null);
+        setUserToDelete(null);
+        // Recargar lista de usuarios
+        loadUsers();
+      }
       if (teacherToDelete) {
         // ✅ Mostrar estado de eliminación (animación visual)
         setDeletingTeacherId(teacherToDelete);
@@ -611,10 +755,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       console.error(err);
       setDeletingCourseId(null);
       setDeletingTeacherId(null);
+      setDeletingUserId(null);
+      setDeletingCertId(null);
     } finally {
       setDeleteDialogOpen(false);
       setCourseToDelete(null);
       setTeacherToDelete(null);
+      setUserToDelete(null);
+      setCertToDelete(null);
     }
   };
 
@@ -622,6 +770,16 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setContactUser({ name, email });
     setContactMessage("");
     setContactDialogOpen(true);
+  };
+
+  const handleDeleteUser = (userId: string, userName: string) => {
+    setUserToDelete({ id: userId, name: userName });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleRevokeCertificate = (certId: string, studentName: string, courseTitle: string) => {
+    setCertToDelete({ id: certId, studentName, courseTitle });
+    setDeleteDialogOpen(true);
   };
 
   const sendContactMessage = () => {
@@ -632,6 +790,129 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       setContactMessage("");
     } else {
       toast.error("Por favor escribe un mensaje");
+    }
+  };
+
+  const handleSaveUser = async (userData: any) => {
+    try {
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+
+      if (editingUser) {
+        // Actualizar usuario existente
+        logAdminOperation('UPDATE', 'profiles', { userId: editingUser.id });
+        
+        const { error: updateError } = await client
+          .from("profiles")
+          .update({
+            full_name: userData.full_name,
+            role: userData.role,
+            country: userData.country,
+            phone: userData.phone,
+          })
+          .eq("id", editingUser.id);
+
+        if (updateError) throw updateError;
+
+        // Si cambió a rol profesor, crear/actualizar registro en teachers
+        if (userData.role === 'instructor') {
+          const { data: existingTeacher } = await client
+            .from("teachers")
+            .select("id")
+            .eq("user_id", editingUser.id)
+            .single();
+
+          if (!existingTeacher) {
+            // Crear registro de teacher
+            await client.from("teachers").insert({
+              user_id: editingUser.id,
+              full_name: userData.full_name,
+              email: userData.email,
+              bio: userData.bio || "",
+              specialization: userData.specialization || "",
+              years_of_experience: 0,
+              rating: 0,
+              total_students: 0,
+              total_courses: 0,
+              is_active: true,
+            });
+          } else {
+            // Actualizar registro de teacher existente
+            await client
+              .from("teachers")
+              .update({
+                full_name: userData.full_name,
+                bio: userData.bio || "",
+                specialization: userData.specialization || "",
+              })
+              .eq("user_id", editingUser.id);
+          }
+        }
+
+        toast.success("Usuario actualizado exitosamente");
+      } else {
+        // Crear nuevo usuario
+        if (!userData.password) {
+          toast.error("La contraseña es requerida para nuevos usuarios");
+          return;
+        }
+
+        logAdminOperation('CREATE', 'auth.users', { email: userData.email });
+
+        // Crear usuario en auth
+        const { data: authData, error: authError } = await client.auth.admin.createUser({
+          email: userData.email,
+          password: userData.password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: userData.full_name,
+          },
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("No se pudo crear el usuario");
+
+        // Crear perfil
+        const { error: profileError } = await client
+          .from("profiles")
+          .insert({
+            id: authData.user.id,
+            email: userData.email,
+            full_name: userData.full_name,
+            role: userData.role,
+            country: userData.country,
+            phone: userData.phone,
+          });
+
+        if (profileError) throw profileError;
+
+        // Si es profesor, crear registro en teachers
+        if (userData.role === 'instructor') {
+          await client.from("teachers").insert({
+            user_id: authData.user.id,
+            full_name: userData.full_name,
+            email: userData.email,
+            bio: userData.bio || "",
+            specialization: userData.specialization || "",
+            years_of_experience: 0,
+            rating: 0,
+            total_students: 0,
+            total_courses: 0,
+            is_active: true,
+          });
+        }
+
+        toast.success("Usuario creado exitosamente");
+      }
+
+      setShowUserForm(false);
+      setEditingUser(undefined);
+      loadUsers();
+      if (userData.role === 'instructor') {
+        refetchTeachers();
+      }
+    } catch (error: any) {
+      console.error("Error guardando usuario:", error);
+      toast.error("Error al guardar el usuario: " + error.message);
     }
   };
 
@@ -993,7 +1274,17 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           </TableCell>
                           <TableCell>{teacher.total_students.toLocaleString()}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary">{teacher.total_courses} cursos</Badge>
+                            {(teacherCoursesMap[teacher.id] || []).length > 0 ? (
+                              <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                {teacherCoursesMap[teacher.id].map(c => (
+                                  <Badge key={c.id} variant="secondary" className="text-xs truncate max-w-[180px]" title={c.title}>
+                                    {c.title}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-[#64748B]">Sin cursos</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             {teacher.is_active ? (
@@ -1059,11 +1350,23 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           )}
 
           {/* Users */}
-          {activeTab === "users" && (
+          {activeTab === "users" && !showUserForm && (
             <div className="space-y-6">
-              <div className="relative sm:max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                <Input placeholder="Buscar usuarios..." className="pl-10" />
+              <div className="flex items-center justify-between">
+                <div className="relative sm:max-w-md flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+                  <Input placeholder="Buscar usuarios..." className="pl-10" />
+                </div>
+                <Button
+                  onClick={() => {
+                    setEditingUser(undefined);
+                    setShowUserForm(true);
+                  }}
+                  className="ml-4 bg-[#1e467c] hover:bg-[#2d5f93]"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Crear Usuario
+                </Button>
               </div>
 
               <Card>
@@ -1101,7 +1404,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       </TableRow>
                     ) : (
                       usersList.map((user, index) => (
-                        <TableRow key={user.id}>
+                        <TableRow key={user.id} className={cn(
+                          deletingUserId === user.id && "opacity-50 transition-opacity duration-500"
+                        )}>
                           <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                           <TableCell className="text-[#0F172A] font-medium">{user.full_name || "Sin nombre"}</TableCell>
                           <TableCell className="text-sm">{user.email}</TableCell>
@@ -1109,7 +1414,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           <TableCell>{user.phone || "-"}</TableCell>
                           <TableCell>
                             <Badge className={user.role === 'admin' ? 'bg-purple-100 text-purple-800' : user.role === 'instructor' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}>
-                              {user.role === 'admin' ? 'Administrador' : user.role === 'instructor' ? 'Instructor' : 'Estudiante'}
+                              {user.role === 'admin' ? 'Administrador' : user.role === 'instructor' ? 'Profesor' : 'Estudiante'}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm">{new Date(user.created_at).toLocaleDateString('es-AR')}</TableCell>
@@ -1122,11 +1427,28 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => {
+                                  setEditingUser(user);
+                                  setShowUserForm(true);
+                                }}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
                                   setContactUser({ name: user.full_name || user.email, email: user.email });
                                   setContactDialogOpen(true);
                                 }}>
                                   <Mail className="mr-2 h-4 w-4" />
                                   Contactar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  data-variant="destructive"
+                                  onClick={() => handleDeleteUser(
+                                    user.id as string,
+                                    (user.full_name || user.email || "Usuario") as string
+                                  )}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Eliminar usuario
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -1136,6 +1458,41 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     )}
                   </TableBody>
                 </Table>
+              </Card>
+            </div>
+          )}
+
+          {/* User Form */}
+          {activeTab === "users" && showUserForm && (
+            <div className="space-y-6">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowUserForm(false);
+                  setEditingUser(undefined);
+                }}
+                className="mb-4"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Volver a la lista
+              </Button>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {editingUser ? "Editar Usuario" : "Crear Nuevo Usuario"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <UserForm
+                    user={editingUser}
+                    onSave={handleSaveUser}
+                    onCancel={() => {
+                      setShowUserForm(false);
+                      setEditingUser(undefined);
+                    }}
+                  />
+                </CardContent>
               </Card>
             </div>
           )}
@@ -1295,7 +1652,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       </TableRow>
                     ) : (
                       realtimeCertificates.map((cert, index) => (
-                        <TableRow key={cert.id}>
+                        <TableRow key={cert.id} className={cn(
+                          deletingCertId === cert.id && "opacity-50 transition-opacity duration-500"
+                        )}>
                           <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                           <TableCell>{new Date(cert.issue_date).toLocaleDateString("es-AR")}</TableCell>
                           <TableCell className="text-[#0F172A]">{cert.student_name}</TableCell>
@@ -1336,7 +1695,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                                   <Download className="mr-2 h-4 w-4" />
                                   Descargar PDF
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-[#EF4444]">
+                                <DropdownMenuItem
+                                  data-variant="destructive"
+                                  onClick={() => handleRevokeCertificate(cert.id, cert.student_name, cert.course_title)}
+                                >
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Revocar
                                 </DropdownMenuItem>
@@ -1362,6 +1724,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             <AlertDialogDescription>
               {courseToDelete && "Esta acción no se puede deshacer. Esto eliminará permanentemente el curso y todas sus lecciones y evaluaciones asociadas."}
               {teacherToDelete && "Esta acción no se puede deshacer. Esto eliminará permanentemente el profesor y toda su información asociada."}
+              {userToDelete && `Esta acción no se puede deshacer. Esto eliminará permanentemente al usuario "${userToDelete.name}", su perfil y su acceso a la plataforma.`}
+              {certToDelete && `Esta acción no se puede deshacer. Esto revocará y eliminará permanentemente el certificado de "${certToDelete.studentName}" para el curso "${certToDelete.courseTitle}".`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

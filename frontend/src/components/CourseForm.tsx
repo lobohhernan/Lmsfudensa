@@ -214,7 +214,6 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
     };
 
     onSave(completeCourse);
-    toast.success(course ? "Curso actualizado exitosamente" : "Curso creado exitosamente");
   };
 
   return (
@@ -338,7 +337,7 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="instructorId">Instructor</Label>
+                  <Label htmlFor="instructorId">Profesor</Label>
                   <Select
                     value={formData.instructorId}
                     onValueChange={(value) => handleInputChange("instructorId", value)}
