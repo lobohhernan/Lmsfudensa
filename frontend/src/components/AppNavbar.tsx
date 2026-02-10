@@ -1,4 +1,4 @@
-import { Search, Menu, X, User, LogOut, UserCircle } from "lucide-react";
+import { Search, Menu, X, User, LogOut, UserCircle, LayoutDashboard } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -28,13 +28,13 @@ interface AppNavbarProps {
   onNavigate?: (page: string) => void;
   isLoggedIn?: boolean;
   onLogout?: () => void;
-  onLogin?: (userData: { email: string; name: string }) => void;
+  onLogin?: (userData: { email: string; name: string; role: 'student' | 'instructor' | 'admin' }) => void;
   currentPage?: string;
   openLoginModal?: boolean;
   openRegisterModal?: boolean;
   onLoginModalChange?: (open: boolean) => void;
   onRegisterModalChange?: (open: boolean) => void;
-  currentUser?: { email: string; name: string } | null;
+  currentUser?: { email: string; name: string; role: 'student' | 'instructor' | 'admin' } | null;
 }
 
 export function AppNavbar({ 
@@ -124,6 +124,11 @@ export function AppNavbar({
 
   const handleContactNav = useCallback(() => {
     handleNavigate("contact");
+    setMobileMenuOpen(false);
+  }, [handleNavigate]);
+
+  const handleAdminNav = useCallback(() => {
+    handleNavigate("admin");
     setMobileMenuOpen(false);
   }, [handleNavigate]);
 
@@ -239,6 +244,17 @@ export function AppNavbar({
                       <UserCircle className="mr-2 h-4 w-4" />
                       Mi Perfil
                     </DropdownMenuItem>
+                    {currentUser?.role === 'admin' && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={handleAdminNav}
+                          className="cursor-pointer text-white hover:bg-white/10"
+                        >
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          Panel Admin
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem
                       onClick={handleLogout}
@@ -335,6 +351,16 @@ export function AppNavbar({
                         <UserCircle className="mr-2 h-5 w-5" />
                         Mi Perfil
                       </Button>
+                      {currentUser?.role === 'admin' && (
+                        <Button
+                          variant="ghost"
+                          onClick={handleAdminNav}
+                          className="h-auto rounded-xl border border-white/20 bg-white/8 py-3.5 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_2px_8px_0_rgba(0,0,0,0.1)] transition-all hover:border-white/30 hover:bg-white/15 hover:text-white active:scale-[0.98] w-full justify-start"
+                        >
+                          <LayoutDashboard className="mr-2 h-5 w-5" />
+                          Panel Admin
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         onClick={handleLogout}
@@ -417,16 +443,17 @@ export function AppNavbar({
                       return;
                     }
 
-                    // Obtener perfil para conseguir nombre completo
+                    // Obtener perfil para conseguir nombre completo y role
                     const { data: profile, error: profileError } = await supabase
                       .from("profiles")
-                      .select("full_name, email")
+                      .select("full_name, email, role")
                       .eq("id", authData.user.id)
                       .single();
 
                     const userName = profile?.full_name || email.split('@')[0];
+                    const userRole = profile?.role || 'student';
 
-                    onLogin?.({ email, name: userName });
+                    onLogin?.({ email, name: userName, role: userRole });
                     setLoginOpen(false);
                     setIsRegistering(false);
                     toast.success("Sesión iniciada correctamente. ¡Bienvenido!");
@@ -610,7 +637,7 @@ export function AppNavbar({
                     });
 
                     // Llamar onLogin para actualizar el estado en App
-                    onLogin?.({ email, name });
+                    onLogin?.({ email, name, role: 'student' });
                     
                     // Cerrar modal y resetear estado
                     setLoginOpen(false);

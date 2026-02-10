@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, lazy, Suspense, startTransition } from "react";
-import { Palette, LayoutDashboard, Menu, Award, User, LogIn, LogOut } from "lucide-react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
 import { PageLoader } from "./components/PageLoader";
@@ -23,20 +22,11 @@ const AboutUs = lazy(() => import("./pages/AboutUs").then(m => ({ default: m.Abo
 const Contact = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
-import { Button } from "./components/ui/button";
 import { supabase } from "./lib/supabase";
 import { initCacheManager } from "./lib/cacheManager";
-import { debugSupabaseSession, clearSupabaseSession } from "./utils/debugSupabase";
 import { debug, error as logError } from './lib/logger'
 import { useStorageCleanup } from "./hooks/useStorageCleanup"
 import { resolveCourseSlugToId } from "./lib/courseResolver"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "./components/ui/dropdown-menu";
 
 type Page =
   | "home"
@@ -189,7 +179,7 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState(() => {
     return !!localStorage.getItem('sb-lgqzmqfnjcnquwkqkgpy-auth-token');
   });
-  const [userData, setUserData] = useState<{ email: string; name: string } | null>(null);
+  const [userData, setUserData] = useState<{ email: string; name: string; role: 'student' | 'instructor' | 'admin' } | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isResolvingRoute, setIsResolvingRoute] = useState(false);
@@ -290,6 +280,19 @@ export default function App() {
     }
   }, [currentPage, userData, currentCourseSlug, currentLessonId]);
 
+  // Proteger acceso al panel admin por URL directa
+  useEffect(() => {
+    if (currentPage === 'admin' && !isInitializing) {
+      if (!isLoggedIn || !userData || userData.role !== 'admin') {
+        toast.error('Acceso denegado. Solo administradores pueden acceder al panel admin.');
+        startTransition(() => {
+          setCurrentPage('home');
+          window.history.pushState(null, "", "/");
+        });
+      }
+    }
+  }, [currentPage, isLoggedIn, userData, isInitializing]);
+
   // ✅ Listener para botón atrás/adelante del navegador
   useEffect(() => {
     const handlePopState = () => {
@@ -345,14 +348,20 @@ export default function App() {
         if (session?.user) {
           debug('🔐 [App] Usuario autenticado')
           
-          // ✅ NO consultar profiles en el path crítico
-          // Usar datos del auth directamente (rápido)
-          const userData_: { email: string; name: string } = {
+          // ✅ Consultar profiles para obtener el role
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+          
+          const userData_: { email: string; name: string; role: 'student' | 'instructor' | 'admin' } = {
             email: session.user.email || "",
             name: session.user.email?.split('@')[0] || "Usuario",
+            role: profile?.role || 'student',
           };
           
-          debug('✅ [App] Login exitoso:', userData_.email)
+          debug('✅ [App] Login exitoso:', userData_.email, 'Role:', userData_.role)
           setIsLoggedIn(true);
           setUserData(userData_);
           sessionStorage.setItem('user_session', JSON.stringify(userData_));
@@ -389,11 +398,17 @@ export default function App() {
         authTimeoutRef.current = null
       }
       if (session?.user) {
-        // ✅ NO consultar profiles en onAuthStateChange
-        // Usar datos del auth directamente (rápido)
+        // ✅ Consultar profiles para obtener el role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        
         const userData_ = {
           email: session.user.email || "",
           name: session.user.email?.split('@')[0] || "Usuario",
+          role: profile?.role || 'student',
         };
         
         setIsLoggedIn(true);
@@ -421,6 +436,14 @@ export default function App() {
   }, [currentPage]);
 
   const handleNavigate = useCallback((page: string, courseId?: string, courseSlug?: string, lessonId?: string) => {
+    // Proteger acceso al panel admin - solo usuarios con rol admin
+    if (page === 'admin') {
+      if (!isLoggedIn || !userData || userData.role !== 'admin') {
+        toast.error('Acceso denegado. Solo administradores pueden acceder al panel admin.');
+        return;
+      }
+    }
+    
     // startTransition evita que React.lazy suspenda sincrónicamente durante un clic,
     // lo que causaría "A component suspended while responding to synchronous input".
     startTransition(() => {
@@ -435,9 +458,9 @@ export default function App() {
         setCurrentLessonId(lessonId);
       }
     });
-  }, []);
+  }, [isLoggedIn, userData]);
 
-  const handleLogin = useCallback((user: { email: string; name: string }) => {
+  const handleLogin = useCallback((user: { email: string; name: string; role: 'student' | 'instructor' | 'admin' }) => {
     setIsLoggedIn(true);
     setUserData(user);
     
@@ -616,131 +639,6 @@ export default function App() {
       </main>
 
       <AppFooter onNavigate={handleNavigate} />
-      
-      {/* Quick Access Menu - Demo purposes */}
-      <div className="fixed bottom-6 right-6 z-100">
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              className="h-14 w-14 rounded-full shadow-lg hover:scale-105 transition-transform"
-              aria-label="Menú de acceso rápido"
-            >
-              <Menu className="h-6 w-6" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            align="end" 
-            className="w-56"
-            sideOffset={5}
-          >
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                setIsLoggedIn(!isLoggedIn);
-                toast.success(
-                  isLoggedIn 
-                    ? "Vista de visitante activada" 
-                    : "Vista de usuario autenticado activada"
-                );
-                if (!isLoggedIn) {
-                  handleNavigate("home");
-                }
-              }}
-              className="cursor-pointer"
-            >
-              {isLoggedIn ? (
-                <>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Ver como Visitante
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Ver como Usuario Autenticado
-                </>
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                handleNavigate("profile");
-              }}
-              className="cursor-pointer"
-            >
-              <User className="mr-2 h-4 w-4" />
-              Perfil de Usuario
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                handleNavigate("design");
-              }}
-              className="cursor-pointer"
-            >
-              <Palette className="mr-2 h-4 w-4" />
-              Design System
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                handleNavigate("admin");
-              }}
-              className="cursor-pointer"
-            >
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Panel Admin
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={async (e: React.MouseEvent) => {
-                e.preventDefault();
-                        try {
-                          // Ejecutar debug de Supabase en la pestaña normal
-                          // Muestra resultados en consola del navegador
-                          await debugSupabaseSession();
-                          toast.success("Debug Supabase ejecutado (ver consola)");
-                        } catch (err) {
-                          logError("Error ejecutando debugSupabaseSession:", err);
-                          toast.error("Error ejecutando debug");
-                        }
-              }}
-              className="cursor-pointer"
-            >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-              Debug Supabase
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async (e: React.MouseEvent) => {
-                e.preventDefault();
-                try {
-                  await clearSupabaseSession();
-                  toast.success("Sesión local limpiada");
-                } catch (err) {
-                  logError("Error clearSupabaseSession:", err);
-                  toast.error("Error limpiando sesión");
-                }
-              }}
-              className="cursor-pointer"
-            >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M9 6v12M15 6v12"/></svg>
-              Limpiar Sesión Supabase
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                handleNavigate("evaluation");
-              }}
-              className="cursor-pointer"
-            >
-              <Award className="mr-2 h-4 w-4" />
-              Evaluación
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
       
       <Toaster />
     </div>
