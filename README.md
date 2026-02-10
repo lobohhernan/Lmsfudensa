@@ -3,8 +3,11 @@
 [![Deploy Status](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020?style=flat-square&logo=cloudflare)](https://fudensa.pages.dev)
 [![GitHub](https://img.shields.io/badge/GitHub-lobohhernan-181717?style=flat-square&logo=github)](https://github.com/lobohhernan/Lmsfudensa)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![Contributors](https://img.shields.io/badge/Contributors-3-blue?style=flat-square)](https://github.com/lobohhernan/Lmsfudensa/graphs/contributors)
 
 FUDENSA es una plataforma de educación en línea moderna, escalable y segura construida con las últimas tecnologías web. Ofrece un ecosistema completo para gestionar cursos, estudiantes, pagos y certificados digitales.
+
+**Desarrollado por:** [Hernán Lobo](https://github.com/lobohhernan) · [Santiago Martinez](https://github.com/SantiCampero) · [Maximiliano Massey](https://github.com/MaximilianoMassey)
 
 ---
 
@@ -291,18 +294,35 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ---
 
-## 👨‍💻 Autores
+## 👨‍💻 Contribuidores
 
-**Hernán Lobo**
-- GitHub: [@lobohhernan](https://github.com/lobohhernan)
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/lobohhernan">
+        <img src="https://github.com/lobohhernan.png" width="100px;" alt="Hernán Lobo"/><br />
+        <sub><b>Hernán Ignacio Lobo Campero</b></sub>
+      </a><br />
+      <a href="https://github.com/lobohhernan/Lmsfudensa/commits?author=lobohhernan" title="Code">💻</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/SantiCampero">
+        <img src="https://github.com/SantiCampero.png" width="100px;" alt="Santiago Martinez"/><br />
+        <sub><b>Santiago Martinez Campero</b></sub>
+      </a><br />
+      <a href="https://github.com/lobohhernan/Lmsfudensa/commits?author=SantiCampero" title="Code">💻</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/MaximilianoMassey">
+        <img src="https://github.com/MaximilianoMassey.png" width="100px;" alt="Maximiliano Massey"/><br />
+        <sub><b>Massey Maximiliano</b></sub>
+      </a><br />
+      <a href="https://github.com/lobohhernan/Lmsfudensa/commits?author=MaximilianoMassey" title="Code">💻</a>
+    </td>
+  </tr>
+</table>
 
-**Maximiliano Massey**
-- GitHub: [@MaximilianoMassey](https://github.com/MaximilianoMassey)
-
-**Santiago Martinez**
-- GitHub: [@SantiCampero](https://github.com/SantiCampero)
-
-- Proyecto Final: UTN - Trabajo Final Profesional
+**Proyecto Final:** UTN - Trabajo Final Profesional
 
 ---
 
