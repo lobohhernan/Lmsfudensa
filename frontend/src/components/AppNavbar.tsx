@@ -93,18 +93,8 @@ export function AppNavbar({
 
   const handleLogout = useCallback(async () => {
     debug("🔽 Click en Cerrar Sesión");
-    try {
-      debug("Ejecutando supabase.auth.signOut()...");
-      await supabase.auth.signOut();
-      debug("✅ signOut completado");
-      debug("Llamando a onLogout()...");
-      onLogout?.();
-      debug("✅ onLogout() ejecutado");
-      setMobileMenuOpen(false);
-    } catch (error) {
-      logError("❌ Error en logout:", error);
-      toast.error("Error al cerrar sesión");
-    }
+    setMobileMenuOpen(false);
+    onLogout?.();
   }, [onLogout]);
 
   const handleLoginOpen = useCallback(() => {

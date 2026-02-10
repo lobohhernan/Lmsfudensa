@@ -477,7 +477,7 @@ export default function App() {
     try {
       debug("🚪 Iniciando cierre de sesión...");
       
-      // Cerrar sesión en Supabase primero
+      // Cerrar sesión en Supabase
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -487,16 +487,12 @@ export default function App() {
       
       debug("✅ Sesión cerrada en Supabase");
       
-      // Limpiar estados locales
-      setIsLoggedIn(false);
-      setUserData(null);
-      setCurrentPage("home");
-      
-      // Limpiar sessionStorage
-      sessionStorage.removeItem('user_session');
-      
-      debug("✅ Estados y sessionStorage limpiados");
-      debug("✅ Sesión cerrada completamente");
+      // El listener onAuthStateChange se encargará de limpiar los estados
+      // pero forzamos la navegación a home
+      startTransition(() => {
+        setCurrentPage("home");
+        window.history.pushState(null, "", "/");
+      });
       
       toast.success("Sesión cerrada correctamente");
     } catch (error) {
@@ -507,7 +503,10 @@ export default function App() {
       setIsLoggedIn(false);
       setUserData(null);
       sessionStorage.removeItem('user_session');
-      setCurrentPage("home");
+      startTransition(() => {
+        setCurrentPage("home");
+        window.history.pushState(null, "", "/");
+      });
     }
   }, []);
 
