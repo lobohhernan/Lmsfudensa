@@ -341,14 +341,16 @@ export default function App() {
         if (session?.user) {
           debug('🔐 [App] Usuario autenticado')
 
-          // ✅ NO consultar profiles en el path crítico
-          // Usar datos del auth directamente (rápido)
+          // Obtener nombre de user_metadata (donde Supabase guarda full_name)
+          const userMeta = session.user.user_metadata;
+          const fullName = userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || "Usuario";
+
           const userData_: { email: string; name: string } = {
             email: session.user.email || "",
-            name: session.user.email?.split('@')[0] || "Usuario",
+            name: fullName,
           };
 
-          debug('✅ [App] Login exitoso:', userData_.email)
+          debug('✅ [App] Login exitoso:', userData_.email, 'name:', userData_.name)
           setIsLoggedIn(true);
           setUserData(userData_);
           sessionStorage.setItem('user_session', JSON.stringify(userData_));
@@ -382,11 +384,13 @@ export default function App() {
         authTimeoutRef.current = null
       }
       if (session?.user) {
-        // ✅ NO consultar profiles en onAuthStateChange
-        // Usar datos del auth directamente (rápido)
+        // Obtener nombre de user_metadata (donde Supabase guarda full_name)
+        const userMeta = session.user.user_metadata;
+        const fullName = userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || "Usuario";
+
         const userData_ = {
           email: session.user.email || "",
-          name: session.user.email?.split('@')[0] || "Usuario",
+          name: fullName,
         };
 
         setIsLoggedIn(true);

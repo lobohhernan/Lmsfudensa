@@ -2,7 +2,7 @@ import { Award, Mail, Globe, Settings as SettingsIcon, BookOpen, Loader2, Refres
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { Progress } from "../components/ui/progress";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -206,11 +206,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
             <CardContent className="p-6">
               <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile.email}`}
-                    alt="Usuario"
-                  />
-                  <AvatarFallback>{initials}</AvatarFallback>
+                  <AvatarFallback className="bg-[#0B5FFF] text-white text-2xl font-semibold">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <h1 className="mb-1 text-[#0F172A]">{userProfile.full_name || "Usuario"}</h1>
