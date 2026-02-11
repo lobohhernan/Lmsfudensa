@@ -175,10 +175,6 @@ export default function App() {
   const [currentCourseSlug, setCurrentCourseSlug] = useState<string | undefined>(initialRoute.courseSlug);
   const [currentLessonId, setCurrentLessonId] = useState<string | undefined>(initialRoute.lessonId);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  // ✅ Solo inicializar si hay tokens guardados
-  const [isInitializing, setIsInitializing] = useState(() => {
-    return !!localStorage.getItem('sb-lgqzmqfnjcnquwkqkgpy-auth-token');
-  });
   const [userData, setUserData] = useState<{ email: string; name: string; role: 'student' | 'instructor' | 'admin' } | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -282,7 +278,7 @@ export default function App() {
 
   // Proteger acceso al panel admin por URL directa
   useEffect(() => {
-    if (currentPage === 'admin' && !isInitializing) {
+    if (currentPage === 'admin') {
       if (!isLoggedIn || !userData || userData.role !== 'admin') {
         toast.error('Acceso denegado. Solo administradores pueden acceder al panel admin.');
         startTransition(() => {
@@ -291,7 +287,7 @@ export default function App() {
         });
       }
     }
-  }, [currentPage, isLoggedIn, userData, isInitializing]);
+  }, [currentPage, isLoggedIn, userData]);
 
   // ✅ Listener para botón atrás/adelante del navegador
   useEffect(() => {
@@ -326,46 +322,36 @@ export default function App() {
     const loadSession = async () => {
       try {
         debug('🔐 [App] Cargando sesión...')
-        
+
         // ✅ SOLO MOSTRAR "Verificando sesión..." SI HAY TOKENS GUARDADOS
-        const hasStoredSession = localStorage.getItem('sb-lgqzmqfnjcnquwkqkgpy-auth-token')
-        
+        const hasStoredSession = localStorage.getItem('lmsfudensa.supabase.auth')
         if (!hasStoredSession) {
           // No hay sesión guardada, terminar inmediatamente SIN mostrar loader
           debug('⚠️ [App] No hay tokens en localStorage, saltando verificación')
           setIsLoggedIn(false)
           setUserData(null)
           sessionStorage.removeItem('user_session')
-          setIsInitializing(false) // Finalizar inmediatamente
           return
         }
-        
+
         // ✅ SI HAY TOKENS, AHORA SÍ VERIFICAMOS (aquí se muestra el loader)
-        
         const { data: { session } } = await supabase.auth.getSession();
         debug('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
-        
+
         if (session?.user) {
           debug('🔐 [App] Usuario autenticado')
-          
-          // ✅ Consultar profiles para obtener el role
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-          
-          const userData_: { email: string; name: string; role: 'student' | 'instructor' | 'admin' } = {
+
+          // ✅ NO consultar profiles en el path crítico
+          // Usar datos del auth directamente (rápido)
+          const userData_: { email: string; name: string } = {
             email: session.user.email || "",
             name: session.user.email?.split('@')[0] || "Usuario",
-            role: profile?.role || 'student',
           };
-          
-          debug('✅ [App] Login exitoso:', userData_.email, 'Role:', userData_.role)
+
+          debug('✅ [App] Login exitoso:', userData_.email)
           setIsLoggedIn(true);
           setUserData(userData_);
           sessionStorage.setItem('user_session', JSON.stringify(userData_));
-          setIsInitializing(false); // Marcar inicialización completa
           clearAuthTimeout()
         } else {
           // No hay sesión válida — terminar rápido
@@ -373,7 +359,6 @@ export default function App() {
           setIsLoggedIn(false)
           setUserData(null)
           sessionStorage.removeItem('user_session')
-          setIsInitializing(false)
           clearAuthTimeout()
         }
       } catch (error) {
@@ -382,7 +367,6 @@ export default function App() {
         setIsLoggedIn(false)
         setUserData(null)
         sessionStorage.removeItem('user_session')
-        setIsInitializing(false)
         clearAuthTimeout()
       }
     };
@@ -398,19 +382,13 @@ export default function App() {
         authTimeoutRef.current = null
       }
       if (session?.user) {
-        // ✅ Consultar profiles para obtener el role
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-        
+        // ✅ NO consultar profiles en onAuthStateChange
+        // Usar datos del auth directamente (rápido)
         const userData_ = {
           email: session.user.email || "",
           name: session.user.email?.split('@')[0] || "Usuario",
-          role: profile?.role || 'student',
         };
-        
+
         setIsLoggedIn(true);
         setUserData(userData_);
         sessionStorage.setItem('user_session', JSON.stringify(userData_));
@@ -510,15 +488,13 @@ export default function App() {
     }
   }, []);
 
-  // Mostrar loader mientras se inicializa la sesión O mientras resolvemos la ruta
-  if (isInitializing || isResolvingRoute) {
+  // Mostrar loader mientras resolvemos la ruta del curso
+  if (isResolvingRoute) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-white border-t-transparent mb-4"></div>
-          <p className="text-white text-lg font-medium">
-            {isInitializing ? "Verificando sesión..." : "Cargando curso..."}
-          </p>
+          <p className="text-white text-lg font-medium">Cargando curso...</p>
         </div>
       </div>
     );
@@ -622,7 +598,6 @@ export default function App() {
               courseId={currentCourseId}
               courseSlug={currentCourseSlug}
               userData={userData}
-              isInitializing={isInitializing}
             />
           )}
           {currentPage === "payment-callback" && <PaymentCallback />}

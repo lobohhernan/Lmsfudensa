@@ -150,13 +150,13 @@ serve(async (req: Request): Promise<Response> => {
       // Obtener el usuario por email
       console.log("🔎 [WEBHOOK] Buscando usuario por email...");
       
-      const { data: users, error: userError } = await supabase
-        .from("users")
+      const { data: profile, error: userError } = await supabase
+        .from("profiles")
         .select("id")
         .eq("email", userEmail)
         .single();
 
-      if (userError || !users) {
+      if (userError || !profile) {
         console.warn("⚠️ [WEBHOOK] Usuario no encontrado:", userEmail);
         return new Response(
           JSON.stringify({ error: "Usuario no encontrado" }),
@@ -164,7 +164,7 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
       
-      userId = users.id;
+      userId = profile.id;
     }
 
     console.log("✅ [WEBHOOK] Datos extraídos:", { courseId, userId });
