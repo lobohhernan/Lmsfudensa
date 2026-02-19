@@ -506,9 +506,20 @@ export function AppNavbar({
                   type="button"
                   variant="outline"
                   className="w-full border-white/20 bg-white/10 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] transition-all hover:bg-white/15 hover:border-white/30 hover:text-white"
-                  onClick={() => {
-                    // Google login logic here
-                    debug('Login with Google');
+                  onClick={async () => {
+                    const { error } = await supabase.auth.signInWithOAuth({
+                      provider: 'google',
+                      options: {
+                        redirectTo: window.location.origin,
+                        queryParams: {
+                          access_type: 'offline',
+                          prompt: 'consent',
+                        },
+                      }
+                    });
+                    if (error) {
+                      toast.error("Error al iniciar sesión con Google: " + error.message);
+                    }
                   }}
                 >
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
