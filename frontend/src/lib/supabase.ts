@@ -6,9 +6,12 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 const supabaseStorageKeyEnv = import.meta.env.VITE_SUPABASE_STORAGE_KEY
 
 // Determinar storageKey (fallback si no está en .env)
-const storageKey = typeof supabaseStorageKeyEnv === 'string' && supabaseStorageKeyEnv.length > 0
+// ⚠️ Exportada para que App.tsx use la misma clave al detectar sesión guardada
+export const AUTH_STORAGE_KEY = typeof supabaseStorageKeyEnv === 'string' && supabaseStorageKeyEnv.length > 0
   ? supabaseStorageKeyEnv
   : 'lmsfudensa.supabase.auth'
+
+const storageKey = AUTH_STORAGE_KEY
 
 // Detectar entorno navegador de forma segura
 const isBrowser = typeof window !== 'undefined'

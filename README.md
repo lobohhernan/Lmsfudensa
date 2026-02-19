@@ -27,6 +27,7 @@ FUDENSA es una plataforma de educación en línea moderna, escalable y segura co
 
 ### 👥 Sistema de Usuarios
 - Autenticación con **Supabase Auth**
+- **Login con Google OAuth 2.0** (nombre y apellido importados automáticamente)
 - Perfiles de usuario personalizables
 - Sistema de roles (Estudiante, Instructor, Admin)
 - Dashboard de usuario con progreso de cursos
@@ -78,6 +79,7 @@ FUDENSA es una plataforma de educación en línea moderna, escalable y segura co
 - **Mercado Pago API** - Procesamiento de pagos
 - **Supabase** - Backend as a Service
 - **Cloudflare Pages** - Hosting frontend
+- **Google OAuth 2.0** - Autenticación con cuenta Google
 
 ---
 
@@ -112,7 +114,23 @@ SUPABASE_SERVICE_ROLE_KEY=tu_clave_service
 MERCADOPAGO_ACCESS_TOKEN=tu_token_mp
 ```
 
-### 3. Instalar Dependencias
+### 3. Configurar Google OAuth (para login con Google)
+
+1. Ir a [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → **Create OAuth 2.0 Client ID**
+2. Tipo de aplicación: **Aplicación web**
+3. En **Orígenes autorizados de JavaScript** agregar:
+   ```
+   http://localhost:5173
+   https://lmsfudensa.pages.dev
+   ```
+4. En **URIs de redireccionamiento autorizados** agregar:
+   ```
+   https://hztkspqunxeauawqcikw.supabase.co/auth/v1/callback
+   ```
+5. Click en **Crear** — copiar el **Client ID** y **Client Secret**
+6. En [Supabase Dashboard](https://supabase.com/dashboard) → Authentication → Providers → Google → habilitar y pegar las credenciales → **Save**
+
+### 4. Instalar Dependencias
 
 ```bash
 # Frontend
@@ -124,7 +142,7 @@ cd ../backend
 npm install
 ```
 
-### 4. Inicializar Base de Datos
+### 5. Inicializar Base de Datos
 
 ```bash
 cd backend
@@ -132,7 +150,7 @@ npx supabase start
 npx supabase db push
 ```
 
-### 5. Ejecutar en Desarrollo
+### 6. Ejecutar en Desarrollo
 
 ```bash
 # Terminal 1 - Frontend
@@ -204,6 +222,9 @@ Lmsfudensa/
 ### Supabase
 - `VITE_SUPABASE_URL` - URL del proyecto Supabase
 - `VITE_SUPABASE_ANON_KEY` - Clave pública de Supabase
+
+### Google OAuth
+- Configurado directamente en el Dashboard de Supabase (no requiere variables de entorno adicionales)
 
 ### Mercado Pago
 - `VITE_MERCADO_PAGO_PUBLIC_KEY` - Clave pública (solo lectura)

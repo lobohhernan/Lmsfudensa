@@ -22,7 +22,7 @@ const AboutUs = lazy(() => import("./pages/AboutUs").then(m => ({ default: m.Abo
 const Contact = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
-import { supabase } from "./lib/supabase";
+import { supabase, AUTH_STORAGE_KEY } from "./lib/supabase";
 import { initCacheManager } from "./lib/cacheManager";
 import { debug, error as logError } from './lib/logger'
 import { useStorageCleanup } from "./hooks/useStorageCleanup"
@@ -179,6 +179,7 @@ export default function App() {
   const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isResolvingRoute, setIsResolvingRoute] = useState(false);
+  const [authBootstrapped, setAuthBootstrapped] = useState(false);
 
   // ✅ Resolver courseSlug a courseId cuando navegamos por URL (F5)
   useEffect(() => {
@@ -208,7 +209,9 @@ export default function App() {
   }, [currentCourseSlug, currentCourseId]);
 
   // Actualizar URL según la página activa
+  // ⚠️ NO ejecutar pushState mientras haya parámetros OAuth pendientes
   useEffect(() => {
+    if (!authBootstrapped) return; // Esperar a que auth termine bootstrap
     if (currentPage === "profile" && userData) {
       // Perfil: /perfil/username
       const userId = userData.email.split('@')[0];
@@ -274,7 +277,7 @@ export default function App() {
       };
       document.title = `${pageNames[currentPage]} | FUDENSA`;
     }
-  }, [currentPage, userData, currentCourseSlug, currentLessonId]);
+  }, [currentPage, userData, currentCourseSlug, currentLessonId, authBootstrapped]);
 
   // Proteger acceso al panel admin por URL directa
   useEffect(() => {
@@ -319,57 +322,97 @@ export default function App() {
       }
     }
 
+    // ── Helper: Asegurar que exista un profile para cualquier usuario autenticado ──
+    const ensureProfile = async (user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> }) => {
+      try {
+        const fullName = (user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Usuario') as string
+        await supabase.from('profiles').upsert([{
+          id: user.id,
+          email: user.email ?? '',
+          full_name: fullName,
+          role: 'student',
+          updated_at: new Date().toISOString(),
+        }], { onConflict: 'id', ignoreDuplicates: true })
+        debug('✅ [App] Profile asegurado para', user.email)
+      } catch (err) {
+        logError('⚠️ [App] Error asegurando profile:', err)
+      }
+    }
+
+    // ── Helper: Extraer userData de una sesión de Supabase ──
+    const extractUserData = async (user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> }) => {
+      const userMeta = user.user_metadata ?? {}
+      const appMeta = user.app_metadata ?? {}
+      const fullName = (userMeta.full_name || userMeta.name || user.email?.split('@')[0] || 'Usuario') as string
+      let role: 'student' | 'instructor' | 'admin' = ((appMeta.role || userMeta.role || 'student') as 'student' | 'instructor' | 'admin')
+
+      // Intentar obtener el rol real desde profiles (puede ser admin)
+      try {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        if (profile?.role) {
+          role = profile.role as 'student' | 'instructor' | 'admin'
+        }
+      } catch { /* ignorar, usa fallback */ }
+
+      return { email: user.email || '', name: fullName, role }
+    }
+
     const loadSession = async () => {
       try {
         debug('🔐 [App] Cargando sesión...')
 
-        // ✅ SOLO MOSTRAR "Verificando sesión..." SI HAY TOKENS GUARDADOS
-        const hasStoredSession = localStorage.getItem('lmsfudensa.supabase.auth')
-        if (!hasStoredSession) {
-          // No hay sesión guardada, terminar inmediatamente SIN mostrar loader
-          debug('⚠️ [App] No hay tokens en localStorage, saltando verificación')
+        // ── Detectar callback OAuth ──
+        // PKCE envía ?code= en query, flujo implícito envía #access_token= en hash
+        const urlSearch = new URLSearchParams(window.location.search)
+        const isOAuthCallback =
+          urlSearch.has('code') ||
+          window.location.hash.includes('access_token=') ||
+          window.location.hash.includes('refresh_token=')
+
+        // ── Buscar sesión guardada con la KEY que realmente usa el cliente ──
+        const hasStoredSession = Object.keys(localStorage).some(k => k.startsWith(AUTH_STORAGE_KEY))
+
+        if (!hasStoredSession && !isOAuthCallback) {
+          debug('⚠️ [App] No hay tokens en localStorage ni callback OAuth, saltando verificación')
           setIsLoggedIn(false)
           setUserData(null)
           sessionStorage.removeItem('user_session')
+          setAuthBootstrapped(true)
           return
         }
 
-        // ✅ SI HAY TOKENS, AHORA SÍ VERIFICAMOS (aquí se muestra el loader)
-        const { data: { session } } = await supabase.auth.getSession();
+        if (isOAuthCallback) {
+          debug('🔐 [App] Callback OAuth detectado, procesando tokens...')
+        }
+
+        // ── getSession() PRIMERO: necesita leer ?code= ANTES de limpiarlo ──
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+        // Ahora sí limpiamos la URL (el code ya fue intercambiado)
+        if (isOAuthCallback) {
+          window.history.replaceState(null, '', window.location.pathname)
+        }
+
+        if (sessionError) {
+          logError('❌ [App] Error obteniendo sesión:', sessionError)
+        }
+
         debug('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
 
         if (session?.user) {
           debug('🔐 [App] Usuario autenticado')
 
-          // Obtener nombre de user_metadata (donde Supabase guarda full_name)
-          const userMeta = session.user.user_metadata;
-          const fullName = userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || "Usuario";
-          
-          // Obtener role de app_metadata si existe (donde Supabase guarda roles personalizados)
-          const appMeta = session.user.app_metadata;
-          const role = appMeta?.role || userMeta?.role || 'student';
+          // Asegurar profile (idempotente — no sobreescribe si ya existe)
+          await ensureProfile(session.user)
 
-          const userData_: { email: string; name: string; role: 'student' | 'instructor' | 'admin' } = {
-            email: session.user.email || "",
-            name: fullName,
-            role: role as 'student' | 'instructor' | 'admin',
-          };
+          const userData_ = await extractUserData(session.user)
 
           debug('✅ [App] Login exitoso:', userData_.email, 'name:', userData_.name, 'role:', userData_.role)
-          setIsLoggedIn(true);
-          setUserData(userData_);
-          sessionStorage.setItem('user_session', JSON.stringify(userData_));
+          setIsLoggedIn(true)
+          setUserData(userData_)
+          sessionStorage.setItem('user_session', JSON.stringify(userData_))
           clearAuthTimeout()
-          
-          // Consultar profiles en background para actualizar el rol si es diferente
-          supabase.from('profiles').select('role').eq('id', session.user.id).single().then(({ data: profile }) => {
-            if (profile?.role && profile.role !== userData_.role) {
-              debug('🔄 [App] Actualizando rol desde profiles:', profile.role)
-              setUserData(prev => prev ? { ...prev, role: profile.role } : null);
-            }
-          });
         } else {
-          // No hay sesión válida — terminar rápido
           debug('⚠️ [App] No hay sesión válida, finalizando...')
           setIsLoggedIn(false)
           setUserData(null)
@@ -377,19 +420,20 @@ export default function App() {
           clearAuthTimeout()
         }
       } catch (error) {
-        logError("Error cargando sesión:", error);
-        // En caso de error, marcar como no autenticado inmediatamente
+        logError('Error cargando sesión:', error)
         setIsLoggedIn(false)
         setUserData(null)
         sessionStorage.removeItem('user_session')
         clearAuthTimeout()
+      } finally {
+        setAuthBootstrapped(true)
       }
     };
 
     loadSession();
 
     // Escuchar cambios de autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, session: { user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } } | null) => {
       debug('🔄 [App] Auth state change:', _event, { hasSession: !!session })
       // Si llegó alguna actualización de auth, cancelar el timeout de no-auth
       if (authTimeoutRef.current) {
@@ -397,35 +441,20 @@ export default function App() {
         authTimeoutRef.current = null
       }
       if (session?.user) {
-        // Obtener nombre de user_metadata (donde Supabase guarda full_name)
-        const userMeta = session.user.user_metadata;
-        const fullName = userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || "Usuario";
+        // Asegurar profile para CUALQUIER evento (no solo SIGNED_IN)
+        // Es idempotente — ignoreDuplicates:true no sobreescribe existentes
+        await ensureProfile(session.user)
 
-        // Obtener role de app_metadata si existe
-        const appMeta = session.user.app_metadata;
-        const role = appMeta?.role || userMeta?.role || 'student';
+        const userData_ = await extractUserData(session.user)
 
-        const userData_ = {
-          email: session.user.email || "",
-          name: fullName,
-          role: role as 'student' | 'instructor' | 'admin',
-        };
-
-        setIsLoggedIn(true);
-        setUserData(userData_);
-        sessionStorage.setItem('user_session', JSON.stringify(userData_));
-        
-        // Consultar profiles en background para actualizar el rol si es diferente
-        supabase.from('profiles').select('role').eq('id', session.user.id).single().then(({ data: profile }) => {
-          if (profile?.role && profile.role !== userData_.role) {
-            debug('🔄 [App] onAuthStateChange: Actualizando rol desde profiles:', profile.role)
-            setUserData(prev => prev ? { ...prev, role: profile.role } : null);
-          }
-        });
+        setIsLoggedIn(true)
+        setUserData(userData_)
+        sessionStorage.setItem('user_session', JSON.stringify(userData_))
+        setAuthBootstrapped(true)
       } else {
-        setIsLoggedIn(false);
-        setUserData(null);
-        sessionStorage.removeItem('user_session');
+        setIsLoggedIn(false)
+        setUserData(null)
+        sessionStorage.removeItem('user_session')
       }
     });
 
