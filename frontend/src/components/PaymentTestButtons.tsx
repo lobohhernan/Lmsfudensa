@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from "react";
+﻿import { useState, useCallback, memo } from "react";
 import { Button } from "./ui/button";
 import { AlertCircle, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -53,7 +53,7 @@ function PaymentTestButtonsComponent({
   }, [userId, courseId, userEmail, onPaymentSimulated]);
 
   return (
-    <div className="w-full rounded-xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100 p-6 mt-6 shadow-md">
+    <div className="w-full rounded-xl border-2 border-amber-300 bg-linear-to-br from-amber-50 to-amber-100 p-6 mt-6 shadow-md">
       {/* Header */}
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-200">

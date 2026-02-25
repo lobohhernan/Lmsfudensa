@@ -1,4 +1,4 @@
-import { Clock, BarChart3, Award, Play, CheckCircle, Users, Loader2 } from "lucide-react";
+﻿import { Clock, BarChart3, Award, Play, CheckCircle, Users, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -221,8 +221,8 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
 
             {/* Mobile CTA Buttons - Show only on mobile */}
             <div className="lg:hidden">
-              <Card className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(11,95,255,0.12)]">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+              <Card className="border border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(11,95,255,0.12)]">
+                <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
                 <CardContent className="space-y-4 p-4 bg-white/20">
                   <div className="grid grid-cols-2 gap-3 text-sm text-[#64748B]">
                     <div className="flex items-center gap-2">
@@ -296,7 +296,7 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
                       <div className="space-y-3">
                         {lessons.map((lesson, index) => (
                           <div key={lesson.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#0B5FFF]/10 flex items-center justify-center text-[#0B5FFF] font-medium">
+                            <div className="shrink-0 w-8 h-8 rounded-full bg-[#0B5FFF]/10 flex items-center justify-center text-[#0B5FFF] font-medium">
                               {index + 1}
                             </div>
                             <div className="flex-1">
@@ -319,8 +319,8 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
 
           {/* Sidebar - Desktop Only */}
           <aside className="hidden space-y-6 lg:block">
-            <Card className="sticky top-24 border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(11,95,255,0.12)]">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+            <Card className="sticky top-24 border border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(11,95,255,0.12)]">
+              <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
               <CardContent className="space-y-6 p-6 bg-white/20">
                 <div className="space-y-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/40 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]">
                   <div className="flex items-center gap-2 text-[#64748B]">
@@ -360,19 +360,19 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
 
                 <div className="space-y-2 border-t pt-6">
                   <div className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-[#10B981] mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="h-4 w-4 text-[#10B981] mt-0.5 shrink-0" />
                     <p className="text-xs text-[#64748B]">
                       Acceso inmediato a todas las lecciones
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-[#10B981] mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="h-4 w-4 text-[#10B981] mt-0.5 shrink-0" />
                     <p className="text-xs text-[#64748B]">
                       Certificado digital oficial al aprobar
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-[#10B981] mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="h-4 w-4 text-[#10B981] mt-0.5 shrink-0" />
                     <p className="text-xs text-[#64748B]">
                       Pago seguro con Mercado Pago
                     </p>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense, startTransition } from "react";
+﻿import { useState, useEffect, useCallback, lazy, Suspense, startTransition } from "react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
 import { PageLoader } from "./components/PageLoader";
@@ -285,7 +285,10 @@ export default function App() {
   }, [currentPage, userData, currentCourseSlug, currentLessonId, authBootstrapped]);
 
   // Proteger acceso al panel admin por URL directa
+  // ⚠️ Esperar a authBootstrapped antes de evaluar: si no, redirige mientras
+  // Supabase aún está restaurando la sesión desde localStorage (ej: F5 en /admin)
   useEffect(() => {
+    if (!authBootstrapped) return;
     if (currentPage === 'admin') {
       if (!isLoggedIn || !userData || userData.role !== 'admin') {
         toast.error('Acceso denegado. Solo administradores pueden acceder al panel admin.');
@@ -295,7 +298,7 @@ export default function App() {
         });
       }
     }
-  }, [currentPage, isLoggedIn, userData]);
+  }, [currentPage, isLoggedIn, userData, authBootstrapped]);
 
   // ✅ Listener para botón atrás/adelante del navegador
   useEffect(() => {
@@ -389,8 +392,17 @@ export default function App() {
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, session: { user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } } | null) => {
       debug('🔄 [App] Auth state change:', _event, { hasSession: !!session })
+
+      // TOKEN_REFRESHED: el token se renovó automáticamente (~55 min) pero el usuario
+      // y su rol no cambiaron — solo actualizamos el flag y salimos sin re-queries a DB.
+      if (_event === 'TOKEN_REFRESHED' && session?.user) {
+        debug('🔑 [App] Token renovado, sin re-consultar perfil')
+        setAuthBootstrapped(true)
+        return
+      }
+
       if (session?.user) {
-        // Asegurar profile para CUALQUIER evento (INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, etc.)
+        // Asegurar profile solo en INITIAL_SESSION / SIGNED_IN / USER_UPDATED
         // Es idempotente — ignoreDuplicates:true no sobreescribe el perfil existente
         await ensureProfile(session.user)
 
@@ -495,7 +507,7 @@ export default function App() {
   // Mostrar loader mientras resolvemos la ruta del curso
   if (isResolvingRoute) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-white border-t-transparent mb-4"></div>
           <p className="text-white text-lg font-medium">Cargando curso...</p>

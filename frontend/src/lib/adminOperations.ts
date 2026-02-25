@@ -59,7 +59,7 @@ type AdminRequest = IssueRequest | SaveCourseRequest | SaveTeacherRequest | Save
  */
 export async function invokeAdminOperation(request: AdminRequest) {
   try {
-    const { data, error } = await supabase.functions.invoke('admin-operations', {
+    const { data, error } = await supabase.functions.invoke('bright-action', {
       body: request
     })
 

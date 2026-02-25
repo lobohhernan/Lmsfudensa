@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { XCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 
@@ -31,7 +31,7 @@ export default function CheckoutFailure({ onNavigate }: CheckoutFailureProps) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
         <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
         
@@ -45,7 +45,7 @@ export default function CheckoutFailure({ onNavigate }: CheckoutFailureProps) {
 
         <div className="bg-red-50 p-4 rounded-lg mb-6 border border-red-200">
           <div className="flex items-start gap-2">
-            <div className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0">⚠️</div>
+            <div className="h-5 w-5 text-red-600 mt-0.5 shrink-0">⚠️</div>
             <div className="text-left">
               <p className="text-sm text-red-800 font-semibold">
                 {reason}

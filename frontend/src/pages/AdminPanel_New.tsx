@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import {
   Plus,
   ArrowLeft,
@@ -343,13 +343,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         {/* Quick Actions */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card 
-            className="group relative cursor-pointer overflow-hidden border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105"
+            className="group relative cursor-pointer overflow-hidden border border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105"
             onClick={() => setShowForm(true)}
           >
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle>Crear Curso</CardTitle>
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#0B5FFF]/20 backdrop-blur-sm border border-[#0B5FFF]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#0B5FFF]/20 backdrop-blur-sm border border-[#0B5FFF]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                   <Plus className="h-6 w-6 text-[#0B5FFF]" />
                 </div>
               </div>
@@ -360,13 +360,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           </Card>
 
           <Card 
-            className="group relative cursor-pointer overflow-hidden border border-[#16A34A]/20 bg-gradient-to-br from-white to-[#16A34A]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#16A34A]/40 hover:shadow-[0_8px_32px_0_rgba(22,163,74,0.15)] hover:scale-105"
+            className="group relative cursor-pointer overflow-hidden border border-[#16A34A]/20 bg-linear-to-br from-white to-[#16A34A]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#16A34A]/40 hover:shadow-[0_8px_32px_0_rgba(22,163,74,0.15)] hover:scale-105"
             onClick={() => onNavigate?.("courses")}
           >
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle>Ver Cursos</CardTitle>
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#16A34A]/20 backdrop-blur-sm border border-[#16A34A]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#16A34A]/20 backdrop-blur-sm border border-[#16A34A]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                   <BookOpen className="h-6 w-6 text-[#16A34A]" />
                 </div>
               </div>
@@ -377,13 +377,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           </Card>
 
           <Card 
-            className="group relative cursor-pointer overflow-hidden border border-[#F59E0B]/20 bg-gradient-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#F59E0B]/40 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105"
+            className="group relative cursor-pointer overflow-hidden border border-[#F59E0B]/20 bg-linear-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#F59E0B]/40 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105"
             onClick={() => onNavigate?.("home")}
           >
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle>Ir al Sitio</CardTitle>
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#F59E0B]/20 backdrop-blur-sm border border-[#F59E0B]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#F59E0B]/20 backdrop-blur-sm border border-[#F59E0B]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                   <BookOpen className="h-6 w-6 text-[#F59E0B]" />
                 </div>
               </div>
@@ -395,13 +395,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         </div>
 
         {/* Information */}
-        <Card className="border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5">
+        <Card className="border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5">
           <CardHeader>
             <CardTitle>¿Cómo usar el panel?</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#0B5FFF]/20 text-[#0B5FFF] font-semibold">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0B5FFF]/20 text-[#0B5FFF] font-semibold">
                 1
               </div>
               <div>
@@ -413,7 +413,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#0B5FFF]/20 text-[#0B5FFF] font-semibold">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0B5FFF]/20 text-[#0B5FFF] font-semibold">
                 2
               </div>
               <div>
@@ -425,7 +425,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#0B5FFF]/20 text-[#0B5FFF] font-semibold">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0B5FFF]/20 text-[#0B5FFF] font-semibold">
                 3
               </div>
               <div>

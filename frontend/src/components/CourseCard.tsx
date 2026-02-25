@@ -1,4 +1,4 @@
-import { memo } from "react";
+﻿import { memo } from "react";
 import { Clock, BarChart3, Award } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
@@ -35,13 +35,13 @@ export const CourseCard = memo(function CourseCard({
   return (
     <Card
       role={role}
-      className="group cursor-pointer overflow-hidden border border-gray-200/50 bg-white transition-all duration-300 hover:border-white/20 hover:bg-gradient-to-b hover:from-white/90 hover:to-white/70 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] hover:backdrop-blur-xl hover:scale-105 flex flex-col h-full"
+      className="group cursor-pointer overflow-hidden border border-gray-200/50 bg-white transition-all duration-300 hover:border-white/20 hover:bg-linear-to-b hover:from-white/90 hover:to-white/70 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] hover:backdrop-blur-xl hover:scale-105 flex flex-col h-full"
       onClick={onClick}
     >
       {/* Glass effect top highlight */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-white/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
       
-      <CardHeader className="p-0 flex-shrink-0">
+      <CardHeader className="p-0 shrink-0">
         <div className="relative aspect-video overflow-hidden">
           <ImageWithFallback
             src={image}
