@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Plus, Trash2, GripVertical, Save, Upload } from "lucide-react";
+import { Plus, Trash2, GripVertical, Save, Upload, Youtube } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -18,6 +18,35 @@ import { Separator } from "./ui/separator";
 import { toast } from "sonner";
 import type { FullCourse, CourseLesson, EvaluationQuestion } from "../lib/data";
 import type { Teacher } from "../lib/types";
+
+/**
+ * Extrae el ID de un video de YouTube desde cualquier formato de URL o ID directo.
+ * Soporta:
+ *   - https://www.youtube.com/watch?v=dQw4w9WgXcQ
+ *   - https://youtu.be/dQw4w9WgXcQ
+ *   - https://www.youtube.com/embed/dQw4w9WgXcQ
+ *   - dQw4w9WgXcQ  (ID directo)
+ */
+function extractYoutubeId(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+
+  // Patrones de URL de YouTube
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([A-Za-z0-9_-]{11})/,
+    /^([A-Za-z0-9_-]{11})$/, // ID directo de 11 caracteres
+  ];
+
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (match) return match[1];
+  }
+
+  // Si no coincide con ningún patrón pero podría ser un ID (hasta 11 chars alfanuméricos)
+  if (/^[A-Za-z0-9_-]{1,11}$/.test(trimmed)) return trimmed;
+
+  return trimmed; // Devolver tal cual para que el usuario vea lo que ingresó
+}
 
 interface CourseFormProps {
   course?: FullCourse;
@@ -559,17 +588,34 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
                       </div>
                       {lesson.type === "video" && (
                         <div className="space-y-2">
-                          <Label>ID de YouTube</Label>
+                          <Label className="flex items-center gap-1">
+                            <Youtube className="h-4 w-4 text-red-500" />
+                            ID o URL de YouTube
+                          </Label>
                           <Input
-                            placeholder="Ej: dQw4w9WgXcQ (desde youtube.com/watch?v=ID)"
+                            placeholder="Ej: dQw4w9WgXcQ  o  https://youtube.com/watch?v=dQw4w9WgXcQ"
                             value={lesson.youtubeId || ""}
-                            onChange={(e) => updateLesson(index, "youtubeId", e.target.value)}
+                            onChange={(e) => {
+                              const extracted = extractYoutubeId(e.target.value);
+                              updateLesson(index, "youtubeId", extracted);
+                            }}
                           />
                           <p className="text-xs text-[#64748B]">
-                            Ingresa solo el ID del video de YouTube. Por ejemplo, si la URL es 
-                            <code className="mx-1 rounded bg-[#F1F5F9] px-1">youtube.com/watch?v=dQw4w9WgXcQ</code>
-                            el ID es <code className="mx-1 rounded bg-[#F1F5F9] px-1">dQw4w9WgXcQ</code>
+                            Puedes pegar el ID directo (<code className="rounded bg-[#F1F5F9] px-1">dQw4w9WgXcQ</code>)
+                            o la URL completa de YouTube — el ID se extrae automáticamente.
                           </p>
+                          {lesson.youtubeId && /^[A-Za-z0-9_-]{11}$/.test(lesson.youtubeId) && (
+                            <div className="overflow-hidden rounded-md border border-[#E2E8F0]">
+                              <iframe
+                                src={`https://www.youtube.com/embed/${lesson.youtubeId}?rel=0&modestbranding=1`}
+                                title="Vista previa del video"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                className="aspect-video w-full"
+                                style={{ border: 0 }}
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
