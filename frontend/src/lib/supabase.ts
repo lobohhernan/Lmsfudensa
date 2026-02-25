@@ -49,11 +49,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // Auto refresh de tokens habilitado (NECESARIO para renovar sesión)
     autoRefreshToken: true,
   },
-  global: {
-    headers: {
-      'Cache-Control': 'no-store, no-cache, must-revalidate'
-    }
-  }
+  // ⚠️ NO agregar Cache-Control global: interfiere con el refresh de tokens de auth
 })
 
 console.log(`✅ [Supabase] Cliente inicializado correctamente (storageKey=${storageKey}, storage=${storage ? 'localStorage' : 'disabled'}, persistSession=true)`)
