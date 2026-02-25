@@ -26,7 +26,9 @@ export interface CourseLesson {
   completed?: boolean;
   locked?: boolean;
   description?: string;
-  youtubeId?: string;  // ID del video de YouTube (ej: "dQw4w9WgXcQ")
+  content?: string;
+  youtubeId?: string;   // camelCase — usado en el front-end y al guardar
+  youtube_id?: string;  // snake_case — campo real devuelto por Supabase al leer
 }
 
 export interface EvaluationQuestion {

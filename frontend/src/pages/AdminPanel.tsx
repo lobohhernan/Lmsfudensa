@@ -499,9 +499,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         type: lesson.type || "video",
         completed: false,
         locked: false,
-        youtubeId: lesson.youtubeId || "", // ⚠️ Conversión snake_case -> camelCase
+        youtubeId: lesson.youtube_id || "", // ✅ Leer campo snake_case de Supabase
         description: lesson.description || "",
-        content: lesson.description || "",
+        content: lesson.content || "",
       }));
 
       // Mapear evaluaciones a formato esperado por CourseForm
