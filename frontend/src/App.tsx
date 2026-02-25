@@ -393,14 +393,6 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, session: { user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } } | null) => {
       debug('🔄 [App] Auth state change:', _event, { hasSession: !!session })
 
-      // TOKEN_REFRESHED: el token se renovó automáticamente (~55 min) pero el usuario
-      // y su rol no cambiaron — solo actualizamos el flag y salimos sin re-queries a DB.
-      if (_event === 'TOKEN_REFRESHED' && session?.user) {
-        debug('🔑 [App] Token renovado, sin re-consultar perfil')
-        setAuthBootstrapped(true)
-        return
-      }
-
       if (session?.user) {
         // Asegurar profile solo en INITIAL_SESSION / SIGNED_IN / USER_UPDATED
         // Es idempotente — ignoreDuplicates:true no sobreescribe el perfil existente
