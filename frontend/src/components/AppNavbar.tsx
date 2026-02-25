@@ -489,7 +489,7 @@ export function AppNavbar({
                     ¿Olvidaste tu contraseña?
                   </a>
                 </div>
-                <Button type="submit" className="w-full bg-linear-to-b from-[#22C55E] to-[#16A34A] text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]">
+                <Button type="submit" className="w-full text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]" style={{ background: 'linear-gradient(to bottom, #22C55E, #16a34a)' }}>
                   Iniciar Sesión
                 </Button>
                 
