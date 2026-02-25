@@ -22,7 +22,7 @@ const AboutUs = lazy(() => import("./pages/AboutUs").then(m => ({ default: m.Abo
 const Contact = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
-import { supabase, AUTH_STORAGE_KEY } from "./lib/supabase";
+import { supabase } from "./lib/supabase";
 import { initCacheManager } from "./lib/cacheManager";
 import { debug, error as logError } from './lib/logger'
 import { useStorageCleanup } from "./hooks/useStorageCleanup"
@@ -176,7 +176,7 @@ export default function App() {
   const [currentLessonId, setCurrentLessonId] = useState<string | undefined>(initialRoute.lessonId);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState<{ email: string; name: string; role: 'student' | 'instructor' | 'admin' } | null>(null);
-  const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
+  const [, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isResolvingRoute, setIsResolvingRoute] = useState(false);
   const [authBootstrapped, setAuthBootstrapped] = useState(false);
@@ -268,6 +268,11 @@ export default function App() {
         course: "Detalle del Curso",
         lesson: "Lección",
         checkout: "Checkout",
+        "payment-callback": "Procesando Pago",
+        "mp-success": "Confirmando Pago",
+        "mp-redirect": "Redirigiendo Pago",
+        "checkout-success": "Pago Exitoso",
+        "checkout-failure": "Pago Fallido",
         profile: "Perfil",
         admin: "Panel de Administración",
         design: "Sistema de Diseño",
@@ -313,15 +318,6 @@ export default function App() {
     // ✨ Inicializar Cache Manager (detección automática de versión)
     initCacheManager()
 
-    const authTimeoutRef: { current: number | null } = { current: null }
-
-    const clearAuthTimeout = () => {
-      if (authTimeoutRef.current) {
-        clearTimeout(authTimeoutRef.current)
-        authTimeoutRef.current = null
-      }
-    }
-
     // ── Helper: Asegurar que exista un profile para cualquier usuario autenticado ──
     const ensureProfile = async (user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> }) => {
       try {
@@ -359,8 +355,6 @@ export default function App() {
 
     const loadSession = async () => {
       try {
-        debug('🔐 [App] Cargando sesión...')
-
         // ── Detectar callback OAuth ──
         // PKCE envía ?code= en query, flujo implícito envía #access_token= en hash
         const urlSearch = new URLSearchParams(window.location.search)
@@ -369,63 +363,23 @@ export default function App() {
           window.location.hash.includes('access_token=') ||
           window.location.hash.includes('refresh_token=')
 
-        // ── Buscar sesión guardada con la KEY que realmente usa el cliente ──
-        const hasStoredSession = Object.keys(localStorage).some(k => k.startsWith(AUTH_STORAGE_KEY))
-
-        if (!hasStoredSession && !isOAuthCallback) {
-          debug('⚠️ [App] No hay tokens en localStorage ni callback OAuth, saltando verificación')
-          setIsLoggedIn(false)
-          setUserData(null)
-          sessionStorage.removeItem('user_session')
-          setAuthBootstrapped(true)
-          return
-        }
-
         if (isOAuthCallback) {
-          debug('🔐 [App] Callback OAuth detectado, procesando tokens...')
-        }
-
-        // ── getSession() PRIMERO: necesita leer ?code= ANTES de limpiarlo ──
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-        // Ahora sí limpiamos la URL (el code ya fue intercambiado)
-        if (isOAuthCallback) {
+          debug('🔐 [App] Callback OAuth detectado, intercambiando tokens...')
+          // getSession() intercambia el ?code= por tokens.
+          // Después de esto, onAuthStateChange dispara SIGNED_IN automáticamente.
+          await supabase.auth.getSession()
           window.history.replaceState(null, '', window.location.pathname)
+          debug('🔐 [App] Tokens OAuth intercambiados, URL limpiada')
         }
 
-        if (sessionError) {
-          logError('❌ [App] Error obteniendo sesión:', sessionError)
-        }
-
-        debug('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
-
-        if (session?.user) {
-          debug('🔐 [App] Usuario autenticado')
-
-          // Asegurar profile (idempotente — no sobreescribe si ya existe)
-          await ensureProfile(session.user)
-
-          const userData_ = await extractUserData(session.user)
-
-          debug('✅ [App] Login exitoso:', userData_.email, 'name:', userData_.name, 'role:', userData_.role)
-          setIsLoggedIn(true)
-          setUserData(userData_)
-          sessionStorage.setItem('user_session', JSON.stringify(userData_))
-          clearAuthTimeout()
-        } else {
-          debug('⚠️ [App] No hay sesión válida, finalizando...')
-          setIsLoggedIn(false)
-          setUserData(null)
-          sessionStorage.removeItem('user_session')
-          clearAuthTimeout()
-        }
+        // ✅ El estado del usuario (isLoggedIn, userData, authBootstrapped) es manejado
+        //    completamente por onAuthStateChange(INITIAL_SESSION | SIGNED_IN).
+        //    No duplicamos las queries de perfil aquí.
       } catch (error) {
-        logError('Error cargando sesión:', error)
+        logError('Error en loadSession OAuth:', error)
+        // Garantizar que el bootstrap termina en caso de error
         setIsLoggedIn(false)
         setUserData(null)
-        sessionStorage.removeItem('user_session')
-        clearAuthTimeout()
-      } finally {
         setAuthBootstrapped(true)
       }
     };
@@ -435,35 +389,29 @@ export default function App() {
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, session: { user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } } | null) => {
       debug('🔄 [App] Auth state change:', _event, { hasSession: !!session })
-      // Si llegó alguna actualización de auth, cancelar el timeout de no-auth
-      if (authTimeoutRef.current) {
-        clearTimeout(authTimeoutRef.current)
-        authTimeoutRef.current = null
-      }
       if (session?.user) {
-        // Asegurar profile para CUALQUIER evento (no solo SIGNED_IN)
-        // Es idempotente — ignoreDuplicates:true no sobreescribe existentes
+        // Asegurar profile para CUALQUIER evento (INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, etc.)
+        // Es idempotente — ignoreDuplicates:true no sobreescribe el perfil existente
         await ensureProfile(session.user)
 
         const userData_ = await extractUserData(session.user)
 
+        debug('✅ [App] Auth state:', _event, userData_.email, 'role:', userData_.role)
         setIsLoggedIn(true)
         setUserData(userData_)
         sessionStorage.setItem('user_session', JSON.stringify(userData_))
         setAuthBootstrapped(true)
       } else {
+        debug('⚠️ [App] Sin sesión activa, evento:', _event)
         setIsLoggedIn(false)
         setUserData(null)
         sessionStorage.removeItem('user_session')
+        setAuthBootstrapped(true)
       }
     });
 
     return () => {
       subscription?.unsubscribe();
-      if (authTimeoutRef.current) {
-        clearTimeout(authTimeoutRef.current)
-        authTimeoutRef.current = null
-      }
     };
   }, []);
 
@@ -485,15 +433,12 @@ export default function App() {
     // lo que causaría "A component suspended while responding to synchronous input".
     startTransition(() => {
       setCurrentPage(page as Page);
-      if (courseId) {
-        setCurrentCourseId(courseId);
-      }
-      if (courseSlug) {
-        setCurrentCourseSlug(courseSlug);
-      }
-      if (lessonId) {
-        setCurrentLessonId(lessonId);
-      }
+      // ✅ Siempre sobrescribir (incluso con undefined) para limpiar el estado
+      // previo del curso/lección. Sin esto, navegar del Curso A→Catálogo→Curso B
+      // (sin pasar courseId) mantiene el courseId del Curso A y carga el curso equivocado.
+      setCurrentCourseId(courseId);
+      setCurrentCourseSlug(courseSlug);
+      setCurrentLessonId(lessonId);
     });
   }, [isLoggedIn, userData]);
 

@@ -32,7 +32,15 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
   const [userCertificates, setUserCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [certificatesLoading, setCertificatesLoading] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  // ✅ Verificar sesión real en lugar de asumir siempre true
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Confirmar sesión activa al montar el componente
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session?.user);
+    });
+  }, []);
   const { courses: userCourses, loading: coursesLoading } = useEnrollmentProgress(isLoggedIn);
   
   // Verificar si hay una pestaña específica solicitada
