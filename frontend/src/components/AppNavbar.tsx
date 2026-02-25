@@ -1,4 +1,4 @@
-import { Search, Menu, X, User, LogOut, UserCircle, LayoutDashboard } from "lucide-react";
+﻿import { Search, Menu, X, User, LogOut, UserCircle, LayoutDashboard } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -169,7 +169,7 @@ export function AppNavbar({
           : 'md:bg-transparent bg-[#1e467c]/80 backdrop-blur-xl'
       }`}>
         {/* Glass effect top highlight */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-white/20 to-transparent" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
@@ -285,12 +285,12 @@ export function AppNavbar({
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-[#1e467c]/95 to-[#2c5a9e]/95 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.5)] md:hidden"
+              className="relative overflow-hidden border-b border-white/10 bg-linear-to-b from-[#1e467c]/95 to-[#2c5a9e]/95 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.5)] md:hidden"
             >
               {/* Glass shine effect */}
-              <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-white/5 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-linear-to-b from-white/10 via-white/5 to-transparent pointer-events-none" />
               {/* Inner glow */}
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/30 to-transparent" />
               <motion.div
                 initial={{ y: -20 }}
                 animate={{ y: 0 }}
@@ -321,7 +321,7 @@ export function AppNavbar({
                 </button>
                 <div className="flex flex-col gap-3 pt-6 pb-3">
                   {/* Separator line */}
-                  <div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]" />
+                  <div className="h-px bg-linear-to-r from-transparent via-white/30 to-transparent shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]" />
                   
                   {isLoggedIn ? (
                     <>
@@ -385,11 +385,11 @@ export function AppNavbar({
         setLoginOpen(open);
         if (!open) setIsRegistering(false);
       }}>
-        <DialogContent className="sm:max-w-[425px] relative overflow-hidden border-white/20 bg-gradient-to-br from-[#1e467c]/95 via-[#2c5a9e]/95 to-[#1e467c]/95 backdrop-blur-2xl shadow-[0_24px_64px_0_rgba(31,38,135,0.5),inset_0_1px_0_0_rgba(255,255,255,0.15)]">
+        <DialogContent className="sm:max-w-[425px] relative overflow-hidden border-white/20 bg-linear-to-br from-[#1e467c]/95 via-[#2c5a9e]/95 to-[#1e467c]/95 backdrop-blur-2xl shadow-[0_24px_64px_0_rgba(31,38,135,0.5),inset_0_1px_0_0_rgba(255,255,255,0.15)]">
           {/* Glass shine effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-linear-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
           {/* Inner glow */}
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/40 to-transparent" />
           
           <div className="relative z-10">
             <DialogHeader>
@@ -489,7 +489,7 @@ export function AppNavbar({
                     ¿Olvidaste tu contraseña?
                   </a>
                 </div>
-                <Button type="submit" className="w-full bg-gradient-to-b from-[#22C55E] to-[#16A34A] text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]">
+                <Button type="submit" className="w-full bg-linear-to-b from-[#22C55E] to-[#16A34A] text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]">
                   Iniciar Sesión
                 </Button>
                 
@@ -498,7 +498,7 @@ export function AppNavbar({
                     <span className="w-full border-t border-white/20" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="rounded-full bg-gradient-to-br from-[#1e467c]/95 to-[#2c5a9e]/95 px-3 py-1 text-white/70 backdrop-blur-sm border border-white/10">O continuar con</span>
+                    <span className="rounded-full bg-linear-to-br from-[#1e467c]/95 to-[#2c5a9e]/95 px-3 py-1 text-white/70 backdrop-blur-sm border border-white/10">O continuar con</span>
                   </div>
                 </div>
                 
@@ -694,7 +694,7 @@ export function AppNavbar({
                     className="border-white/20 bg-white/10 text-white placeholder:text-white/50 backdrop-blur-sm shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.1)] focus:border-white/40 focus:bg-white/15"
                   />
                 </div>
-                <Button type="submit" className="w-full bg-gradient-to-b from-[#22C55E] to-[#16A34A] text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]">
+                <Button type="submit" className="w-full bg-linear-to-b from-[#22C55E] to-[#16A34A] text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]">
                   Crear Cuenta
                 </Button>
                 <p className="text-center text-sm text-white/70">

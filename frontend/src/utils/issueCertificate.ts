@@ -39,7 +39,7 @@ export async function issueCertificate(params: IssueCertificateParams) {
 
   try {
     // Usar Edge Function para emitir certificado (seguro, sin SERVICE_ROLE_KEY en frontend)
-    console.log("🔑 [issueCertificate] Usando Edge Function admin-operations");
+    console.log("🔑 [issueCertificate] Usando Edge Function bright-action");
 
     const result = await issueCertificateViaAdmin({
       studentId,

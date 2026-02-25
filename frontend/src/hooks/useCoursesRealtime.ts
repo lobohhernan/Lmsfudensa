@@ -72,20 +72,10 @@ export function useCoursesRealtime() {
     try {
       setLoading(true)
       
-      // ✅ Intentar con timeout de 10 segundos
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout al cargar cursos')), 10000)
-      );
-      
-      const fetchPromise = supabase
+      const { data, error: queryError } = await supabase
         .from('courses')
         .select('*')
         .order('created_at', { ascending: false });
-      
-      const { data, error: queryError } = await Promise.race([
-        fetchPromise,
-        timeoutPromise
-      ]) as any;
 
       if (queryError) {
         console.error('❌ Error en query de cursos:', queryError);
@@ -109,25 +99,7 @@ export function useCoursesRealtime() {
         err instanceof Error ? err.message : 'Error fetching courses'
       console.error('❌ [useCoursesRealtime] Error fetching courses:', err)
       setError(message)
-      
-      // ✅ Si hay error, intentar limpiar cache corrupto
-      if (message.includes('Timeout') || message.includes('406')) {
-        console.warn('⚠️ Posible cache corrupto, limpiando...');
-        try {
-          // Limpiar localStorage relacionado con supabase
-          const keysToRemove: string[] = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.includes('supabase')) {
-              keysToRemove.push(key);
-            }
-          }
-          keysToRemove.forEach(key => localStorage.removeItem(key));
-          console.log(`🗑️ Cache limpiado: ${keysToRemove.length} elementos`);
-        } catch (cleanErr) {
-          console.error('Error limpiando cache:', cleanErr);
-        }
-      }
+      // ⚠️ NUNCA limpiar localStorage aquí: borraría el token de autenticación
     } finally {
       setLoading(false)
     }

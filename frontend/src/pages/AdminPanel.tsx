@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import {
   LayoutDashboard,
   BookOpen,
@@ -20,7 +20,7 @@ import {
   GraduationCap,
   Loader2,
 } from "lucide-react";
-import { CourseLesson, EvaluationQuestion } from "../lib/data";
+import { CourseLesson } from "../lib/data";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -85,6 +85,40 @@ interface AdminPanelProps {
   onNavigate?: (page: string) => void;
 }
 
+// Tipo que refleja una fila real de la tabla profiles en Supabase
+interface UserRecord {
+  id: string
+  full_name: string | null
+  email: string
+  role: string
+  country?: string | null
+  phone?: string | null
+  created_at: string
+  [key: string]: unknown
+}
+
+// Tipo para filas de pagos (sección de pagos sin implementar)
+interface PaymentRecord {
+  id: string
+  status: string
+  date: string
+  user: string
+  email: string
+  course: string
+  amount: string
+  [key: string]: unknown
+}
+
+// Tipo que refleja una fila real de la tabla evaluations en Supabase (snake_case)
+interface DbEvaluationRow {
+  question_order: number
+  question: string
+  options: string[] | string
+  correct_answer: number
+  explanation?: string
+  [key: string]: unknown
+}
+
 export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<"dashboard" | "courses" | "teachers" | "users" | "payments" | "certificates">("dashboard");
   const [showCourseForm, setShowCourseForm] = useState(false);
@@ -101,7 +135,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [contactUser, setContactUser] = useState<{ name: string; email: string } | null>(null);
   const [contactMessage, setContactMessage] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [usersList, setUsersList] = useState<Record<string, unknown>[]>([]);
+  const [usersList, setUsersList] = useState<UserRecord[]>([])
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
@@ -174,7 +208,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   }, [realtimeCourses, realtimeTeachers]);
 
   // Datos de ejemplo para secciones no implementadas
-  const paymentsData: Record<string, unknown>[] = [];
+  const paymentsData: PaymentRecord[] = [];
 
   // Lookup: profiles.id → teacher.id (para cursos legacy)
   const profileToTeacherIdMap = useMemo(() => {
@@ -367,7 +401,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
       // Mapear evaluaciones a formato esperado por CourseForm
       // No usar nombre 'eval' porque es una declaración reservada en ESM.
-      const mappedEvaluations = (evaluationsData || []).map((e: EvaluationQuestion) => {
+      const mappedEvaluations = (evaluationsData || []).map((e: DbEvaluationRow) => {
         // ✅ options es TEXT[] en PostgreSQL, viene como array directamente
         let optionsArray: string[] = [];
         
@@ -708,14 +742,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <Card 
-                  className="group relative cursor-pointer overflow-hidden border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 flex flex-col h-full"
+                  className="group relative cursor-pointer overflow-hidden border border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("users")}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
-                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Total Estudiantes</CardTitle>
-                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#0B5FFF]/20 backdrop-blur-sm border border-[#0B5FFF]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#0B5FFF]/20 backdrop-blur-sm border border-[#0B5FFF]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                         <Users className="h-6 w-6 text-[#0B5FFF]" />
                       </div>
                     </div>
@@ -727,14 +761,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 </Card>
 
                 <Card 
-                  className="group relative cursor-pointer overflow-hidden border border-[#16A34A]/20 bg-gradient-to-br from-white to-[#16A34A]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#16A34A]/40 hover:shadow-[0_8px_32px_0_rgba(22,163,74,0.15)] hover:scale-105 flex flex-col h-full"
+                  className="group relative cursor-pointer overflow-hidden border border-[#16A34A]/20 bg-linear-to-br from-white to-[#16A34A]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#16A34A]/40 hover:shadow-[0_8px_32px_0_rgba(22,163,74,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("courses")}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#16A34A]/30 to-transparent" />
-                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#16A34A]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Cursos Activos</CardTitle>
-                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#16A34A]/20 backdrop-blur-sm border border-[#16A34A]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#16A34A]/20 backdrop-blur-sm border border-[#16A34A]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                         <BookOpen className="h-6 w-6 text-[#16A34A]" />
                       </div>
                     </div>
@@ -746,14 +780,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 </Card>
 
                 <Card 
-                  className="group relative cursor-pointer overflow-hidden border border-[#F59E0B]/20 bg-gradient-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#F59E0B]/40 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 flex flex-col h-full"
+                  className="group relative cursor-pointer overflow-hidden border border-[#F59E0B]/20 bg-linear-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#F59E0B]/40 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("certificates")}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/30 to-transparent" />
-                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#F59E0B]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Certificados Emitidos</CardTitle>
-                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#F59E0B]/20 backdrop-blur-sm border border-[#F59E0B]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#F59E0B]/20 backdrop-blur-sm border border-[#F59E0B]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                         <Award className="h-6 w-6 text-[#F59E0B]" />
                       </div>
                     </div>
@@ -765,14 +799,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 </Card>
 
                 <Card 
-                  className="group relative cursor-pointer overflow-hidden border border-[#22C55E]/20 bg-gradient-to-br from-white to-[#22C55E]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#22C55E]/40 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 flex flex-col h-full"
+                  className="group relative cursor-pointer overflow-hidden border border-[#22C55E]/20 bg-linear-to-br from-white to-[#22C55E]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#22C55E]/40 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("payments")}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#22C55E]/30 to-transparent" />
-                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#22C55E]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Ingresos del Mes</CardTitle>
-                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#22C55E]/20 backdrop-blur-sm border border-[#22C55E]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#22C55E]/20 backdrop-blur-sm border border-[#22C55E]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                         <CreditCard className="h-6 w-6 text-[#22C55E]" />
                       </div>
                     </div>
@@ -819,7 +853,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         level={course.level as "Básico" | "Intermedio" | "Avanzado"}
                         certified={course.certified || false}
                         students={course.students}
-                        onClick={() => handleEditCourse(course)}
+                        onClick={() => handleEditCourse({ ...course, level: course.level as 'Básico' | 'Intermedio' | 'Avanzado', students: course.students ?? 0 })}
                       />
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <DropdownMenu>
@@ -829,7 +863,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditCourse(course)}>
+                            <DropdownMenuItem onClick={() => handleEditCourse({ ...course, level: course.level as 'Básico' | 'Intermedio' | 'Avanzado', students: course.students ?? 0 })}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
@@ -1461,9 +1495,4 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       </Dialog>
     </div>
   );
-}
-async function generateHash() {
-  const data = `${Date.now()}-${Math.random()}-${crypto.randomUUID()}`;
-  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
-  return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }

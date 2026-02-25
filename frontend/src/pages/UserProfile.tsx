@@ -1,4 +1,4 @@
-import { Award, Mail, Globe, Settings as SettingsIcon, BookOpen, Loader2, RefreshCw } from "lucide-react";
+﻿import { Award, Mail, Globe, Settings as SettingsIcon, BookOpen, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -7,7 +7,6 @@ import { Progress } from "../components/ui/progress";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Skeleton } from "../components/ui/skeleton";
-import { FullCourse } from "../lib/data";
 import {
   Select,
   SelectContent,
@@ -27,8 +26,20 @@ interface UserProfileProps {
   defaultTab?: string;
 }
 
+// Tipo que refleja una fila real de la tabla profiles en Supabase
+interface ProfileData {
+  id: string
+  full_name: string | null
+  email: string
+  role: string
+  country?: string | null
+  phone?: string | null
+  created_at: string
+  [key: string]: unknown
+}
+
 export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileProps) {
-  const [userProfile, setUserProfile] = useState<Record<string, unknown> | null>(null);
+  const [userProfile, setUserProfile] = useState<ProfileData | null>(null);
   const [userCertificates, setUserCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [certificatesLoading, setCertificatesLoading] = useState(true);
@@ -41,7 +52,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
       setIsLoggedIn(!!session?.user);
     });
   }, []);
-  const { courses: userCourses, loading: coursesLoading } = useEnrollmentProgress(isLoggedIn);
+  const { courses: userCourses } = useEnrollmentProgress(isLoggedIn);
   
   // Verificar si hay una pestaña específica solicitada
   const initialTab = sessionStorage.getItem('profileTab') || defaultTab;
@@ -266,7 +277,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
           {/* My Courses */}
           <TabsContent value="courses" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {userCourses.map((course: FullCourse) => (
+              {userCourses.map((course) => (
                 <Card key={course.id} className="overflow-hidden flex flex-col transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
                   <CardHeader className="p-0 shrink-0">
                     <div className="relative aspect-video overflow-hidden">
@@ -327,7 +338,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
             {certificatesLoading ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {[...Array(6)].map((_, i) => (
-                  <Card key={i} className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
+                  <Card key={i} className="border border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
                     {/* Skeleton de imagen - h-48 para tarjeta vertical */}
                     <Skeleton className="h-48 w-full" />
                     <div className="p-4 space-y-3">

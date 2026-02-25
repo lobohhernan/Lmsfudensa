@@ -1,4 +1,4 @@
-import { Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
+﻿import { Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
 import { useEffect, useState } from "react";
 import logoVertical from "../assets/logo-vertical.svg";
 import { supabase } from "../lib/supabase";
@@ -62,9 +62,9 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
     };
   }, []);
   return (
-    <footer id="footer" className="relative border-t border-[#1e467c]/10 bg-gradient-to-b from-white to-[#1e467c]/5 backdrop-blur-sm" role="contentinfo">
+    <footer id="footer" className="relative border-t border-[#1e467c]/10 bg-linear-to-b from-white to-[#1e467c]/5 backdrop-blur-sm" role="contentinfo">
       {/* Glass effect top highlight */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#1e467c]/20 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#1e467c]/20 to-transparent" />
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           {/* Brand */}

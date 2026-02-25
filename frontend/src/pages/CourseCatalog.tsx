@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+﻿import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { CourseCard } from "../components/CourseCard";
@@ -36,7 +36,7 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] -mt-16 pt-32 pb-20 text-white">
+      <section className="relative overflow-hidden bg-linear-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] -mt-16 pt-32 pb-20 text-white">
         {/* Decorative background elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -left-32 top-0 h-[500px] w-[500px] rounded-full bg-white/5 blur-3xl"></div>
@@ -129,7 +129,7 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
           {loading ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {[...Array(4)].map((_, i) => (
-                <Card key={i} className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
+                <Card key={i} className="border border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
                   {/* Skeleton de imagen - h-48 para tarjeta vertical */}
                   <Skeleton className="h-48 w-full" />
                   <div className="p-4 space-y-3">

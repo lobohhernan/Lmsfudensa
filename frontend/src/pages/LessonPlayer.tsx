@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, CheckCircle, Award, List, Youtube, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/button";
@@ -344,7 +344,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
                     style={{ border: 0 }}
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1e467c] to-[#55a5c7]">
+                  <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-[#1e467c] to-[#55a5c7]">
                     <div className="text-center text-white p-8">
                       <Award className="h-16 w-16 mx-auto mb-4 opacity-50" />
                       <p className="text-xl mb-2">Contenido no disponible</p>
@@ -411,19 +411,19 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
                   <h3 className="mb-3 text-[#0F172A]">Puntos clave:</h3>
                   <ul className="space-y-2 text-[#64748B]">
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
+                      <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#55a5c7]" />
                       <span>Evaluación de consciencia y respiración</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
+                      <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#55a5c7]" />
                       <span>Activación del sistema de emergencias</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
+                      <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#55a5c7]" />
                       <span>Verificación del pulso carotídeo</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#55a5c7]" />
+                      <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#55a5c7]" />
                       <span>Reconocimiento de signos de paro cardíaco</span>
                     </li>
                   </ul>

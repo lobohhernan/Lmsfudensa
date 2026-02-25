@@ -1,4 +1,4 @@
-import { ArrowRight, Award, CheckCircle, MessageCircle, Star, Play, Clock } from "lucide-react";
+﻿import { ArrowRight, Award, CheckCircle, MessageCircle, Star, Play, Clock } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { CourseCard } from "../components/CourseCard";
 import { Card, CardContent } from "../components/ui/card";
@@ -116,13 +116,13 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
           <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(30,70,124,0.95)_0%,rgba(30,70,124,0.65)_20%,rgba(30,70,124,0.25)_40%,rgba(255,255,255,0.2)_55%,rgba(255,255,255,0.75)_80%,rgba(255,255,255,0.98)_100%)]"></div>
           
           {/* Gradient Overlay for Liquid Glass Effect - Reduced opacity for better image visibility */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#1e467c]/25 via-[#2d5f93]/15 to-[#55a5c7]/20"></div>
+          <div className="absolute inset-0 bg-linear-to-br from-[#1e467c]/25 via-[#2d5f93]/15 to-[#55a5c7]/20"></div>
           
           {/* Liquid Glass Morphism Layer */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/3 backdrop-blur-[1px]"></div>
+          <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-white/3 backdrop-blur-[1px]"></div>
           
           {/* Top Glass Highlight */}
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+          <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-white/30 to-transparent"></div>
         </div>
         
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-32 w-full">
@@ -204,10 +204,10 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
             {loadingEnrollments ? (
               <div className="grid gap-6 sm:grid-cols-2">
                 {[...Array(2)].map((_, i) => (
-                  <Card key={i} className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
+                  <Card key={i} className="border border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
                     <div className="flex flex-col sm:flex-row">
                       {/* Skeleton de imagen - h-48 para layout horizontal */}
-                      <div className="relative h-48 w-full sm:h-auto sm:w-48 flex-shrink-0">
+                      <div className="relative h-48 w-full sm:h-auto sm:w-48 shrink-0">
                         <Skeleton className="h-full w-full" />
                       </div>
                       <div className="flex flex-1 flex-col p-4 gap-3">
@@ -229,9 +229,9 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
             ) : (
               <div className="grid gap-6 sm:grid-cols-2" role="list" aria-label="Cursos en progreso">
                 {coursesInProgress.map((course) => (
-                <Card key={course.id} role="listitem" className="group relative overflow-hidden border border-info-200 bg-gradient-to-br from-white to-info-50 backdrop-blur-sm transition-all duration-300 hover:border-info-300 hover:shadow-[0_8px_32px_0_rgba(14,165,233,0.15)] hover:scale-105 cursor-pointer">
+                <Card key={course.id} role="listitem" className="group relative overflow-hidden border border-info-200 bg-linear-to-br from-white to-info-50 backdrop-blur-sm transition-all duration-300 hover:border-info-300 hover:shadow-[0_8px_32px_0_rgba(14,165,233,0.15)] hover:scale-105 cursor-pointer">
                   {/* Glass effect top highlight */}
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-info-200 to-transparent" />
+                  <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-info-200 to-transparent" />
                   <div className="flex flex-col sm:flex-row">
                     <div className="relative h-48 w-full sm:h-auto sm:w-48">
                       <ImageWithFallback
@@ -318,7 +318,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
             {loading && (
               <>
                 {[...Array(displayCourses.length || 3)].map((_, i) => (
-                  <Card key={i} className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
+                  <Card key={i} className="border border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
                     {/* Skeleton de imagen */}
                     <Skeleton className="h-48 w-full" />
                     <div className="p-4 space-y-3">
@@ -378,7 +378,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
           <h2 id="benefits-heading" className="sr-only">Por qué elegir FUDENSA</h2>
           <div className="grid gap-8 md:grid-cols-3" role="list" aria-label="Beneficios de la plataforma">
             <div className="relative group cursor-pointer">
-              <div className="absolute -inset-0.5 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <div className="absolute -inset-0.5 bg-linear-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <Card role="listitem" className="text-card-foreground flex flex-col gap-6 rounded-xl border relative transition-all duration-300 hover:scale-105 border-white/20 bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(30,70,124,0.1)]">
                 <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -393,7 +393,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
             </div>
 
             <div className="relative group cursor-pointer">
-              <div className="absolute -inset-0.5 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <div className="absolute -inset-0.5 bg-linear-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <Card role="listitem" className="text-card-foreground flex flex-col gap-6 rounded-xl border relative transition-all duration-300 hover:scale-105 border-white/20 bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(30,70,124,0.1)]">
                 <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -408,7 +408,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
             </div>
 
             <div className="relative group cursor-pointer">
-              <div className="absolute -inset-0.5 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <div className="absolute -inset-0.5 bg-linear-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <Card role="listitem" className="text-card-foreground flex flex-col gap-6 rounded-xl border relative transition-all duration-300 hover:scale-105 border-white/20 bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(30,70,124,0.1)]">
                 <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -437,10 +437,10 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
 
           <div className="grid gap-6 md:grid-cols-3" role="list" aria-label="Testimonios de estudiantes">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} role="listitem" className="group relative border border-warning-200 bg-gradient-to-br from-white to-warning-50 backdrop-blur-sm transition-all duration-300 hover:border-warning-300 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/30 to-transparent" />
+              <Card key={index} role="listitem" className="group relative border border-warning-200 bg-linear-to-br from-white to-warning-50 backdrop-blur-sm transition-all duration-300 hover:border-warning-300 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
+                <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#F59E0B]/30 to-transparent" />
                 <CardContent className="space-y-4 p-6 bg-white/20 flex flex-col h-full">
-                  <div className="flex gap-1 flex-shrink-0">
+                  <div className="flex gap-1 shrink-0">
                     {Array.from({ length: testimonial.rating }).map((_, i) => (
                       <Star
                         key={i}
@@ -449,7 +449,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                     ))}
                   </div>
                   <p className="body-sm text-[#64748B] flex-1 line-clamp-4">{testimonial.content}</p>
-                  <div className="flex items-center gap-3 pt-4 flex-shrink-0">
+                  <div className="flex items-center gap-3 pt-4 shrink-0">
                     <Avatar>
                       <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
                       <AvatarFallback>{testimonial.name[0]}</AvatarFallback>
@@ -467,7 +467,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
       </section>
 
       {/* CTA Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] py-24 text-white">
+      <section className="relative overflow-hidden bg-linear-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] py-24 text-white">
         {/* Decorative background elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -left-32 top-1/2 -translate-y-1/2 h-[400px] w-[400px] rounded-full bg-white/5 blur-3xl"></div>

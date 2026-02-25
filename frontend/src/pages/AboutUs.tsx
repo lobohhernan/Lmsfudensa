@@ -1,4 +1,4 @@
-import { Award, Users, Target, Heart } from "lucide-react";
+﻿import { Award, Users, Target, Heart } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { useState, useEffect, useRef } from "react";
@@ -93,7 +93,7 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] -mt-16 pt-32 pb-20 text-white">
+      <section className="relative overflow-hidden bg-linear-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] -mt-16 pt-32 pb-20 text-white">
         {/* Decorative background elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -left-32 top-0 h-[500px] w-[500px] rounded-full bg-white/5 blur-3xl"></div>
@@ -139,7 +139,7 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
             {/* Excelencia */}
             <div className="relative group cursor-pointer">
               {/* Liquid Glass border effect */}
-              <div className="absolute -inset-0.5 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <div className="absolute -inset-0.5 bg-linear-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <Card className="relative transition-all duration-300 hover:scale-105 border-white/20 bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(30,70,124,0.1)]">
                 <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -156,7 +156,7 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
             {/* Vocación */}
             <div className="relative group cursor-pointer">
               {/* Liquid Glass border effect */}
-              <div className="absolute -inset-0.5 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <div className="absolute -inset-0.5 bg-linear-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <Card className="relative transition-all duration-300 hover:scale-105 border-white/20 bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(30,70,124,0.1)]">
                 <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -173,7 +173,7 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
             {/* Comunidad */}
             <div className="relative group cursor-pointer">
               {/* Liquid Glass border effect */}
-              <div className="absolute -inset-0.5 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <div className="absolute -inset-0.5 bg-linear-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <Card className="relative transition-all duration-300 hover:scale-105 border-white/20 bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(30,70,124,0.1)]">
                 <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -190,7 +190,7 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
             {/* Impacto */}
             <div className="relative group cursor-pointer">
               {/* Liquid Glass border effect */}
-              <div className="absolute -inset-0.5 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <div className="absolute -inset-0.5 bg-linear-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <Card className="relative transition-all duration-300 hover:scale-105 border-white/20 bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(30,70,124,0.1)]">
                 <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -236,7 +236,7 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
       </section>
 
       {/* Estadísticas */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] py-16 text-white">
+      <section className="relative overflow-hidden bg-linear-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] py-16 text-white">
         {/* Decorative background elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -left-32 top-0 h-[400px] w-[400px] rounded-full bg-white/5 blur-3xl"></div>
@@ -279,8 +279,8 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
             {/* Liquid Glass CTA Container */}
             <div className="relative group">
               {/* Liquid Glass border effect */}
-              <div className="absolute -inset-1 bg-gradient-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-3xl blur-xl opacity-60 group-hover:opacity-100 transition duration-500"></div>
-              <div className="relative rounded-3xl border border-white/30 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm p-12 shadow-[0_8px_32px_0_rgba(30,70,124,0.15)] text-center">
+              <div className="absolute -inset-1 bg-linear-to-br from-[#1e467c]/40 via-[#55a5c7]/40 to-[#FCD34D]/40 rounded-3xl blur-xl opacity-60 group-hover:opacity-100 transition duration-500"></div>
+              <div className="relative rounded-3xl border border-white/30 bg-linear-to-br from-white/80 to-white/60 backdrop-blur-sm p-12 shadow-[0_8px_32px_0_rgba(30,70,124,0.15)] text-center">
                 <h2 className="mb-6 text-3xl font-bold text-primary">
                   Únete a Nuestra Comunidad
                 </h2>
