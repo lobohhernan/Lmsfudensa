@@ -381,16 +381,51 @@ export default function App() {
 
     // Detectar callback OAuth y limpiar URL
     const urlSearch = new URLSearchParams(window.location.search)
+    const hashStr = window.location.hash
     const isOAuthCallback =
       urlSearch.has('code') ||
-      window.location.hash.includes('access_token=') ||
-      window.location.hash.includes('refresh_token=')
+      hashStr.includes('access_token=') ||
+      hashStr.includes('refresh_token=')
+
+    let urlCleanTimer: ReturnType<typeof setTimeout> | null = null
+    let oauthFallbackTimer: ReturnType<typeof setTimeout> | null = null
+
     if (isOAuthCallback) {
-      debug('🔐 [App] Callback OAuth detectado, limpiando URL...')
-      window.history.replaceState(null, '', window.location.pathname)
+      console.warn('🔐 [App] Callback OAuth detectado en URL')
+      // Limpiar URL después de 500ms (Supabase ya procesó el código/token antes)
+      urlCleanTimer = setTimeout(() => {
+        if (window.location.search || window.location.hash) {
+          window.history.replaceState(null, '', window.location.pathname)
+        }
+      }, 500)
+
+      // Fallback: si onAuthStateChange no disparó la sesión en 3 segundos,
+      // llamar getSession() explícitamente (el auth lock ya estará libre)
+      oauthFallbackTimer = setTimeout(async () => {
+        if (authUserRef.current) return // ya hay sesión, no hace falta
+        console.warn('🔐 [App] OAuth fallback: llamando getSession()...')
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.user && !authUserRef.current) {
+            console.warn('🔐 [App] OAuth fallback: sesión encontrada para', session.user.email)
+            const userData_ = extractUserDataFromMeta(session.user)
+            authUserRef.current = { id: session.user.id, email: userData_.email, name: userData_.name }
+            setIsLoggedIn(true)
+            setUserData(userData_)
+            sessionStorage.setItem('user_session', JSON.stringify(userData_))
+            setAuthBootstrapped(true)
+          } else {
+            console.warn('🔐 [App] OAuth fallback: sin sesión, posible error en intercambio PKCE')
+          }
+        } catch (err) {
+          logError('🔐 [App] OAuth fallback error:', err)
+        }
+      }, 3000)
     }
 
     return () => {
+      if (urlCleanTimer) clearTimeout(urlCleanTimer)
+      if (oauthFallbackTimer) clearTimeout(oauthFallbackTimer)
       subscription?.unsubscribe()
     }
   }, [])
