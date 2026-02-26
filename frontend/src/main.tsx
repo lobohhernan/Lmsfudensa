@@ -4,16 +4,17 @@
   import "./styles/globals.css";
   import "./index.css";
 
-  // Desregistrar service workers antiguos que puedan interferir con las requests
+  // ✅ Desregistrar cualquier Service Worker existente para evitar caché agresivo
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
       for (const registration of registrations) {
-        registration.unregister().then((success) => {
-          if (success) console.log('[SW] Service worker antiguo desregistrado');
+        registration.unregister().then(ok => {
+          if (ok) console.log('[SW] Service Worker desregistrado:', registration.scope);
         });
       }
     });
   }
 
+  // Inicialización limpia
   createRoot(document.getElementById("root")!).render(<App />);
   
