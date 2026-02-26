@@ -375,16 +375,23 @@ export default function App() {
           return
         }
 
-        // ✅ Fallback de seguridad: si INITIAL_SESSION no dispara (raro pero posible),
-        //    getSession() fuerza la lectura de localStorage y resuelve el bootstrap.
+        // ✅ Restaurar sesión desde storage inmediatamente
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-          debug('⚠️ [App] getSession() sin sesión → usuario no autenticado')
-          setIsLoggedIn(false)
-          setUserData(null)
+        if (session?.user) {
+          await ensureProfile(session.user)
+          const userData_ = await extractUserData(session.user)
+          debug('✅ [App] Sesión restaurada desde storage para:', userData_.email)
+          setIsLoggedIn(true)
+          setUserData(userData_)
+          sessionStorage.setItem('user_session', JSON.stringify(userData_))
           setAuthBootstrapped(true)
+          return
         }
-        // Si session existe, onAuthStateChange(INITIAL_SESSION) llega en ms y maneja el estado.
+
+        debug('⚠️ [App] getSession() sin sesión → usuario no autenticado')
+        setIsLoggedIn(false)
+        setUserData(null)
+        setAuthBootstrapped(true)
       } catch (error) {
         logError('Error en loadSession OAuth:', error)
         setIsLoggedIn(false)
