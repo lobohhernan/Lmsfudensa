@@ -410,23 +410,30 @@ export default function App() {
     const syncProfile = async () => {
       try {
         // 1. Asegurar que exista profile (upsert idempotente)
-        await supabase.from('profiles').upsert([{
+        const { error: upsertError } = await supabase.from('profiles').upsert([{
           id: authUser.id,
           email: authUser.email,
           full_name: authUser.name,
           updated_at: new Date().toISOString(),
         }], { onConflict: 'id', ignoreDuplicates: true })
-        debug('✅ [App] Profile asegurado para', authUser.email)
+        if (upsertError) {
+          logError('⚠️ [App] Error en upsert profile:', upsertError.message, upsertError)
+        } else {
+          debug('✅ [App] Profile asegurado para', authUser.email)
+        }
       } catch (err) {
-        logError('⚠️ [App] Error asegurando profile:', err)
+        logError('⚠️ [App] Error asegurando profile (exception):', err)
       }
 
       try {
         // 2. Obtener rol real desde DB (puede ser admin/instructor)
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', authUser.id).single()
+        const { data: profile, error: roleError } = await supabase.from('profiles').select('role').eq('id', authUser.id).single()
+        if (roleError) {
+          logError('⚠️ [App] Error obteniendo rol desde DB:', roleError.message, roleError)
+        }
         if (profile?.role) {
           const dbRole = profile.role as 'student' | 'instructor' | 'admin'
-          debug('✅ [App] Rol desde DB:', dbRole)
+          console.warn('🔑 [App] Rol desde DB:', dbRole, '| user:', authUser.email)
           setUserData(prev => prev ? { ...prev, role: dbRole } : prev)
           // Actualizar sessionStorage con rol correcto
           const cached = sessionStorage.getItem('user_session')
@@ -437,9 +444,11 @@ export default function App() {
               sessionStorage.setItem('user_session', JSON.stringify(parsed))
             } catch { /* ignorar */ }
           }
+        } else if (!roleError) {
+          console.warn('⚠️ [App] Perfil sin rol asignado para:', authUser.email, '| profile:', profile)
         }
       } catch (err) {
-        logError('⚠️ [App] Error obteniendo rol desde DB:', err)
+        logError('⚠️ [App] Error obteniendo rol desde DB (exception):', err)
       }
     }
 
