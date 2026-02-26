@@ -385,7 +385,10 @@ export function AppNavbar({
         setLoginOpen(open);
         if (!open) setIsRegistering(false);
       }}>
-        <DialogContent className="sm:max-w-[425px] relative overflow-hidden border-white/20 bg-linear-to-br from-[#1e467c]/95 via-[#2c5a9e]/95 to-[#1e467c]/95 backdrop-blur-2xl shadow-[0_24px_64px_0_rgba(31,38,135,0.5),inset_0_1px_0_0_rgba(255,255,255,0.15)]">
+        <DialogContent
+          className="sm:max-w-[425px] relative overflow-hidden border-white/20 backdrop-blur-2xl shadow-[0_24px_64px_0_rgba(31,38,135,0.5),inset_0_1px_0_0_rgba(255,255,255,0.15)]"
+          style={{ background: 'linear-gradient(to bottom right, rgba(30,70,124,0.97), rgba(44,90,158,0.97), rgba(30,70,124,0.97))' }}
+        >
           {/* Glass shine effect */}
           <div className="absolute inset-0 bg-linear-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
           {/* Inner glow */}
