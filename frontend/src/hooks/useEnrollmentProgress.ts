@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { getErrorMessage } from '../lib/logger'
 import { Enrollment } from '../lib/types'
@@ -14,60 +14,130 @@ export interface EnrollmentWithProgress {
   completedLessons: number
 }
 
-/**
- * Calcula el progreso de un enrollment dado, paralelizando las queries a Supabase.
- * Elimina el patrón N+1 secuencial que existía antes.
- */
-async function computeEnrollmentProgress(
-  userId: string,
-  enrollment: Enrollment
-): Promise<EnrollmentWithProgress> {
-  const courseId = enrollment.course_id
+interface LessonRecord {
+  id: string
+  course_id: string
+  title: string
+  order_index: number
+}
 
-  // ✅ Ejecutar las 3 queries EN PARALELO en vez de secuencial
-  const [totalResult, completedResult, lastLessonResult] = await Promise.all([
-    supabase
-      .from('lessons')
-      .select('*', { count: 'exact', head: true })
-      .eq('course_id', courseId),
-    Promise.resolve(
-      supabase
-        .from('user_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('course_id', courseId)
-        .eq('completed', true)
-    ).catch(() => ({ count: 0 })),
-    Promise.resolve(
-      supabase
-        .from('user_progress')
-        .select('lesson_id, lessons(title, order_index)')
-        .eq('user_id', userId)
-        .eq('course_id', courseId)
-        .order('last_accessed_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    ).catch(() => ({ data: null })),
-  ])
+interface ProgressRecord {
+  course_id: string
+  lesson_id: string
+  completed: boolean
+  last_accessed_at: string
+  lessons?: {
+    title?: string
+  } | null
+}
 
-  const total = totalResult.count || 0
-  const completed = (completedResult as any).count || 0
-  const progress = total > 0 ? Math.round((completed / total) * 100) : 0
-  const currentLesson =
-    (lastLessonResult as any)?.data?.lessons?.title || 'Lección 1'
+const COURSE_FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400'
 
-  return {
-    id: courseId,
-    title: enrollment.courses?.title || 'Curso sin título',
-    slug: enrollment.courses?.slug || '',
-    image:
-      enrollment.courses?.image ||
-      'https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400',
-    progress,
-    currentLesson,
-    totalLessons: total,
-    completedLessons: completed,
+async function fetchEnrollmentProgressData(userId: string, limit?: number) {
+  let enrollmentsQuery = supabase
+    .from('enrollments')
+    .select(
+      `
+      id,
+      course_id,
+      enrolled_at,
+      last_accessed_at,
+      completed,
+      courses (
+        id,
+        title,
+        slug,
+        image,
+        description
+      )
+    `
+    )
+    .eq('user_id', userId)
+    .order('last_accessed_at', { ascending: false })
+
+  if (limit) {
+    enrollmentsQuery = enrollmentsQuery.limit(limit)
   }
+
+  const { data: enrollmentsData, error: enrollError } = await enrollmentsQuery
+
+  if (enrollError) {
+    throw enrollError
+  }
+
+  const enrollments = (enrollmentsData || []) as Enrollment[]
+  const courseIds = enrollments.map((enrollment) => enrollment.course_id)
+
+  if (courseIds.length === 0) {
+    return []
+  }
+
+  const [{ data: lessonsData, error: lessonsError }, progressResult] =
+    await Promise.all([
+      supabase
+        .from('lessons')
+        .select('id, course_id, title, order_index')
+        .in('course_id', courseIds)
+        .order('order_index', { ascending: true }),
+      supabase
+        .from('user_progress')
+        .select('course_id, lesson_id, completed, last_accessed_at, lessons(title)')
+        .eq('user_id', userId)
+        .in('course_id', courseIds)
+        .order('last_accessed_at', { ascending: false }),
+    ])
+
+  if (lessonsError) {
+    throw lessonsError
+  }
+
+  const lessonRows = (lessonsData || []) as LessonRecord[]
+
+  let progressRows: ProgressRecord[] = []
+  if (!progressResult.error && progressResult.data) {
+    progressRows = progressResult.data as ProgressRecord[]
+  }
+
+  const lessonsByCourse = new Map<string, LessonRecord[]>()
+  for (const lesson of lessonRows) {
+    const existing = lessonsByCourse.get(lesson.course_id) || []
+    existing.push(lesson)
+    lessonsByCourse.set(lesson.course_id, existing)
+  }
+
+  const progressByCourse = new Map<string, ProgressRecord[]>()
+  for (const progress of progressRows) {
+    const existing = progressByCourse.get(progress.course_id) || []
+    existing.push(progress)
+    progressByCourse.set(progress.course_id, existing)
+  }
+
+  return enrollments.map((enrollment) => {
+    const courseId = enrollment.course_id
+    const lessonList = lessonsByCourse.get(courseId) || []
+    const progressList = progressByCourse.get(courseId) || []
+
+    const totalLessons = lessonList.length
+    const completedLessons = progressList.filter((item) => item.completed).length
+    const progress =
+      totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
+
+    const latestProgress = progressList[0]
+    const currentLesson =
+      latestProgress?.lessons?.title || lessonList[0]?.title || 'Lección 1'
+
+    return {
+      id: courseId,
+      title: enrollment.courses?.title || 'Curso sin título',
+      slug: enrollment.courses?.slug || '',
+      image: enrollment.courses?.image || COURSE_FALLBACK_IMAGE,
+      progress,
+      currentLesson,
+      totalLessons,
+      completedLessons,
+    }
+  })
 }
 
 /**
@@ -85,6 +155,32 @@ export function useEnrollmentProgress(
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        setCourses([])
+        return
+      }
+
+      const mapped = await fetchEnrollmentProgressData(user.id, limit)
+      setCourses(mapped)
+    } catch (err: unknown) {
+      const message = getErrorMessage(err)
+      console.error('❌ Error en useEnrollmentProgress:', message)
+      setError(message || 'Error cargando cursos')
+      setCourses([])
+    } finally {
+      setLoading(false)
+    }
+  }, [limit])
+
   useEffect(() => {
     if (!isLoggedIn) {
       setCourses([])
@@ -94,59 +190,23 @@ export function useEnrollmentProgress(
     let cancelled = false
 
     const load = async () => {
-      setLoading(true)
-      setError(null)
-
       try {
         const {
           data: { user },
         } = await supabase.auth.getUser()
 
         if (!user) {
-          setCourses([])
+          if (!cancelled) {
+            setCourses([])
+          }
           return
         }
 
-        let query = supabase
-          .from('enrollments')
-          .select(
-            `
-            id,
-            course_id,
-            enrolled_at,
-            last_accessed_at,
-            completed,
-            courses (
-              id,
-              title,
-              slug,
-              image,
-              description
-            )
-          `
-          )
-          .eq('user_id', user.id)
-          .order('last_accessed_at', { ascending: false })
-
-        if (limit) {
-          query = query.limit(limit)
-        }
-
-        const { data: enrollments, error: enrollError } = await query
-
-        if (enrollError) {
-          throw enrollError
-        }
-
-        // ✅ Todas las enrollments se procesan en paralelo
-        const mapped = await Promise.all(
-          (enrollments || []).map((enrollment) =>
-            computeEnrollmentProgress(user.id, enrollment as unknown as Enrollment)
-          )
-        )
+        const mapped = await fetchEnrollmentProgressData(user.id, limit)
 
         if (!cancelled) {
           setCourses(mapped)
+          setError(null)
         }
       } catch (err: unknown) {
         const message = getErrorMessage(err)
@@ -162,6 +222,8 @@ export function useEnrollmentProgress(
       }
     }
 
+    setLoading(true)
+    setError(null)
     load()
 
     return () => {
@@ -169,43 +231,7 @@ export function useEnrollmentProgress(
     }
   }, [isLoggedIn, limit])
 
-  const refetch = async () => {
-    // Forzar recarga (cambiar un dep no es posible, simulamos)
-    setLoading(true)
-    setCourses([])
-    // El useEffect no se re-disparará, así que hacemos la carga manualmente
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
-
-      let query = supabase
-        .from('enrollments')
-        .select(
-          `id, course_id, enrolled_at, last_accessed_at, completed,
-          courses (id, title, slug, image, description)`
-        )
-        .eq('user_id', user.id)
-        .order('last_accessed_at', { ascending: false })
-
-      if (limit) {
-        query = query.limit(limit)
-      }
-
-      const { data: enrollments } = await query
-      const mapped = await Promise.all(
-        (enrollments || []).map((enrollment) =>
-          computeEnrollmentProgress(user.id, enrollment as unknown as Enrollment)
-        )
-      )
-      setCourses(mapped)
-    } catch (err) {
-      console.error('❌ Error en refetch:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const refetch = loadData
 
   return { courses, loading, error, refetch }
 }

@@ -31,9 +31,7 @@ interface AppNavbarProps {
   onLogin?: (userData: { email: string; name: string; role: 'student' | 'instructor' | 'admin' }) => void;
   currentPage?: string;
   openLoginModal?: boolean;
-  openRegisterModal?: boolean;
   onLoginModalChange?: (open: boolean) => void;
-  onRegisterModalChange?: (open: boolean) => void;
   currentUser?: { email: string; name: string; role: 'student' | 'instructor' | 'admin' } | null;
 }
 
@@ -44,36 +42,25 @@ export function AppNavbar({
   onLogin,
   currentPage = "home",
   openLoginModal,
-  openRegisterModal,
   onLoginModalChange,
-  onRegisterModalChange,
   currentUser = null
 }: AppNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [internalLoginOpen, setInternalLoginOpen] = useState(false);
-  const [internalRegisterOpen, setInternalRegisterOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-  // Used for loading state during login (setter only)
-  const [, setIsLoggingIn] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
   
   // Use controlled state if provided, otherwise use internal state
   const loginOpen = openLoginModal !== undefined ? openLoginModal : internalLoginOpen;
-  const registerOpen = openRegisterModal !== undefined ? openRegisterModal : internalRegisterOpen;
   
   const setLoginOpen = (open: boolean) => {
     if (onLoginModalChange) {
       onLoginModalChange(open);
     } else {
       setInternalLoginOpen(open);
-    }
-  };
-  
-  const setRegisterOpen = (open: boolean) => {
-    if (onRegisterModalChange) {
-      onRegisterModalChange(open);
-    } else {
-      setInternalRegisterOpen(open);
     }
   };
 
@@ -409,7 +396,7 @@ export function AppNavbar({
                   setIsLoggingIn(true);
                   try {
                     const formData = new FormData(e.currentTarget);
-                    const email = formData.get('login-email') as string;
+                    const email = (formData.get('login-email') as string)?.trim().toLowerCase();
                     const password = formData.get('login-password') as string;
                     
                     if (!email || !password) {
@@ -425,7 +412,15 @@ export function AppNavbar({
                     });
 
                     if (authError) {
-                      toast.error("Email o contraseña incorrectos");
+                      const errorMessage = authError.message?.toLowerCase() || '';
+
+                      if (errorMessage.includes('email not confirmed')) {
+                        toast.error("Tu correo aún no está confirmado. Revisa tu bandeja y vuelve a intentarlo.");
+                      } else if (errorMessage.includes('invalid login') || errorMessage.includes('invalid credentials')) {
+                        toast.error("Credenciales incorrectas. Verifica tu correo y contraseña.");
+                      } else {
+                        toast.error("Error al iniciar sesión: " + authError.message);
+                      }
                       setIsLoggingIn(false);
                       return;
                     }
@@ -437,7 +432,7 @@ export function AppNavbar({
                     }
 
                     // Obtener perfil para conseguir nombre completo y role
-                    const { data: profile, error: profileError } = await supabase
+                    const { data: profile } = await supabase
                       .from("profiles")
                       .select("full_name, email, role")
                       .eq("id", authData.user.id)
@@ -466,6 +461,8 @@ export function AppNavbar({
                     type="email"
                     placeholder="tu@email.com"
                     required
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
                     className="border-white/20 bg-white/10 text-white placeholder:text-white/50 backdrop-blur-sm shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.1)] focus:border-white/40 focus:bg-white/15"
                   />
                 </div>
@@ -486,14 +483,42 @@ export function AppNavbar({
                     className="text-white/90 transition-all hover:text-white hover:underline hover:underline-offset-4"
                     onClick={(e) => {
                       e.preventDefault();
-                      toast.info("Función de recuperación de contraseña próximamente");
+                      const handlePasswordReset = async () => {
+                        const normalizedEmail = loginEmail.trim().toLowerCase();
+
+                        if (!normalizedEmail) {
+                          toast.info("Escribe tu correo y luego presiona " + '"¿Olvidaste tu contraseña?"');
+                          return;
+                        }
+
+                        setIsSendingReset(true);
+                        try {
+                          const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+                            redirectTo: `${window.location.origin}/`,
+                          });
+
+                          if (error) {
+                            toast.error("No se pudo enviar el correo de recuperación: " + error.message);
+                            return;
+                          }
+
+                          toast.success("Te enviamos un correo para restablecer tu contraseña.");
+                        } catch (err) {
+                          logError("Error enviando reset password:", err);
+                          toast.error("Error al solicitar recuperación de contraseña.");
+                        } finally {
+                          setIsSendingReset(false);
+                        }
+                      };
+
+                      void handlePasswordReset();
                     }}
                   >
-                    ¿Olvidaste tu contraseña?
+                    {isSendingReset ? "Enviando correo..." : "¿Olvidaste tu contraseña?"}
                   </a>
                 </div>
-                <Button type="submit" className="w-full bg-linear-to-b from-[#22C55E] to-[#16A34A] text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]">
-                  Iniciar Sesión
+                <Button type="submit" disabled={isLoggingIn} className="w-full bg-linear-to-b from-[#22C55E] to-[#16a34a] text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]">
+                  {isLoggingIn ? "Ingresando..." : "Iniciar Sesión"}
                 </Button>
                 
                 <div className="relative py-2">
@@ -698,25 +723,3 @@ export function AppNavbar({
                   />
                 </div>
                 <Button type="submit" className="w-full bg-linear-to-b from-[#22C55E] to-[#16A34A] text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]">
-                  Crear Cuenta
-                </Button>
-                <p className="text-center text-sm text-white/70">
-                  ¿Ya tienes cuenta?{" "}
-                  <button
-                    type="button"
-                    onClick={() => setIsRegistering(false)}
-                    className="text-white/90 transition-all hover:text-white hover:underline hover:underline-offset-4"
-                  >
-                    Inicia sesión aquí
-                  </button>
-                </p>
-              </form>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-export const AppNavbarMemoized = memo(AppNavbar);
