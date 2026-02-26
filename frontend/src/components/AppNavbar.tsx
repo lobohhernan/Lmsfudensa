@@ -1,4 +1,4 @@
-﻿import { Search, Menu, X, User, LogOut, UserCircle, LayoutDashboard } from "lucide-react";
+﻿import { Menu, X, LogOut, UserCircle, LayoutDashboard } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -425,7 +425,12 @@ export function AppNavbar({
                     });
 
                     if (authError) {
-                      toast.error("Email o contraseña incorrectos");
+                      // Cuenta Google: no tiene contraseña, debe usar el botón de Google
+                      if (authError.message?.toLowerCase().includes('invalid login') || authError.message?.toLowerCase().includes('invalid credentials')) {
+                        toast.error("Credenciales incorrectas. Si te registraste con Google, usa el botón \"Continuar con Google\".");
+                      } else {
+                        toast.error("Error al iniciar sesión: " + authError.message);
+                      }
                       setIsLoggingIn(false);
                       return;
                     }
@@ -437,7 +442,7 @@ export function AppNavbar({
                     }
 
                     // Obtener perfil para conseguir nombre completo y role
-                    const { data: profile, error: profileError } = await supabase
+                    const { data: profile } = await supabase
                       .from("profiles")
                       .select("full_name, email, role")
                       .eq("id", authData.user.id)
@@ -492,7 +497,7 @@ export function AppNavbar({
                     ¿Olvidaste tu contraseña?
                   </a>
                 </div>
-                <Button type="submit" className="w-full text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]" style={{ background: 'linear-gradient(to bottom, #22C55E, #16a34a)' }}>
+                <Button type="submit" className="w-full bg-linear-to-b from-[#22C55E] to-[#16a34a] text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]">
                   Iniciar Sesión
                 </Button>
                 
