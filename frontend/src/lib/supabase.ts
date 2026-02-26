@@ -7,63 +7,24 @@ const supabaseStorageKeyEnv = import.meta.env.VITE_SUPABASE_STORAGE_KEY
 
 // Determinar storageKey (fallback si no está en .env)
 // ⚠️ Exportada para que App.tsx use la misma clave al detectar sesión guardada
-const DEFAULT_AUTH_STORAGE_KEY = 'lmsfudensa.supabase.auth'
-export const AUTH_STORAGE_KEY = DEFAULT_AUTH_STORAGE_KEY
+export const AUTH_STORAGE_KEY = typeof supabaseStorageKeyEnv === 'string' && supabaseStorageKeyEnv.length > 0
+  ? supabaseStorageKeyEnv
+  : 'lmsfudensa.supabase.auth'
 
 const storageKey = AUTH_STORAGE_KEY
 
 // Detectar entorno navegador de forma segura
 const isBrowser = typeof window !== 'undefined'
 
-// Derivar projectRef para migrar sesiones antiguas del formato por defecto de Supabase
-let projectRef = ''
-try {
-  projectRef = new URL(supabaseUrl).hostname.split('.')[0] || ''
-} catch {
-  projectRef = ''
-}
-
-const legacyAuthKeys = [
-  typeof supabaseStorageKeyEnv === 'string' && supabaseStorageKeyEnv.length > 0 ? supabaseStorageKeyEnv : null,
-  projectRef ? `sb-${projectRef}-auth-token` : null,
-  'supabase.auth.token',
-].filter((value): value is string => !!value && value !== storageKey)
-
-const authStorage = isBrowser
-  ? {
-      getItem: (key: string) => {
-        const primary = window.localStorage.getItem(key)
-        if (primary) return primary
-
-        for (const legacyKey of legacyAuthKeys) {
-          const legacyValue = window.localStorage.getItem(legacyKey)
-          if (legacyValue) {
-            window.localStorage.setItem(key, legacyValue)
-            return legacyValue
-          }
-        }
-
-        return null
-      },
-      setItem: (key: string, value: string) => {
-        window.localStorage.setItem(key, value)
-      },
-      removeItem: (key: string) => {
-        window.localStorage.removeItem(key)
-      },
-    }
-  : undefined
-
 // Usar localStorage para persistir sesión (seguro en SPA)
 // Supabase maneja automáticamente el refresh de tokens
-const storage = authStorage
+const storage = isBrowser ? window.localStorage : undefined
 
 // Debug: verificar que las variables se cargaron correctamente (ocultar parte de la key)
 console.log('🔧 [Supabase] Config:', {
   url: supabaseUrl,
   keyLength: supabaseAnonKey?.length,
   storageKey,
-  legacyAuthKeys,
   storageEnabled: !!storage,
 })
 
