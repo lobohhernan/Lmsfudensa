@@ -371,20 +371,18 @@ export default function App() {
           await supabase.auth.getSession()
           window.history.replaceState(null, '', window.location.pathname)
           debug('🔐 [App] Tokens OAuth intercambiados, URL limpiada')
-          // onAuthStateChange(SIGNED_IN) disparará desde aquí
+          // onAuthStateChange(SIGNED_IN) se encargará del resto
           return
         }
 
-        // ✅ Restaurar sesión desde storage inmediatamente
+        // ✅ Solo leer sesión — NO llamar ensureProfile/extractUserData aquí.
+        // onAuthStateChange(INITIAL_SESSION) se dispara automáticamente y se
+        // encargará de ambas llamadas. De esta forma evitamos requests duplicados
+        // concurrentes que causan AbortError.
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
-          await ensureProfile(session.user)
-          const userData_ = await extractUserData(session.user)
-          debug('✅ [App] Sesión restaurada desde storage para:', userData_.email)
-          setIsLoggedIn(true)
-          setUserData(userData_)
-          sessionStorage.setItem('user_session', JSON.stringify(userData_))
-          setAuthBootstrapped(true)
+          debug('✅ [App] getSession() encontró sesión, delegando a onAuthStateChange...')
+          // onAuthStateChange ya se disparó o se disparará con INITIAL_SESSION
           return
         }
 
