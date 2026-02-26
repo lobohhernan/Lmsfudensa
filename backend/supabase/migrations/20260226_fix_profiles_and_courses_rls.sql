@@ -13,6 +13,7 @@
 
 -- ─── 1. PROFILES: Add INSERT policy ─────────────────────────────────────────
 -- Allow authenticated users to create their own profile row (for ensureProfile)
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles
   FOR INSERT
@@ -20,6 +21,7 @@ CREATE POLICY "Users can insert their own profile"
 
 -- ─── 2. PROFILES: Add UPDATE policy ─────────────────────────────────────────
 -- Allow authenticated users to update their own profile
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
   ON public.profiles
   FOR UPDATE
@@ -27,9 +29,8 @@ CREATE POLICY "Users can update their own profile"
   WITH CHECK (auth.uid() = id);
 
 -- ─── 3. PROFILES: Extend SELECT to allow admins to view all profiles ────────
--- Drop the restrictive policy from initial migration and recreate with admin access
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
-
+DROP POLICY IF EXISTS "Users can view own profile and admins can view all" ON public.profiles;
 CREATE POLICY "Users can view own profile and admins can view all"
   ON public.profiles
   FOR SELECT
@@ -39,12 +40,8 @@ CREATE POLICY "Users can view own profile and admins can view all"
   );
 
 -- ─── 4. COURSES: Add public SELECT policy ───────────────────────────────────
--- Drop the instructor-only SELECT policy and replace with a public one
--- so that students and anonymous visitors can browse the course catalog.
--- Keep the original conditions (instructor + admin) as they are now covered
--- by the broader public policy.
 DROP POLICY IF EXISTS "Instructors can view their courses" ON public.courses;
-
+DROP POLICY IF EXISTS "Anyone can view courses" ON public.courses;
 CREATE POLICY "Anyone can view courses"
   ON public.courses
   FOR SELECT
