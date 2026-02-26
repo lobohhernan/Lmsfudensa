@@ -74,6 +74,7 @@ export function useCoursesRealtime() {
   const fetchCourses = async (retryCount = 0) => {
     try {
       setLoading(true)
+      console.log('📡 [useCoursesRealtime] fetchCourses CALLED, retry:', retryCount)
       
       const { data, error: queryError } = await supabase
         .from('courses')

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, lazy, Suspense, startTransition } from "react";
+﻿import { useState, useEffect, useCallback, useRef, lazy, Suspense, startTransition } from "react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
 import { PageLoader } from "./components/PageLoader";
@@ -316,119 +316,135 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Cargar sesión de Supabase al iniciar
+  // ── Ref para almacenar datos crudos del usuario autenticado (sin REST calls) ──
+  const authUserRef = useRef<{ id: string; email: string; name: string } | null>(null)
+
+  // ══════════════════════════════════════════════════════════════════════
+  // EFECTO 1: Auth listener — CERO REST calls dentro del callback
+  // ══════════════════════════════════════════════════════════════════════
+  // En @supabase/supabase-js v2.95, cada REST call hace:
+  //   fetchWithAuth → _getAccessToken → auth.getSession → await initializePromise
+  // Si initializePromise no ha resuelto aún (auth lock), el REST call queda
+  // colgado SILENCIOSAMENTE (sin error, sin network request).
+  // onAuthStateChange se dispara DENTRO de _initialize (con el lock tomado),
+  // así que hacer REST calls ahí produce un deadlock circular.
+  //
+  // Solución: onAuthStateChange SOLO lee datos del objeto session (ya en memoria)
+  // y setea estado React. Las REST calls (ensureProfile, fetchRole) se hacen
+  // en un useEffect separado que corre DESPUÉS, cuando el lock ya se liberó.
+  // ══════════════════════════════════════════════════════════════════════
   useEffect(() => {
-    // ✨ Inicializar Cache Manager (detección automática de versión)
     initCacheManager()
 
-    // ── Helper: Asegurar que exista un profile para cualquier usuario autenticado ──
-    const ensureProfile = async (user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> }) => {
-      try {
-        const fullName = (user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Usuario') as string
-        await supabase.from('profiles').upsert([{
-          id: user.id,
-          email: user.email ?? '',
-          full_name: fullName,
-          // role NO incluido: DB default 'student' aplica solo para usuarios nuevos.
-          // ignoreDuplicates:true garantiza que el rol existente (admin/instructor) NUNCA se pisa.
-          updated_at: new Date().toISOString(),
-        }], { onConflict: 'id', ignoreDuplicates: true })
-        debug('✅ [App] Profile asegurado para', user.email)
-      } catch (err) {
-        logError('⚠️ [App] Error asegurando profile:', err)
-      }
-    }
-
-    // ── Helper: Extraer userData de una sesión de Supabase ──
-    const extractUserData = async (user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> }) => {
+    // Helper: extraer userData SIN REST calls, usando solo metadata del token
+    const extractUserDataFromMeta = (user: {
+      id: string;
+      email?: string | null;
+      user_metadata?: Record<string, unknown>;
+      app_metadata?: Record<string, unknown>;
+    }) => {
       const userMeta = user.user_metadata ?? {}
       const appMeta = user.app_metadata ?? {}
       const fullName = (userMeta.full_name || userMeta.name || user.email?.split('@')[0] || 'Usuario') as string
-      let role: 'student' | 'instructor' | 'admin' = ((appMeta.role || userMeta.role || 'student') as 'student' | 'instructor' | 'admin')
-
-      // Intentar obtener el rol real desde profiles (puede ser admin)
-      try {
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-        if (profile?.role) {
-          role = profile.role as 'student' | 'instructor' | 'admin'
-        }
-      } catch { /* ignorar, usa fallback */ }
-
+      const role: 'student' | 'instructor' | 'admin' =
+        (appMeta.role || userMeta.role || 'student') as 'student' | 'instructor' | 'admin'
       return { email: user.email || '', name: fullName, role }
     }
 
-    const loadSession = async () => {
-      try {
-        // ── Detectar callback OAuth ──
-        const urlSearch = new URLSearchParams(window.location.search)
-        const isOAuthCallback =
-          urlSearch.has('code') ||
-          window.location.hash.includes('access_token=') ||
-          window.location.hash.includes('refresh_token=')
-
-        if (isOAuthCallback) {
-          debug('🔐 [App] Callback OAuth detectado, intercambiando tokens...')
-          await supabase.auth.getSession()
-          window.history.replaceState(null, '', window.location.pathname)
-          debug('🔐 [App] Tokens OAuth intercambiados, URL limpiada')
-          // onAuthStateChange(SIGNED_IN) se encargará del resto
-          return
-        }
-
-        // ✅ Solo leer sesión — NO llamar ensureProfile/extractUserData aquí.
-        // onAuthStateChange(INITIAL_SESSION) se dispara automáticamente y se
-        // encargará de ambas llamadas. De esta forma evitamos requests duplicados
-        // concurrentes que causan AbortError.
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          debug('✅ [App] getSession() encontró sesión, delegando a onAuthStateChange...')
-          // onAuthStateChange ya se disparó o se disparará con INITIAL_SESSION
-          return
-        }
-
-        debug('⚠️ [App] getSession() sin sesión → usuario no autenticado')
-        setIsLoggedIn(false)
-        setUserData(null)
-        setAuthBootstrapped(true)
-      } catch (error) {
-        logError('Error en loadSession OAuth:', error)
-        setIsLoggedIn(false)
-        setUserData(null)
-        setAuthBootstrapped(true)
-      }
-    };
-
-    loadSession();
-
-    // Escuchar cambios de autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, session: { user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } } | null) => {
+    // ── Escuchar cambios de autenticación ──
+    // onAuthStateChange emite INITIAL_SESSION automáticamente al registrarse,
+    // así NO necesitamos llamar getSession() manualmente (que también toma el lock).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       debug('🔄 [App] Auth state change:', _event, { hasSession: !!session })
 
       if (session?.user) {
-        // Asegurar profile solo en INITIAL_SESSION / SIGNED_IN / USER_UPDATED
-        // Es idempotente — ignoreDuplicates:true no sobreescribe el perfil existente
-        await ensureProfile(session.user)
+        const userData_ = extractUserDataFromMeta(session.user)
+        debug('✅ [App] Auth state:', _event, userData_.email, 'role (metadata):', userData_.role)
 
-        const userData_ = await extractUserData(session.user)
+        // Guardar ref para el efecto de sincronización de profile
+        authUserRef.current = { id: session.user.id, email: userData_.email, name: userData_.name }
 
-        debug('✅ [App] Auth state:', _event, userData_.email, 'role:', userData_.role)
         setIsLoggedIn(true)
         setUserData(userData_)
         sessionStorage.setItem('user_session', JSON.stringify(userData_))
-        setAuthBootstrapped(true)
       } else {
         debug('⚠️ [App] Sin sesión activa, evento:', _event)
+        authUserRef.current = null
         setIsLoggedIn(false)
         setUserData(null)
         sessionStorage.removeItem('user_session')
-        setAuthBootstrapped(true)
       }
-    });
+
+      // Siempre marcar bootstrap como completado (con o sin sesión)
+      setAuthBootstrapped(true)
+    })
+
+    // Detectar callback OAuth y limpiar URL
+    const urlSearch = new URLSearchParams(window.location.search)
+    const isOAuthCallback =
+      urlSearch.has('code') ||
+      window.location.hash.includes('access_token=') ||
+      window.location.hash.includes('refresh_token=')
+    if (isOAuthCallback) {
+      debug('🔐 [App] Callback OAuth detectado, limpiando URL...')
+      window.history.replaceState(null, '', window.location.pathname)
+    }
 
     return () => {
-      subscription?.unsubscribe();
-    };
-  }, []);
+      subscription?.unsubscribe()
+    }
+  }, [])
+
+  // ══════════════════════════════════════════════════════════════════════
+  // EFECTO 2: Sincronizar profile y rol real desde DB
+  // ══════════════════════════════════════════════════════════════════════
+  // Corre DESPUÉS de que auth bootstrap termina y el auth lock se libera.
+  // Aquí SÍ podemos hacer REST calls sin riesgo de deadlock.
+  // ══════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!authBootstrapped || !isLoggedIn) return
+
+    const authUser = authUserRef.current
+    if (!authUser) return
+
+    const syncProfile = async () => {
+      try {
+        // 1. Asegurar que exista profile (upsert idempotente)
+        await supabase.from('profiles').upsert([{
+          id: authUser.id,
+          email: authUser.email,
+          full_name: authUser.name,
+          updated_at: new Date().toISOString(),
+        }], { onConflict: 'id', ignoreDuplicates: true })
+        debug('✅ [App] Profile asegurado para', authUser.email)
+      } catch (err) {
+        logError('⚠️ [App] Error asegurando profile:', err)
+      }
+
+      try {
+        // 2. Obtener rol real desde DB (puede ser admin/instructor)
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', authUser.id).single()
+        if (profile?.role) {
+          const dbRole = profile.role as 'student' | 'instructor' | 'admin'
+          debug('✅ [App] Rol desde DB:', dbRole)
+          setUserData(prev => prev ? { ...prev, role: dbRole } : prev)
+          // Actualizar sessionStorage con rol correcto
+          const cached = sessionStorage.getItem('user_session')
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached)
+              parsed.role = dbRole
+              sessionStorage.setItem('user_session', JSON.stringify(parsed))
+            } catch { /* ignorar */ }
+          }
+        }
+      } catch (err) {
+        logError('⚠️ [App] Error obteniendo rol desde DB:', err)
+      }
+    }
+
+    syncProfile()
+  }, [authBootstrapped, isLoggedIn])
 
   // Scroll to top when page changes
   useEffect(() => {
