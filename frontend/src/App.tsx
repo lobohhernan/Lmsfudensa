@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, lazy, Suspense, startTransition } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense, startTransition } from "react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
 import { PageLoader } from "./components/PageLoader";
@@ -22,7 +22,7 @@ const AboutUs = lazy(() => import("./pages/AboutUs").then(m => ({ default: m.Abo
 const Contact = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
-import { supabase } from "./lib/supabase";
+import { supabase, AUTH_STORAGE_KEY } from "./lib/supabase";
 import { initCacheManager } from "./lib/cacheManager";
 import { debug, error as logError } from './lib/logger'
 import { useStorageCleanup } from "./hooks/useStorageCleanup"
@@ -176,7 +176,7 @@ export default function App() {
   const [currentLessonId, setCurrentLessonId] = useState<string | undefined>(initialRoute.lessonId);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState<{ email: string; name: string; role: 'student' | 'instructor' | 'admin' } | null>(null);
-  const [, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isResolvingRoute, setIsResolvingRoute] = useState(false);
   const [authBootstrapped, setAuthBootstrapped] = useState(false);
@@ -268,11 +268,6 @@ export default function App() {
         course: "Detalle del Curso",
         lesson: "Lección",
         checkout: "Checkout",
-        "payment-callback": "Procesando Pago",
-        "mp-success": "Confirmando Pago",
-        "mp-redirect": "Redirigiendo Pago",
-        "checkout-success": "Pago Exitoso",
-        "checkout-failure": "Pago Fallido",
         profile: "Perfil",
         admin: "Panel de Administración",
         design: "Sistema de Diseño",
@@ -285,10 +280,7 @@ export default function App() {
   }, [currentPage, userData, currentCourseSlug, currentLessonId, authBootstrapped]);
 
   // Proteger acceso al panel admin por URL directa
-  // ⚠️ Esperar a authBootstrapped antes de evaluar: si no, redirige mientras
-  // Supabase aún está restaurando la sesión desde localStorage (ej: F5 en /admin)
   useEffect(() => {
-    if (!authBootstrapped) return;
     if (currentPage === 'admin') {
       if (!isLoggedIn || !userData || userData.role !== 'admin') {
         toast.error('Acceso denegado. Solo administradores pueden acceder al panel admin.');
@@ -298,7 +290,7 @@ export default function App() {
         });
       }
     }
-  }, [currentPage, isLoggedIn, userData, authBootstrapped]);
+  }, [currentPage, isLoggedIn, userData]);
 
   // ✅ Listener para botón atrás/adelante del navegador
   useEffect(() => {
@@ -321,19 +313,31 @@ export default function App() {
     // ✨ Inicializar Cache Manager (detección automática de versión)
     initCacheManager()
 
+    const authTimeoutRef: { current: number | null } = { current: null }
+
+    const clearAuthTimeout = () => {
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current)
+        authTimeoutRef.current = null
+      }
+    }
+
     // ── Helper: Asegurar que exista un profile para cualquier usuario autenticado ──
     const ensureProfile = async (user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> }) => {
       try {
         const fullName = (user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Usuario') as string
-        await supabase.from('profiles').upsert([{
+        const { error: upsertError } = await supabase.from('profiles').upsert([{
           id: user.id,
           email: user.email ?? '',
           full_name: fullName,
-          // role NO incluido: DB default 'student' aplica solo para usuarios nuevos.
-          // ignoreDuplicates:true garantiza que el rol existente (admin/instructor) NUNCA se pisa.
+          role: 'student',
           updated_at: new Date().toISOString(),
         }], { onConflict: 'id', ignoreDuplicates: true })
-        debug('✅ [App] Profile asegurado para', user.email)
+        if (upsertError) {
+          logError('⚠️ [App] Error en upsert de profile:', upsertError.message)
+        } else {
+          debug('✅ [App] Profile asegurado para', user.email)
+        }
       } catch (err) {
         logError('⚠️ [App] Error asegurando profile:', err)
       }
@@ -348,47 +352,89 @@ export default function App() {
 
       // Intentar obtener el rol real desde profiles (puede ser admin)
       try {
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-        if (profile?.role) {
+        const { data: profile, error: profileError } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        if (profileError) {
+          logError('⚠️ [App] Error obteniendo rol de profile:', profileError.message)
+        } else if (profile?.role) {
           role = profile.role as 'student' | 'instructor' | 'admin'
+          debug('✅ [App] Rol obtenido de profiles:', role)
         }
-      } catch { /* ignorar, usa fallback */ }
+      } catch (err) {
+        logError('⚠️ [App] Excepción obteniendo profile:', err)
+      }
 
       return { email: user.email || '', name: fullName, role }
     }
 
     const loadSession = async () => {
       try {
+        debug('🔐 [App] Cargando sesión...')
+
         // ── Detectar callback OAuth ──
+        // PKCE envía ?code= en query, flujo implícito envía #access_token= en hash
         const urlSearch = new URLSearchParams(window.location.search)
         const isOAuthCallback =
           urlSearch.has('code') ||
           window.location.hash.includes('access_token=') ||
           window.location.hash.includes('refresh_token=')
 
-        if (isOAuthCallback) {
-          debug('🔐 [App] Callback OAuth detectado, intercambiando tokens...')
-          await supabase.auth.getSession()
-          window.history.replaceState(null, '', window.location.pathname)
-          debug('🔐 [App] Tokens OAuth intercambiados, URL limpiada')
-          // onAuthStateChange(SIGNED_IN) disparará desde aquí
+        // ── Buscar sesión guardada con la KEY que realmente usa el cliente ──
+        const hasStoredSession = Object.keys(localStorage).some(k => k.startsWith(AUTH_STORAGE_KEY))
+
+        if (!hasStoredSession && !isOAuthCallback) {
+          debug('⚠️ [App] No hay tokens en localStorage ni callback OAuth, saltando verificación')
+          setIsLoggedIn(false)
+          setUserData(null)
+          sessionStorage.removeItem('user_session')
+          setAuthBootstrapped(true)
           return
         }
 
-        // ✅ Fallback de seguridad: si INITIAL_SESSION no dispara (raro pero posible),
-        //    getSession() fuerza la lectura de localStorage y resuelve el bootstrap.
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-          debug('⚠️ [App] getSession() sin sesión → usuario no autenticado')
+        if (isOAuthCallback) {
+          debug('🔐 [App] Callback OAuth detectado, procesando tokens...')
+        }
+
+        // ── getSession() PRIMERO: necesita leer ?code= ANTES de limpiarlo ──
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+        // Ahora sí limpiamos la URL (el code ya fue intercambiado)
+        if (isOAuthCallback) {
+          window.history.replaceState(null, '', window.location.pathname)
+        }
+
+        if (sessionError) {
+          logError('❌ [App] Error obteniendo sesión:', sessionError)
+        }
+
+        debug('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
+
+        if (session?.user) {
+          debug('🔐 [App] Usuario autenticado')
+
+          // Asegurar profile (idempotente — no sobreescribe si ya existe)
+          await ensureProfile(session.user)
+
+          const userData_ = await extractUserData(session.user)
+
+          debug('✅ [App] Login exitoso:', userData_.email, 'name:', userData_.name, 'role:', userData_.role)
+          setIsLoggedIn(true)
+          setUserData(userData_)
+          sessionStorage.setItem('user_session', JSON.stringify(userData_))
+          clearAuthTimeout()
+        } else {
+          debug('⚠️ [App] No hay sesión válida, finalizando...')
           setIsLoggedIn(false)
           setUserData(null)
-          setAuthBootstrapped(true)
+          sessionStorage.removeItem('user_session')
+          clearAuthTimeout()
         }
-        // Si session existe, onAuthStateChange(INITIAL_SESSION) llega en ms y maneja el estado.
       } catch (error) {
-        logError('Error en loadSession OAuth:', error)
+        logError('Error cargando sesión:', error)
         setIsLoggedIn(false)
         setUserData(null)
+        sessionStorage.removeItem('user_session')
+        clearAuthTimeout()
+      } finally {
         setAuthBootstrapped(true)
       }
     };
@@ -398,30 +444,35 @@ export default function App() {
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, session: { user: { id: string; email?: string | null; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } } | null) => {
       debug('🔄 [App] Auth state change:', _event, { hasSession: !!session })
-
+      // Si llegó alguna actualización de auth, cancelar el timeout de no-auth
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current)
+        authTimeoutRef.current = null
+      }
       if (session?.user) {
-        // Asegurar profile solo en INITIAL_SESSION / SIGNED_IN / USER_UPDATED
-        // Es idempotente — ignoreDuplicates:true no sobreescribe el perfil existente
+        // Asegurar profile para CUALQUIER evento (no solo SIGNED_IN)
+        // Es idempotente — ignoreDuplicates:true no sobreescribe existentes
         await ensureProfile(session.user)
 
         const userData_ = await extractUserData(session.user)
 
-        debug('✅ [App] Auth state:', _event, userData_.email, 'role:', userData_.role)
         setIsLoggedIn(true)
         setUserData(userData_)
         sessionStorage.setItem('user_session', JSON.stringify(userData_))
         setAuthBootstrapped(true)
       } else {
-        debug('⚠️ [App] Sin sesión activa, evento:', _event)
         setIsLoggedIn(false)
         setUserData(null)
         sessionStorage.removeItem('user_session')
-        setAuthBootstrapped(true)
       }
     });
 
     return () => {
       subscription?.unsubscribe();
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current)
+        authTimeoutRef.current = null
+      }
     };
   }, []);
 
@@ -443,12 +494,15 @@ export default function App() {
     // lo que causaría "A component suspended while responding to synchronous input".
     startTransition(() => {
       setCurrentPage(page as Page);
-      // ✅ Siempre sobrescribir (incluso con undefined) para limpiar el estado
-      // previo del curso/lección. Sin esto, navegar del Curso A→Catálogo→Curso B
-      // (sin pasar courseId) mantiene el courseId del Curso A y carga el curso equivocado.
-      setCurrentCourseId(courseId);
-      setCurrentCourseSlug(courseSlug);
-      setCurrentLessonId(lessonId);
+      if (courseId) {
+        setCurrentCourseId(courseId);
+      }
+      if (courseSlug) {
+        setCurrentCourseSlug(courseSlug);
+      }
+      if (lessonId) {
+        setCurrentLessonId(lessonId);
+      }
     });
   }, [isLoggedIn, userData]);
 
@@ -505,7 +559,7 @@ export default function App() {
   // Mostrar loader mientras resolvemos la ruta del curso
   if (isResolvingRoute) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-white border-t-transparent mb-4"></div>
           <p className="text-white text-lg font-medium">Cargando curso...</p>

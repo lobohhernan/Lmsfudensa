@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, Award, Check, ChevronRight, ShieldCheck, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
@@ -451,9 +451,9 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
 
           {/* Sidebar - Order Summary */}
           <aside>
-            <Card className="sticky top-24 border border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(11,95,255,0.12)]">
+            <Card className="sticky top-24 border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm shadow-[0_8px_32px_0_rgba(11,95,255,0.12)]">
               {/* Glass effect top highlight */}
-              <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
               
               <CardHeader className="relative bg-white/50 backdrop-blur-sm">
                 <CardTitle>Resumen del Pedido</CardTitle>
@@ -466,7 +466,7 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                       $ {price.toLocaleString('es-AR')}
                     </span>
                   </div>
-                  <Separator className="bg-linear-to-r from-transparent via-gray-300 to-transparent" />
+                  <Separator className="bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
                   <div className="flex justify-between">
                     <span className="font-semibold text-[#0F172A]">Total ({currency})</span>
                     <span className="text-xl font-bold text-[#0F172A]">

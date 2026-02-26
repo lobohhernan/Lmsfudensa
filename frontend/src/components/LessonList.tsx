@@ -1,4 +1,4 @@
-﻿import { memo } from "react";
+import { memo } from "react";
 import { PlayCircle, FileText, CheckCircle2, Lock } from "lucide-react";
 import { cn } from "./ui/utils";
 
@@ -70,7 +70,7 @@ const LessonRow = memo(function LessonRow({ lesson, index, isCurrent, onLessonCl
               {index + 1}. {lesson.title}
             </h4>
             {lesson.completed && !lesson.locked && (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-[#22C55E]" />
+              <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-[#22C55E]" />
             )}
           </div>
           <p className="text-xs text-[#64748B]">{lesson.duration}</p>

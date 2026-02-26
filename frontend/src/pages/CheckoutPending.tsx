@@ -1,4 +1,4 @@
-﻿import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Clock } from "lucide-react";
 import { Button } from "../components/ui/button";
 
@@ -15,7 +15,7 @@ export default function CheckoutPending() {
   });
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-yellow-50 to-orange-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
         <Clock className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
         

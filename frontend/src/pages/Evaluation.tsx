@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   CheckCircle2,
   XCircle,
@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
-import { type EvaluationQuestion } from "../lib/data";
+import { courses, type EvaluationQuestion } from "../lib/data";
 import { CertificateTemplate, type CertificateData } from "../components/CertificateTemplate";
 import { generateCertificatePDF, generateCertificateId, formatCertificateDate, generateCertificatePreview } from "../utils/certificate";
 import { issueCertificate } from "../utils/issueCertificate";
@@ -61,7 +61,6 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
   const [showCertificatePreview, setShowCertificatePreview] = useState(false);
   const [certificatePreviewUrl, setCertificatePreviewUrl] = useState<string>("");
   const [certificateHash, setCertificateHash] = useState<string>("");
-  const [courseDuration, setCourseDuration] = useState<string>("40");
   const [isLoading, setIsLoading] = useState(true);
   const certificateRef = useRef<HTMLDivElement>(null);
 
@@ -71,16 +70,15 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
       try {
         console.log("🎓 [Evaluation] Cargando evaluación para courseId:", courseId);
         
-        // Obtener título y duración del curso
+        // Obtener título del curso
         const { data: courseData, error: courseError } = await supabase
           .from("courses")
-          .select("title, duration")
+          .select("title")
           .eq("id", courseId)
           .single();
 
         if (courseError) throw courseError;
         setCourseTitle(courseData?.title || "Curso");
-        if (courseData?.duration) setCourseDuration(courseData.duration);
         console.log("✅ [Evaluation] Curso encontrado:", courseData?.title);
 
         // Obtener preguntas de evaluación desde la tabla evaluations
@@ -173,6 +171,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     // Generate certificate if passed
     if (passed) {
       console.log("🎯 [Evaluation] Usuario aprobó, generando certificado...");
+      const course = courses.find((c) => c.id === courseId);
       
       try {
         // Obtener usuario autenticado
@@ -209,7 +208,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
           studentId: user.id,
           courseId: courseId,
           studentName: studentName,
-          courseTitle: courseTitle || "Curso Completado",
+          courseTitle: courseTitle || course?.title || "Curso Completado",
           grade: score.percentage,
           completionDate: new Date().toISOString().split("T")[0],
         });
@@ -227,8 +226,8 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
         const certData: CertificateData = {
           studentName: studentName,
           dni: "", // Opcional
-          courseName: courseTitle || "Curso Completado",
-          courseHours: courseDuration,
+          courseName: courseTitle || course?.title || "Curso Completado",
+          courseHours: course?.duration || "40",
           issueDate: formatCertificateDate(),
           certificateId: certificate.hash.substring(0, 12).toUpperCase(),
         };
@@ -245,11 +244,12 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
         });
         
         // Fallback: generar certificado local sin guardar en DB
+        const course = courses.find((c) => c.id === courseId);
         const certData: CertificateData = {
           studentName: "Usuario",
           dni: "",
-          courseName: courseTitle || "Curso Completado",
-          courseHours: courseDuration,
+          courseName: courseTitle || course?.title || "Curso Completado",
+          courseHours: course?.duration || "40",
           issueDate: formatCertificateDate(),
           certificateId: generateCertificateId(),
         };
@@ -375,7 +375,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
                     <Card key={question.id} className={!wasAnswered ? "opacity-60" : ""}>
                       <CardContent className="pt-6">
                         <div className="flex items-start gap-3">
-                          <div className="shrink-0">
+                          <div className="flex-shrink-0">
                             {wasAnswered ? (
                               isCorrect ? (
                                 <CheckCircle2 className="h-5 w-5 text-[#55a5c7]" />
@@ -430,7 +430,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
 
               {/* Certificate Section - Only if passed */}
               {passed && certificateData && (
-                <Card className="bg-linear-to-br from-[#55a5c7]/5 to-[#1e467c]/5 border-[#55a5c7]/20">
+                <Card className="bg-gradient-to-br from-[#55a5c7]/5 to-[#1e467c]/5 border-[#55a5c7]/20">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[#1e467c]">
                       <Award className="h-6 w-6" />

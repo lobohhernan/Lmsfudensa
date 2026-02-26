@@ -3,13 +3,7 @@ import jsPDF from "jspdf";
 import type { CertificateData } from "../components/CertificateTemplate";
 
 /**
- * Genera un ID único para el certificado.
- *
- * Formato: `{timestampBase36}-{randomBase36}` en mayúsculas.
- * El componente de timestamp garantiza orden temporal y el componente
- * aleatorio reduce la probabilidad de colisiones en ejecuciones rápidas.
- *
- * @returns {string} ID único del certificado.
+ * Genera un ID único para el certificado
  */
 export function generateCertificateId(): string {
   const timestamp = Date.now().toString(36);

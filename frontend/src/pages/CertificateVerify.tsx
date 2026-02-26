@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Search, ShieldCheck, AlertCircle, Award, Calendar, User } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
@@ -21,7 +21,7 @@ export function CertificateVerify() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-[#F8FAFC] to-[#E2E8F0] py-12">
+    <div className="min-h-screen bg-gradient-to-br from-[#F8FAFC] to-[#E2E8F0] py-12">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -68,7 +68,7 @@ export function CertificateVerify() {
         {/* Valid Certificate */}
         {verificationStatus === "valid" && (
           <Card className="border-2 border-[#22C55E]">
-            <CardHeader className="bg-linear-to-r from-[#22C55E]/10 to-transparent">
+            <CardHeader className="bg-gradient-to-r from-[#22C55E]/10 to-transparent">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#22C55E]">
                   <ShieldCheck className="h-6 w-6 text-white" />
@@ -85,7 +85,7 @@ export function CertificateVerify() {
               {/* Certificate Details */}
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <Award className="mt-1 h-5 w-5 shrink-0 text-[#0B5FFF]" />
+                  <Award className="mt-1 h-5 w-5 flex-shrink-0 text-[#0B5FFF]" />
                   <div className="flex-1">
                     <p className="text-sm text-[#64748B]">Curso</p>
                     <p className="text-[#0F172A]">
@@ -95,7 +95,7 @@ export function CertificateVerify() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <User className="mt-1 h-5 w-5 shrink-0 text-[#0B5FFF]" />
+                  <User className="mt-1 h-5 w-5 flex-shrink-0 text-[#0B5FFF]" />
                   <div className="flex-1">
                     <p className="text-sm text-[#64748B]">Otorgado a</p>
                     <p className="text-[#0F172A]">Datos del certificado</p>
@@ -103,7 +103,7 @@ export function CertificateVerify() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <Calendar className="mt-1 h-5 w-5 shrink-0 text-[#0B5FFF]" />
+                  <Calendar className="mt-1 h-5 w-5 flex-shrink-0 text-[#0B5FFF]" />
                   <div className="flex-1">
                     <p className="text-sm text-[#64748B]">Fecha de emisión</p>
                     <p className="text-[#0F172A]">15 de Octubre, 2025</p>
@@ -111,7 +111,7 @@ export function CertificateVerify() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[#0B5FFF]" />
+                  <ShieldCheck className="mt-1 h-5 w-5 flex-shrink-0 text-[#0B5FFF]" />
                   <div className="flex-1">
                     <p className="text-sm text-[#64748B]">Hash de verificación</p>
                     <code className="block break-all rounded bg-[#F1F5F9] p-2 text-xs text-[#0F172A]">
@@ -163,7 +163,7 @@ export function CertificateVerify() {
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 <div className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0B5FFF] text-white">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#0B5FFF] text-white">
                     1
                   </div>
                   <div>
@@ -175,7 +175,7 @@ export function CertificateVerify() {
                 </div>
 
                 <div className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0B5FFF] text-white">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#0B5FFF] text-white">
                     2
                   </div>
                   <div>
@@ -187,7 +187,7 @@ export function CertificateVerify() {
                 </div>
 
                 <div className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0B5FFF] text-white">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#0B5FFF] text-white">
                     3
                   </div>
                   <div>

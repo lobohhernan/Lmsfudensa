@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { supabase } from "../lib/supabase";
@@ -151,7 +151,7 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
         {enrollmentError ? (
           <>

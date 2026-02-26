@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   LayoutDashboard,
   BookOpen,
@@ -20,7 +20,7 @@ import {
   GraduationCap,
   Loader2,
 } from "lucide-react";
-import { CourseLesson } from "../lib/data";
+import { CourseLesson, EvaluationQuestion } from "../lib/data";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -56,7 +56,7 @@ import { type FullCourse } from "../lib/data";
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
-import { saveCourseViaAdmin, saveTeacherViaAdmin, saveUserViaAdmin, deleteResourceViaAdmin } from '../lib/adminOperations'
+import { supabaseAdmin, isAdminClientConfigured, logAdminOperation } from "../lib/supabaseAdmin";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
 import { useTeachersRealtime } from "../hooks/useTeachers";
 import { useCertificatesRealtime } from "../hooks/useCertificates";
@@ -85,40 +85,6 @@ interface AdminPanelProps {
   onNavigate?: (page: string) => void;
 }
 
-// Tipo que refleja una fila real de la tabla profiles en Supabase
-interface UserRecord {
-  id: string
-  full_name: string | null
-  email: string
-  role: string
-  country?: string | null
-  phone?: string | null
-  created_at: string
-  [key: string]: unknown
-}
-
-// Tipo para filas de pagos (sección de pagos sin implementar)
-interface PaymentRecord {
-  id: string
-  status: string
-  date: string
-  user: string
-  email: string
-  course: string
-  amount: string
-  [key: string]: unknown
-}
-
-// Tipo que refleja una fila real de la tabla evaluations en Supabase (snake_case)
-interface DbEvaluationRow {
-  question_order: number
-  question: string
-  options: string[] | string
-  correct_answer: number
-  explanation?: string
-  [key: string]: unknown
-}
-
 export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<"dashboard" | "courses" | "teachers" | "users" | "payments" | "certificates">("dashboard");
   const [showCourseForm, setShowCourseForm] = useState(false);
@@ -135,7 +101,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [contactUser, setContactUser] = useState<{ name: string; email: string } | null>(null);
   const [contactMessage, setContactMessage] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [usersList, setUsersList] = useState<UserRecord[]>([])
+  const [usersList, setUsersList] = useState<Record<string, unknown>[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
@@ -208,7 +174,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   }, [realtimeCourses, realtimeTeachers]);
 
   // Datos de ejemplo para secciones no implementadas
-  const paymentsData: PaymentRecord[] = [];
+  const paymentsData: Record<string, unknown>[] = [];
 
   // Lookup: profiles.id → teacher.id (para cursos legacy)
   const profileToTeacherIdMap = useMemo(() => {
@@ -298,6 +264,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   const handleSaveCourse = async (course: FullCourse) => {
     try {
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+
       // Resolver teacher.id → ID compatible con instructor_id (FK a profiles)
       // IMPORTANTE: instructor_id DEBE ser un ID de profiles, no de teachers
       const resolveInstructorIdForDB = (teacherId: string | undefined | null): string | null => {
@@ -329,31 +297,166 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         console.error('❌ No se pudo resolver el instructor_id para la BD');
         return; // El toast ya se mostró en resolveInstructorIdForDB
       }
-
-      // Usar Edge Function para operaciones administrativas
-      const result = await saveCourseViaAdmin({
-        course: {
-          ...course,
-          instructorId: dbInstructorId || course.instructorId
-        },
-        lessons: course.lessons || [],
-        evaluations: course.evaluation || [],
-        editingCourse: !!editingCourse
-      });
-
-      if (result.success) {
-        toast.success(editingCourse ? '✅ Curso actualizado exitosamente' : '✅ Curso creado exitosamente');
+      
+      if (editingCourse) {
+        // Actualizar curso en Supabase
+        logAdminOperation('UPDATE', 'courses', { courseId: course.id });
         
-        // ✅ Delay de 2.5 segundos para que la suscripción realtime actualice la UI
-        debug('⏳ Esperando 2.5 segundos para que se sincronice el realtime...');
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        const { error } = await client
+          .from("courses")
+          .update({
+            title: course.title,
+            slug: course.slug,
+            description: course.description,
+            full_description: course.fullDescription,
+            image: course.image,
+            category: course.category,
+            price: course.price,
+            duration: course.duration,
+            level: course.level,
+            certified: course.certified,
+            instructor_id: dbInstructorId,
+          })
+          .eq("id", course.id);
         
-        debug('✅ Curso guardado completamente, cerrando formulario');
-        setShowCourseForm(false);
-        setEditingCourse(undefined);
+        if (error) {
+          console.error("❌ Error UPDATE:", error);
+          toast.error("Error al actualizar el curso: " + error.message);
+          return;
+        }
+        toast.success("✅ Curso actualizado exitosamente");
       } else {
-        throw new Error('Failed to save course via admin operation');
+        // Usar el instructorId resuelto
+        let instructorId = dbInstructorId;
+
+        // Fallback: si no se seleccionó instructor, buscar un profile disponible
+        if (!instructorId) {
+          const { data: firstProfile } = await client.from("profiles").select("id").limit(1).single();
+          if (!firstProfile) {
+            toast.error("No hay perfiles en la base de datos");
+            return;
+          }
+          instructorId = firstProfile.id;
+        }
+
+        // Crear nuevo curso en Supabase
+        logAdminOperation('INSERT', 'courses', { title: course.title });
+        
+        const { data: newCourse, error } = await client.from("courses").insert([{
+          title: course.title,
+          slug: course.slug,
+          description: course.description,
+          full_description: course.fullDescription,
+          image: course.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=1200",
+          category: course.category,
+          price: course.price,
+          duration: course.duration,
+          level: course.level,
+          certified: course.certified,
+          instructor_id: instructorId,
+          students: null,
+          rating: 0,
+          reviews: 0,
+        }]).select();
+        
+        if (error) {
+          console.error("❌ Error INSERT:", error);
+          toast.error("Error al crear el curso: " + error.message);
+          return;
+        }
+        
+        // ✅ IMPORTANTE: Usar el ID real del curso recién creado
+        if (newCourse && newCourse[0]) {
+          course.id = newCourse[0].id;
+          debug(`✅ Curso creado con ID: ${course.id}`);
+        }
+        
+        toast.success("✅ Curso creado exitosamente");
       }
+
+      // Guardar lecciones del curso
+      if (course.lessons && course.lessons.length > 0) {
+        try {
+          // Eliminar lecciones existentes del curso (solo si es edición)
+          if (editingCourse) {
+            await client.from("lessons").delete().eq("course_id", course.id);
+          }
+
+          // Insertar nuevas lecciones
+          const lessonsToInsert = course.lessons.map((lesson, index) => ({
+            course_id: course.id,
+            order_index: index + 1, // ✅ Nombre correcto de la columna en DB
+            title: lesson.title,
+            duration: lesson.duration,
+            type: lesson.type || "video",
+            youtube_id: lesson.youtubeId || null, // ⚠️ Conversión camelCase -> snake_case
+            description: lesson.description || null,
+            content: lesson.content || null,
+          }));
+
+          debug(`📝 Insertando ${lessonsToInsert.length} lecciones para curso ${course.id}`);
+
+          const { error: lessonsError } = await client
+            .from("lessons")
+            .insert(lessonsToInsert);
+
+          if (lessonsError) {
+            console.error("❌ Error guardando lecciones:", lessonsError);
+            console.error("❌ Datos que intentamos insertar:", lessonsToInsert);
+            toast.warning("Curso guardado, pero error al guardar lecciones: " + lessonsError.message);
+          } else {
+            debug(`✅ ${lessonsToInsert.length} lecciones guardadas exitosamente`);
+          }
+        } catch (lessonsErr) {
+          console.error("❌ Error guardando lecciones (catch):", lessonsErr);
+          toast.warning("Curso guardado, pero error al guardar lecciones");
+        }
+      }
+
+      // Guardar evaluaciones del curso
+      if (course.evaluation && course.evaluation.length > 0) {
+        try {
+          // Eliminar evaluaciones existentes del curso (solo si es edición)
+          if (editingCourse) {
+            await client.from("evaluations").delete().eq("course_id", course.id);
+          }
+
+          // Insertar nuevas evaluaciones
+          const evaluationsToInsert = course.evaluation.map((q, index) => ({
+            course_id: course.id,
+            question_order: index + 1,
+            question: q.question,
+            options: q.options, // ✅ Enviar como array directo (TEXT[] en PostgreSQL)
+            correct_answer: q.correctAnswer,
+            explanation: q.explanation || null,
+          }));
+
+          debug(`📝 Insertando ${evaluationsToInsert.length} evaluaciones para curso ${course.id}`);
+
+          const { error: evalError } = await client
+            .from("evaluations")
+            .insert(evaluationsToInsert);
+
+          if (evalError) {
+            console.error("❌ Error guardando evaluaciones:", evalError);
+            console.error("❌ Datos que intentamos insertar:", evaluationsToInsert);
+            toast.warning("Curso guardado, pero error al guardar evaluaciones: " + evalError.message);
+          } else {
+            debug(`✅ ${evaluationsToInsert.length} evaluaciones guardadas exitosamente`);
+          }
+        } catch (evalErr) {
+          console.error("❌ Error guardando evaluaciones (catch):", evalErr);
+          toast.warning("Curso guardado, pero error al guardar evaluaciones");
+        }
+      }
+
+      // ✅ Delay de 2.5 segundos para que la suscripción realtime actualice la UI
+      debug("⏳ Esperando 2.5 segundos para que se sincronice el realtime...");
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      debug("✅ Curso guardado completamente, cerrando formulario");
+      setShowCourseForm(false);
+      setEditingCourse(undefined);
     } catch (err) {
       toast.error("Error al guardar el curso");
       console.error(err);
@@ -362,8 +465,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   const handleEditCourse = async (course: FullCourse) => {
     try {
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+      
       // Cargar lecciones del curso desde la base de datos
-      const { data: lessonsData, error: lessonsError } = await supabase
+      const { data: lessonsData, error: lessonsError } = await client
         .from("lessons")
         .select("*")
         .eq("course_id", course.id)
@@ -375,7 +480,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       }
 
       // Cargar evaluaciones del curso
-      const { data: evaluationsData, error: evaluationsError } = await supabase
+      const { data: evaluationsData, error: evaluationsError } = await client
         .from("evaluations")
         .select("*")
         .eq("course_id", course.id)
@@ -401,7 +506,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
       // Mapear evaluaciones a formato esperado por CourseForm
       // No usar nombre 'eval' porque es una declaración reservada en ESM.
-      const mappedEvaluations = (evaluationsData || []).map((e: DbEvaluationRow) => {
+      const mappedEvaluations = (evaluationsData || []).map((e: EvaluationQuestion) => {
         // ✅ options es TEXT[] en PostgreSQL, viene como array directamente
         let optionsArray: string[] = [];
         
@@ -450,29 +555,71 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   const handleSaveTeacher = async (teacher: Partial<Teacher>) => {
     try {
-      // Usar Edge Function para operaciones administrativas
-      const result = await saveTeacherViaAdmin({
-        teacher,
-        editingTeacher: !!editingTeacher
-      });
-
-      if (result.success) {
-        toast.success(editingTeacher ? "✅ Profesor actualizado exitosamente" : "✅ Profesor creado exitosamente");
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+      
+      if (editingTeacher) {
+        // Actualizar profesor en Supabase
+        logAdminOperation('UPDATE', 'teachers', { teacherId: teacher.id });
         
-        // Delay para que la suscripción realtime actualice la UI
-        debug("⏳ Esperando 2 segundos para que se sincronice el realtime...");
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        const { error } = await client
+          .from("teachers")
+          .update({
+            full_name: teacher.full_name,
+            email: teacher.email,
+            bio: teacher.bio,
+            avatar_url: teacher.avatar_url,
+            specialization: teacher.specialization,
+            years_of_experience: teacher.years_of_experience,
+            rating: teacher.rating,
+            total_students: teacher.total_students,
+            total_courses: teacher.total_courses,
+            hourly_rate: teacher.hourly_rate,
+            is_active: teacher.is_active,
+          })
+          .eq("id", teacher.id);
         
-        setShowTeacherForm(false);
-        setEditingTeacher(undefined);
-        // Ensure latest data after operation
+        if (error) {
+          console.error("❌ Error UPDATE teacher:", error);
+          toast.error("Error al actualizar el profesor: " + error.message);
+          return;
+        }
+        toast.success("✅ Profesor actualizado exitosamente");
+        // Ensure latest data after update
         try { await refetchTeachers(); } catch (e) { /* ignore */ }
       } else {
-        throw new Error('Failed to save teacher via admin operation');
+        // Crear nuevo profesor en Supabase
+        logAdminOperation('INSERT', 'teachers', { full_name: teacher.full_name });
+        
+        const { error } = await client.from("teachers").insert([{
+          full_name: teacher.full_name,
+          email: teacher.email,
+          bio: teacher.bio,
+          avatar_url: teacher.avatar_url,
+          specialization: teacher.specialization,
+          years_of_experience: teacher.years_of_experience,
+          rating: teacher.rating,
+          total_students: teacher.total_students,
+          total_courses: teacher.total_courses,
+          hourly_rate: teacher.hourly_rate,
+          is_active: teacher.is_active,
+        }]);
+        
+        if (error) {
+          console.error("❌ Error INSERT teacher:", error);
+          toast.error("Error al crear el profesor: " + error.message);
+          return;
+        }
+        toast.success("✅ Profesor creado exitosamente");
+        // Ensure latest data after insert
+        try { await refetchTeachers(); } catch (e) { /* ignore */ }
       }
-    } catch (error: any) {
-      console.error("❌ Error guardando profesor:", error);
-      toast.error("Error al guardar el profesor: " + error.message);
+
+      // No need to manually reload - realtime subscription will update the list automatically
+      setShowTeacherForm(false);
+      setEditingTeacher(undefined);
+    } catch (err) {
+      toast.error("Error al guardar el profesor");
+      console.error(err);
     }
   };
 
@@ -488,19 +635,24 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   const confirmDelete = async () => {
     try {
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+      
       if (courseToDelete) {
         // ✅ Mostrar estado de eliminación (animación visual)
         setDeletingCourseId(courseToDelete);
         
-        // Eliminar curso via Edge Function
-        const result = await deleteResourceViaAdmin({
-          type: 'course',
-          id: courseToDelete
-        });
-
-        if (!result.success) {
-          toast.error("Error al eliminar el curso");
-          setDeletingCourseId(null);
+        // Eliminar curso de Supabase
+        logAdminOperation('DELETE', 'courses', { courseId: courseToDelete });
+        
+        const { error } = await client
+          .from("courses")
+          .delete()
+          .eq("id", courseToDelete);
+        
+        if (error) {
+          console.error("❌ Error DELETE:", error);
+          toast.error("Error al eliminar el curso: " + error.message);
+          setDeletingCourseId(null); // Reset animation state on error
           return;
         }
         
@@ -509,37 +661,58 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         // ✅ Delay de 500ms para mostrar animación de desaparición antes de actualizar UI
         await new Promise(resolve => setTimeout(resolve, 500));
         setDeletingCourseId(null);
+        // No need to reload - realtime subscription will update the list automatically
       }
       if (certToDelete) {
         setDeletingCertId(certToDelete.id);
+        logAdminOperation('DELETE', 'certificates', { certId: certToDelete.id });
 
-        const result = await deleteResourceViaAdmin({
-          type: 'certificate',
-          id: certToDelete.id
-        });
+        const { error } = await client
+          .from("certificates")
+          .delete()
+          .eq("id", certToDelete.id);
 
-        if (!result.success) {
-          toast.error("Error al revocar certificado");
+        if (error) {
+          console.error("\u274c Error DELETE certificate:", error);
+          toast.error("Error al revocar certificado: " + error.message);
           setDeletingCertId(null);
           return;
         }
 
-        toast.success(`✅ Certificado de "${certToDelete.studentName}" revocado exitosamente`);
+        toast.success(`\u2705 Certificado de "${certToDelete.studentName}" revocado exitosamente`);
         await new Promise(resolve => setTimeout(resolve, 500));
         setDeletingCertId(null);
         setCertToDelete(null);
       }
       if (userToDelete) {
         setDeletingUserId(userToDelete.id);
+        logAdminOperation('DELETE', 'user', { userId: userToDelete.id, userName: userToDelete.name });
 
-        const result = await deleteResourceViaAdmin({
-          type: 'user',
-          id: userToDelete.id,
-          userId: userToDelete.id
-        });
+        if (!isAdminClientConfigured()) {
+          toast.error("Se requiere la SERVICE_ROLE_KEY para eliminar usuarios");
+          setDeletingUserId(null);
+          return;
+        }
 
-        if (!result.success) {
-          toast.error("Error al eliminar usuario");
+        // 1. Eliminar perfil de la tabla profiles
+        const { error: profileError } = await supabaseAdmin
+          .from("profiles")
+          .delete()
+          .eq("id", userToDelete.id);
+
+        if (profileError) {
+          console.error("❌ Error DELETE profile:", profileError);
+          toast.error("Error al eliminar perfil: " + profileError.message);
+          setDeletingUserId(null);
+          return;
+        }
+
+        // 2. Eliminar usuario de auth (esto revoca todo acceso)
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userToDelete.id);
+
+        if (authError) {
+          console.error("❌ Error DELETE auth user:", authError);
+          toast.error("Error al eliminar usuario de auth: " + authError.message);
           setDeletingUserId(null);
           return;
         }
@@ -555,14 +728,18 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         // ✅ Mostrar estado de eliminación (animación visual)
         setDeletingTeacherId(teacherToDelete);
         
-        const result = await deleteResourceViaAdmin({
-          type: 'teacher',
-          id: teacherToDelete
-        });
-
-        if (!result.success) {
-          toast.error("Error al eliminar el profesor");
-          setDeletingTeacherId(null);
+        // Eliminar profesor de Supabase
+        logAdminOperation('DELETE', 'teachers', { teacherId: teacherToDelete });
+        
+        const { error } = await client
+          .from("teachers")
+          .delete()
+          .eq("id", teacherToDelete);
+        
+        if (error) {
+          console.error("❌ Error DELETE teacher:", error);
+          toast.error("Error al eliminar el profesor: " + error.message);
+          setDeletingTeacherId(null); // Reset animation state on error
           return;
         }
         
@@ -571,6 +748,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         // ✅ Delay de 500ms para mostrar animación de desaparición antes de actualizar UI
         await new Promise(resolve => setTimeout(resolve, 500));
         setDeletingTeacherId(null);
+        // No need to reload - realtime subscription will update the list automatically
       }
     } catch (err) {
       toast.error("Error al eliminar");
@@ -617,29 +795,120 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   const handleSaveUser = async (userData: any) => {
     try {
-      // Validar contraseña para nuevos usuarios
-      if (!editingUser && !userData.password) {
-        toast.error("La contraseña es requerida para nuevos usuarios");
-        return;
+      const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+
+      if (editingUser) {
+        // Actualizar usuario existente
+        logAdminOperation('UPDATE', 'profiles', { userId: editingUser.id });
+        
+        const { error: updateError } = await client
+          .from("profiles")
+          .update({
+            full_name: userData.full_name,
+            role: userData.role,
+            country: userData.country,
+            phone: userData.phone,
+          })
+          .eq("id", editingUser.id);
+
+        if (updateError) throw updateError;
+
+        // Si cambió a rol profesor, crear/actualizar registro en teachers
+        if (userData.role === 'instructor') {
+          const { data: existingTeacher } = await client
+            .from("teachers")
+            .select("id")
+            .eq("user_id", editingUser.id)
+            .single();
+
+          if (!existingTeacher) {
+            // Crear registro de teacher
+            await client.from("teachers").insert({
+              user_id: editingUser.id,
+              full_name: userData.full_name,
+              email: userData.email,
+              bio: userData.bio || "",
+              specialization: userData.specialization || "",
+              years_of_experience: 0,
+              rating: 0,
+              total_students: 0,
+              total_courses: 0,
+              is_active: true,
+            });
+          } else {
+            // Actualizar registro de teacher existente
+            await client
+              .from("teachers")
+              .update({
+                full_name: userData.full_name,
+                bio: userData.bio || "",
+                specialization: userData.specialization || "",
+              })
+              .eq("user_id", editingUser.id);
+          }
+        }
+
+        toast.success("Usuario actualizado exitosamente");
+      } else {
+        // Crear nuevo usuario
+        if (!userData.password) {
+          toast.error("La contraseña es requerida para nuevos usuarios");
+          return;
+        }
+
+        logAdminOperation('CREATE', 'auth.users', { email: userData.email });
+
+        // Crear usuario en auth
+        const { data: authData, error: authError } = await client.auth.admin.createUser({
+          email: userData.email,
+          password: userData.password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: userData.full_name,
+          },
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("No se pudo crear el usuario");
+
+        // Crear perfil
+        const { error: profileError } = await client
+          .from("profiles")
+          .insert({
+            id: authData.user.id,
+            email: userData.email,
+            full_name: userData.full_name,
+            role: userData.role,
+            country: userData.country,
+            phone: userData.phone,
+          });
+
+        if (profileError) throw profileError;
+
+        // Si es profesor, crear registro en teachers
+        if (userData.role === 'instructor') {
+          await client.from("teachers").insert({
+            user_id: authData.user.id,
+            full_name: userData.full_name,
+            email: userData.email,
+            bio: userData.bio || "",
+            specialization: userData.specialization || "",
+            years_of_experience: 0,
+            rating: 0,
+            total_students: 0,
+            total_courses: 0,
+            is_active: true,
+          });
+        }
+
+        toast.success("Usuario creado exitosamente");
       }
 
-      // Usar Edge Function para operaciones administrativas
-      const result = await saveUserViaAdmin({
-        userData,
-        editingUser: editingUser || undefined
-      });
-
-      if (result.success) {
-        toast.success(editingUser ? "Usuario actualizado exitosamente" : "Usuario creado exitosamente");
-        
-        setShowUserForm(false);
-        setEditingUser(undefined);
-        loadUsers();
-        if (userData.role === 'instructor') {
-          refetchTeachers();
-        }
-      } else {
-        throw new Error('Failed to save user via admin operation');
+      setShowUserForm(false);
+      setEditingUser(undefined);
+      loadUsers();
+      if (userData.role === 'instructor') {
+        refetchTeachers();
       }
     } catch (error: any) {
       console.error("Error guardando usuario:", error);
@@ -742,14 +1011,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <Card 
-                  className="group relative cursor-pointer overflow-hidden border border-[#0B5FFF]/20 bg-linear-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 flex flex-col h-full"
+                  className="group relative cursor-pointer overflow-hidden border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#0B5FFF]/40 hover:shadow-[0_8px_32px_0_rgba(11,95,255,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("users")}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
-                  <CardHeader className="pb-4 relative bg-white/30 shrink-0">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0B5FFF]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Total Estudiantes</CardTitle>
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#0B5FFF]/20 backdrop-blur-sm border border-[#0B5FFF]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#0B5FFF]/20 backdrop-blur-sm border border-[#0B5FFF]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                         <Users className="h-6 w-6 text-[#0B5FFF]" />
                       </div>
                     </div>
@@ -761,14 +1030,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 </Card>
 
                 <Card 
-                  className="group relative cursor-pointer overflow-hidden border border-[#16A34A]/20 bg-linear-to-br from-white to-[#16A34A]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#16A34A]/40 hover:shadow-[0_8px_32px_0_rgba(22,163,74,0.15)] hover:scale-105 flex flex-col h-full"
+                  className="group relative cursor-pointer overflow-hidden border border-[#16A34A]/20 bg-gradient-to-br from-white to-[#16A34A]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#16A34A]/40 hover:shadow-[0_8px_32px_0_rgba(22,163,74,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("courses")}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#16A34A]/30 to-transparent" />
-                  <CardHeader className="pb-4 relative bg-white/30 shrink-0">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#16A34A]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Cursos Activos</CardTitle>
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#16A34A]/20 backdrop-blur-sm border border-[#16A34A]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#16A34A]/20 backdrop-blur-sm border border-[#16A34A]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                         <BookOpen className="h-6 w-6 text-[#16A34A]" />
                       </div>
                     </div>
@@ -780,14 +1049,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 </Card>
 
                 <Card 
-                  className="group relative cursor-pointer overflow-hidden border border-[#F59E0B]/20 bg-linear-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#F59E0B]/40 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 flex flex-col h-full"
+                  className="group relative cursor-pointer overflow-hidden border border-[#F59E0B]/20 bg-gradient-to-br from-white to-[#F59E0B]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#F59E0B]/40 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("certificates")}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#F59E0B]/30 to-transparent" />
-                  <CardHeader className="pb-4 relative bg-white/30 shrink-0">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Certificados Emitidos</CardTitle>
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#F59E0B]/20 backdrop-blur-sm border border-[#F59E0B]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#F59E0B]/20 backdrop-blur-sm border border-[#F59E0B]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                         <Award className="h-6 w-6 text-[#F59E0B]" />
                       </div>
                     </div>
@@ -799,14 +1068,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 </Card>
 
                 <Card 
-                  className="group relative cursor-pointer overflow-hidden border border-[#22C55E]/20 bg-linear-to-br from-white to-[#22C55E]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#22C55E]/40 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 flex flex-col h-full"
+                  className="group relative cursor-pointer overflow-hidden border border-[#22C55E]/20 bg-gradient-to-br from-white to-[#22C55E]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#22C55E]/40 hover:shadow-[0_8px_32px_0_rgba(34,197,94,0.15)] hover:scale-105 flex flex-col h-full"
                   onClick={() => setActiveTab("payments")}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#22C55E]/30 to-transparent" />
-                  <CardHeader className="pb-4 relative bg-white/30 shrink-0">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#22C55E]/30 to-transparent" />
+                  <CardHeader className="pb-4 relative bg-white/30 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle>Ingresos del Mes</CardTitle>
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#22C55E]/20 backdrop-blur-sm border border-[#22C55E]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#22C55E]/20 backdrop-blur-sm border border-[#22C55E]/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)]">
                         <CreditCard className="h-6 w-6 text-[#22C55E]" />
                       </div>
                     </div>
@@ -853,7 +1122,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         level={course.level as "Básico" | "Intermedio" | "Avanzado"}
                         certified={course.certified || false}
                         students={course.students}
-                        onClick={() => handleEditCourse({ ...course, level: course.level as 'Básico' | 'Intermedio' | 'Avanzado', students: course.students ?? 0 })}
+                        onClick={() => handleEditCourse(course)}
                       />
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <DropdownMenu>
@@ -863,7 +1132,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditCourse({ ...course, level: course.level as 'Básico' | 'Intermedio' | 'Avanzado', students: course.students ?? 0 })}>
+                            <DropdownMenuItem onClick={() => handleEditCourse(course)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
@@ -921,6 +1190,21 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* Teachers */}
           {activeTab === "teachers" && !showTeacherForm && (
             <div className="space-y-6">
+              {!isAdminClientConfigured() && (
+                <Card>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-yellow-800">
+                        ⚠️ El cliente admin no está configurado. Las operaciones de creación/edición pueden ser bloqueadas por RLS.
+                        Agrega `VITE_SUPABASE_SERVICE_ROLE_KEY` en tu `.env.local` o usa el cliente admin.
+                      </div>
+                      <div>
+                        <Button variant="outline" onClick={() => window.open('https://app.supabase.com/', '_blank')}>Ir a Supabase</Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative flex-1 sm:max-w-md">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
@@ -1495,4 +1779,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       </Dialog>
     </div>
   );
+}
+async function generateHash() {
+  const data = `${Date.now()}-${Math.random()}-${crypto.randomUUID()}`;
+  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
+  return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
