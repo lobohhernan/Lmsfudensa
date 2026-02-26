@@ -371,14 +371,13 @@ export default function App() {
         debug('🔐 [App] Cargando sesión...')
 
         // ── Detectar callback OAuth ──
-        // PKCE envía ?code= en query, flujo implícito envía #access_token= en hash
         const urlSearch = new URLSearchParams(window.location.search)
         const isOAuthCallback =
           urlSearch.has('code') ||
           window.location.hash.includes('access_token=') ||
           window.location.hash.includes('refresh_token=')
 
-        // ── Buscar sesión guardada con la KEY que realmente usa el cliente ──
+        // ── Buscar sesión guardada ──
         const hasStoredSession = Object.keys(localStorage).some(k => k.startsWith(AUTH_STORAGE_KEY))
 
         if (!hasStoredSession && !isOAuthCallback) {
@@ -394,10 +393,9 @@ export default function App() {
           debug('🔐 [App] Callback OAuth detectado, procesando tokens...')
         }
 
-        // ── getSession() PRIMERO: necesita leer ?code= ANTES de limpiarlo ──
+        // getSession() obtiene sesión de localStorage O intercambia el ?code= de OAuth
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
-        // Ahora sí limpiamos la URL (el code ya fue intercambiado)
         if (isOAuthCallback) {
           window.history.replaceState(null, '', window.location.pathname)
         }
@@ -409,24 +407,17 @@ export default function App() {
         debug('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
 
         if (session?.user) {
-          debug('🔐 [App] Usuario autenticado')
-
-          // Asegurar profile (idempotente — no sobreescribe si ya existe)
-          await ensureProfile(session.user)
-
-          const userData_ = await extractUserData(session.user)
-
-          debug('✅ [App] Login exitoso:', userData_.email, 'name:', userData_.name, 'role:', userData_.role)
-          setIsLoggedIn(true)
-          setUserData(userData_)
-          sessionStorage.setItem('user_session', JSON.stringify(userData_))
-          clearAuthTimeout()
+          debug('🔐 [App] Usuario autenticado — delegando a onAuthStateChange')
+          // NO llamamos ensureProfile/extractUserData aquí.
+          // onAuthStateChange(INITIAL_SESSION) se encargará de eso para evitar
+          // requests duplicadas que causan AbortError.
         } else {
           debug('⚠️ [App] No hay sesión válida, finalizando...')
           setIsLoggedIn(false)
           setUserData(null)
           sessionStorage.removeItem('user_session')
           clearAuthTimeout()
+          setAuthBootstrapped(true)
         }
       } catch (error) {
         logError('Error cargando sesión:', error)
@@ -434,7 +425,6 @@ export default function App() {
         setUserData(null)
         sessionStorage.removeItem('user_session')
         clearAuthTimeout()
-      } finally {
         setAuthBootstrapped(true)
       }
     };
@@ -450,8 +440,7 @@ export default function App() {
         authTimeoutRef.current = null
       }
       if (session?.user) {
-        // Asegurar profile para CUALQUIER evento (no solo SIGNED_IN)
-        // Es idempotente — ignoreDuplicates:true no sobreescribe existentes
+        // Asegurar profile (idempotente — ignoreDuplicates:true no sobreescribe existentes)
         await ensureProfile(session.user)
 
         const userData_ = await extractUserData(session.user)
@@ -464,6 +453,7 @@ export default function App() {
         setIsLoggedIn(false)
         setUserData(null)
         sessionStorage.removeItem('user_session')
+        setAuthBootstrapped(true)
       }
     });
 

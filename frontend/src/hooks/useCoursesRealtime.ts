@@ -21,27 +21,27 @@ interface Course {
   updated_at: string
 }
 
-const FETCH_TIMEOUT_MS = 15_000  // 15 seconds (generous for cold starts)
 const MAX_RETRIES = 2
-const RETRY_DELAY_MS = 2_000     // 2 seconds between retries
+const RETRY_DELAY_MS = 2_500
 
 export function useCoursesRealtime() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const retryCount = useRef(0)
+  const mounted = useRef(true)
 
   useEffect(() => {
-    // Initial fetch
+    mounted.current = true
     fetchCourses()
 
-    // Subscribe to realtime changes
     const channel = supabase
       .channel('courses-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'courses' },
         (payload) => {
+          if (!mounted.current) return
           if (payload.eventType === 'INSERT') {
             const newCourse = payload.new as Course
             setCourses((prev) => [newCourse, ...prev])
@@ -63,34 +63,28 @@ export function useCoursesRealtime() {
       .subscribe()
 
     return () => {
+      mounted.current = false
       supabase.removeChannel(channel)
     }
   }, [])
 
   const fetchCourses = async () => {
     try {
-      setLoading(true)
+      if (mounted.current) setLoading(true)
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout al cargar cursos')), FETCH_TIMEOUT_MS)
-      )
-
-      const fetchPromise = supabase
+      // Query directa sin timeout artificial — dejamos que Supabase maneje sus propios tiempos
+      const { data, error: queryError } = await supabase
         .from('courses')
         .select('*')
         .order('created_at', { ascending: false })
 
-      const { data, error: queryError } = await Promise.race([
-        fetchPromise,
-        timeoutPromise
-      ]) as any
+      if (!mounted.current) return
 
       if (queryError) {
         console.error('❌ Error en query de cursos:', queryError)
-        throw queryError
+        throw new Error(queryError.message || 'Error en query')
       }
 
-      // Convert students: 0 to undefined
       const processedData = (data || []).map((course: Course) => ({
         ...course,
         students:
@@ -104,26 +98,33 @@ export function useCoursesRealtime() {
       retryCount.current = 0
       console.log(`✅ [useCoursesRealtime] ${processedData.length} cursos cargados`)
     } catch (err) {
+      if (!mounted.current) return
+
       const message =
         err instanceof Error ? err.message : 'Error fetching courses'
       console.error('❌ [useCoursesRealtime] Error fetching courses:', err)
 
-      // Retry automatically on transient errors (timeout, 406)
-      if (
-        (message.includes('Timeout') || message.includes('406')) &&
-        retryCount.current < MAX_RETRIES
-      ) {
+      // Reintentar en errores transitorios (AbortError, network, timeout, 406)
+      const isTransient =
+        message.includes('abort') || message.includes('Abort') ||
+        message.includes('Timeout') || message.includes('406') ||
+        message.includes('Failed to fetch') || message.includes('NetworkError') ||
+        message.includes('signal')
+
+      if (isTransient && retryCount.current < MAX_RETRIES) {
         retryCount.current++
         console.warn(
           `⚠️ [useCoursesRealtime] Reintentando (${retryCount.current}/${MAX_RETRIES}) en ${RETRY_DELAY_MS}ms...`
         )
-        setTimeout(() => fetchCourses(), RETRY_DELAY_MS)
-        return // don't set loading=false yet — the retry will handle it
+        setTimeout(() => {
+          if (mounted.current) fetchCourses()
+        }, RETRY_DELAY_MS)
+        return
       }
 
       setError(message)
     } finally {
-      setLoading(false)
+      if (mounted.current) setLoading(false)
     }
   }
 
