@@ -15,6 +15,7 @@ DROP POLICY IF EXISTS "courses_public_read" ON courses;
 DROP POLICY IF EXISTS "Cursos públicos para todos" ON courses;
 DROP POLICY IF EXISTS "Allow public read access for courses" ON courses;
 DROP POLICY IF EXISTS "Anyone can view courses" ON courses;
+DROP POLICY IF EXISTS "courses_select_public" ON courses;
 
 -- Política: cualquier persona (anon o authenticated) puede VER todos los cursos
 CREATE POLICY "courses_select_public"
