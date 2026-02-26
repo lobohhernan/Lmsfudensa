@@ -425,7 +425,12 @@ export function AppNavbar({
                     });
 
                     if (authError) {
-                      toast.error("Email o contraseña incorrectos");
+                      // Cuenta Google: no tiene contraseña, debe usar el botón de Google
+                      if (authError.message?.toLowerCase().includes('invalid login') || authError.message?.toLowerCase().includes('invalid credentials')) {
+                        toast.error("Credenciales incorrectas. Si te registraste con Google, usa el botón \"Continuar con Google\".");
+                      } else {
+                        toast.error("Error al iniciar sesión: " + authError.message);
+                      }
                       setIsLoggingIn(false);
                       return;
                     }
@@ -437,7 +442,7 @@ export function AppNavbar({
                     }
 
                     // Obtener perfil para conseguir nombre completo y role
-                    const { data: profile, error: profileError } = await supabase
+                    const { data: profile } = await supabase
                       .from("profiles")
                       .select("full_name, email, role")
                       .eq("id", authData.user.id)
