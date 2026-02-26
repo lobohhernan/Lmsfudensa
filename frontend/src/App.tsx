@@ -329,7 +329,8 @@ export default function App() {
           id: user.id,
           email: user.email ?? '',
           full_name: fullName,
-          role: 'student',
+          // role NO incluido: DB default 'student' aplica solo para usuarios nuevos.
+          // ignoreDuplicates:true garantiza que el rol existente (admin/instructor) NUNCA se pisa.
           updated_at: new Date().toISOString(),
         }], { onConflict: 'id', ignoreDuplicates: true })
         debug('✅ [App] Profile asegurado para', user.email)
@@ -359,7 +360,6 @@ export default function App() {
     const loadSession = async () => {
       try {
         // ── Detectar callback OAuth ──
-        // PKCE envía ?code= en query, flujo implícito envía #access_token= en hash
         const urlSearch = new URLSearchParams(window.location.search)
         const isOAuthCallback =
           urlSearch.has('code') ||
@@ -368,19 +368,25 @@ export default function App() {
 
         if (isOAuthCallback) {
           debug('🔐 [App] Callback OAuth detectado, intercambiando tokens...')
-          // getSession() intercambia el ?code= por tokens.
-          // Después de esto, onAuthStateChange dispara SIGNED_IN automáticamente.
           await supabase.auth.getSession()
           window.history.replaceState(null, '', window.location.pathname)
           debug('🔐 [App] Tokens OAuth intercambiados, URL limpiada')
+          // onAuthStateChange(SIGNED_IN) disparará desde aquí
+          return
         }
 
-        // ✅ El estado del usuario (isLoggedIn, userData, authBootstrapped) es manejado
-        //    completamente por onAuthStateChange(INITIAL_SESSION | SIGNED_IN).
-        //    No duplicamos las queries de perfil aquí.
+        // ✅ Fallback de seguridad: si INITIAL_SESSION no dispara (raro pero posible),
+        //    getSession() fuerza la lectura de localStorage y resuelve el bootstrap.
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          debug('⚠️ [App] getSession() sin sesión → usuario no autenticado')
+          setIsLoggedIn(false)
+          setUserData(null)
+          setAuthBootstrapped(true)
+        }
+        // Si session existe, onAuthStateChange(INITIAL_SESSION) llega en ms y maneja el estado.
       } catch (error) {
         logError('Error en loadSession OAuth:', error)
-        // Garantizar que el bootstrap termina en caso de error
         setIsLoggedIn(false)
         setUserData(null)
         setAuthBootstrapped(true)
