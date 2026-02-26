@@ -214,6 +214,10 @@ export function AppNavbar({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 border-white/10 bg-[#1e467c]/95 backdrop-blur-xl">
+                    {/* Debug: mostrar rol actual */}
+                    <div className="px-2 py-1 text-xs text-white/50 border-b border-white/10">
+                      Rol: {currentUser?.role || 'sin rol'}
+                    </div>
                     <DropdownMenuItem
                       onClick={handleProfileNav}
                       className="cursor-pointer text-white hover:bg-white/10"
