@@ -216,7 +216,7 @@ export function AppNavbar({
                   <DropdownMenuTrigger asChild>
                     <Button 
                       variant="ghost" 
-                      className="flex items-center gap-2 rounded-lg text-white transition-all hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
+                      className="flex items-center gap-2 rounded-full p-1 text-white transition-all hover:bg-white/10 hover:text-white hover:ring-2 hover:ring-white/20 lg:pr-3"
                       aria-label={`Menú de usuario: ${currentUser?.name || "Usuario"}`}
                     >
                       <Avatar className="h-8 w-8 ring-2 ring-white/20">
@@ -228,10 +228,6 @@ export function AppNavbar({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 border-white/10 bg-[#1e467c]/95 backdrop-blur-xl">
-                    {/* Debug: mostrar rol actual */}
-                    <div className="px-2 py-1 text-xs text-white/50 border-b border-white/10">
-                      Rol: {currentUser?.role || 'sin rol'}
-                    </div>
                     <DropdownMenuItem
                       onClick={handleProfileNav}
                       className="cursor-pointer text-white hover:bg-white/10"
