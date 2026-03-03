@@ -216,7 +216,7 @@ export function AppNavbar({
                   <DropdownMenuTrigger asChild>
                     <Button 
                       variant="ghost" 
-                      className="flex items-center gap-2 rounded-full p-1 text-white transition-all hover:bg-white/10 hover:text-white hover:ring-2 hover:ring-white/20 lg:pr-3"
+                      className="flex items-center gap-2 rounded-full p-1 text-white transition-all hover:bg-transparent hover:text-white focus-visible:ring-0 focus-visible:ring-offset-0 lg:pr-3"
                       aria-label={`Menú de usuario: ${currentUser?.name || "Usuario"}`}
                     >
                       <Avatar className="h-8 w-8 ring-2 ring-white/20">
