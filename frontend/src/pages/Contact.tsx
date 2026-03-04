@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { ContactFormSchema, validateFormData } from "../lib/validation";
 
@@ -26,12 +26,36 @@ export function Contact() {
   });
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Auto-fill email when user is logged in
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email) {
+        setIsLoggedIn(true);
+        setFormData((prev) => ({ ...prev, email: session.user.email! }));
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user?.email) {
+        setIsLoggedIn(true);
+        setFormData((prev) => ({ ...prev, email: session.user.email! }));
+      } else {
+        setIsLoggedIn(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleInputChange = (field: string, value: unknown) => {
     setFormData({ ...formData, [field]: value });
     // Limpiar error cuando el usuario empieza a escribir
     if (errors[field]) {
-      setErrors({ ...errors, [field]: undefined });
+      const newErrors = { ...errors };
+      delete newErrors[field];
+      setErrors(newErrors);
     }
   };
 
@@ -67,18 +91,37 @@ export function Contact() {
 
       if (error) throw error;
 
-      toast.success("¡Mensaje enviado correctamente!", {
-        description: "Nos pondremos en contacto contigo a la brevedad.",
+      // Enviar email de notificación via Supabase Edge Function
+      const { error: fnError } = await supabase.functions.invoke("send_contact_email", {
+        body: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || "",
+          subject: formData.subject,
+          message: formData.message,
+        },
       });
 
-      // Resetear formulario
-      setFormData({
+      if (fnError) {
+        console.error("Error en la función de email:", fnError);
+        // Notificamos al usuario pero no bloqueamos (el mensaje ya quedó en Supabase)
+        toast.warning("Mensaje guardado, pero hubo un problema al enviar el email de notificación.", {
+          description: "Nos contactaremos contigo igualmente.",
+        });
+      } else {
+        toast.success("¡Mensaje enviado correctamente!", {
+          description: "Nos pondremos en contacto contigo a la brevedad.",
+        });
+      }
+
+      // Resetear formulario (mantener email si está logueado)
+      setFormData((prev) => ({
         name: "",
-        email: "",
+        email: isLoggedIn ? prev.email : "",
         phone: "",
         subject: "",
         message: "",
-      });
+      }));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.error("Error al enviar mensaje:", message);
@@ -203,16 +246,22 @@ export function Contact() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email *</Label>
+                      <Label htmlFor="email">
+                        Email *
+                        {isLoggedIn && (
+                          <span className="ml-2 text-xs text-[#64748B] font-normal">(asociado a tu cuenta)</span>
+                        )}
+                      </Label>
                       <Input
                         id="email"
                         type="email"
                         value={formData.email}
                         onChange={(e) =>
-                          handleInputChange('email', e.target.value)
+                          !isLoggedIn && handleInputChange('email', e.target.value)
                         }
                         placeholder="tu@email.com"
-                        className={`h-12 ${errors.email ? 'border-red-500' : ''}`}
+                        className={`h-12 ${errors.email ? 'border-red-500' : ''} ${isLoggedIn ? 'bg-gray-100 cursor-not-allowed opacity-70' : ''}`}
+                        readOnly={isLoggedIn}
                         required
                       />
                       {errors.email && (
@@ -223,7 +272,7 @@ export function Contact() {
 
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Teléfono</Label>
+                      <Label htmlFor="phone">Teléfono <span className="font-normal text-[#64748B]">(opcional)</span></Label>
                       <Input
                         id="phone"
                         type="tel"
