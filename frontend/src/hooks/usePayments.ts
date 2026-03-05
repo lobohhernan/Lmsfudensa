@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin, isAdminClientConfigured } from "@/lib/supabaseAdmin";
 import type { Payment, PaymentStatus } from "@/lib/types";
 
 export interface PaymentRow extends Payment {
@@ -27,9 +28,12 @@ export function usePayments(): UsePaymentsReturn {
     setLoading(true);
     setError(null);
 
+    // Usar admin client para bypassear RLS y ver todos los pagos/enrollments
+    const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
+
     try {
       // ── 1. Pagos reales de la tabla payments ──────────────────────────────
-      const { data: paymentsData, error: paymentsError } = await supabase
+      const { data: paymentsData, error: paymentsError } = await client
         .from("payments")
         .select(`
           *,
@@ -65,7 +69,7 @@ export function usePayments(): UsePaymentsReturn {
       );
 
       // ── 2. Enrollments legacy (sin fila en payments) ──────────────────────
-      const { data: enrollmentsData, error: enrollmentsError } = await supabase
+      const { data: enrollmentsData, error: enrollmentsError } = await client
         .from("enrollments")
         .select(`
           id,
