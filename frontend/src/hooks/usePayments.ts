@@ -37,8 +37,8 @@ export function usePayments(): UsePaymentsReturn {
         .from("payments")
         .select(`
           *,
-          profiles:user_id ( full_name, email ),
-          courses:course_id ( title, price )
+          profiles!user_id ( full_name, email ),
+          courses!course_id ( title, price )
         `)
         .order("created_at", { ascending: false });
 
@@ -76,8 +76,8 @@ export function usePayments(): UsePaymentsReturn {
           user_id,
           course_id,
           enrolled_at,
-          profiles:user_id ( full_name, email ),
-          courses:course_id ( title, price )
+          profiles!user_id ( full_name, email ),
+          courses!course_id ( title, price )
         `)
         .order("enrolled_at", { ascending: false });
 
