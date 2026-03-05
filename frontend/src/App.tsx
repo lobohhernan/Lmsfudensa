@@ -174,8 +174,17 @@ export default function App() {
   const [currentCourseId, setCurrentCourseId] = useState<string | undefined>(initialRoute.courseId);
   const [currentCourseSlug, setCurrentCourseSlug] = useState<string | undefined>(initialRoute.courseSlug);
   const [currentLessonId, setCurrentLessonId] = useState<string | undefined>(initialRoute.lessonId);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userData, setUserData] = useState<{ email: string; name: string; role: 'student' | 'instructor' | 'admin' } | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    try { return !!sessionStorage.getItem('user_session'); } catch { return false; }
+  });
+  const [userData, setUserData] = useState<{ email: string; name: string; role: 'student' | 'instructor' | 'admin' } | null>(() => {
+    // Inicializar desde sessionStorage para evitar flash del botón admin en recargas
+    try {
+      const cached = sessionStorage.getItem('user_session');
+      if (cached) return JSON.parse(cached);
+    } catch { /* ignorar */ }
+    return null;
+  });
   const [, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isResolvingRoute, setIsResolvingRoute] = useState(false);
