@@ -335,3 +335,29 @@ export interface NavigationParams {
   lessonId?: string;
   [key: string]: any;
 }
+
+// ============================================
+// TIPOS DE PAGOS
+// ============================================
+
+export type PaymentStatus = 'approved' | 'pending' | 'rejected' | 'cancelled' | 'legacy';
+
+/** Fila en la tabla `payments` (con joins opcionales) */
+export interface Payment {
+  id: string;
+  user_id: string;
+  course_id: string;
+  mp_payment_id: string | null;
+  mp_preference_id: string | null;
+  status: PaymentStatus;
+  amount: number;
+  currency: string;
+  payer_email: string | null;
+  payer_name: string | null;
+  payment_method: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined relations (optional)
+  profiles?: { full_name: string; email: string } | null;
+  courses?: { title: string } | null;
+}
