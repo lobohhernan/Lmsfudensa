@@ -114,15 +114,6 @@ serve(async (req: Request): Promise<Response> => {
     console.log("📊 [WEBHOOK] Status del pago:", paymentData.status);
     console.log("📊 [WEBHOOK] External reference:", paymentData.external_reference);
 
-    // Solo procesar pagos aprobados
-    if (paymentData.status !== "approved") {
-      console.log("⏭️ [WEBHOOK] Pago no aprobado, status:", paymentData.status);
-      return new Response(JSON.stringify({ success: true, notApproved: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
     // Parsear external_reference (contiene JSON con courseId y userId)
     let courseId: string;
     let userId: string;
@@ -169,8 +160,53 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log("✅ [WEBHOOK] Datos extraídos:", { courseId, userId });
 
-    // Crear la inscripción
     const userEmail = paymentData.payer?.email || "unknown@mercadopago.com";
+    const payerName = [
+      paymentData.payer?.first_name || "",
+      paymentData.payer?.last_name  || "",
+    ].join(" ").trim() || null;
+
+    // ── Persistir pago en la tabla payments (todos los estados) ──────────
+    const validStatus = ["approved", "pending", "rejected", "cancelled"];
+    const paymentStatus = validStatus.includes(paymentData.status)
+      ? paymentData.status
+      : "pending";
+
+    const { error: upsertError } = await supabase
+      .from("payments")
+      .upsert(
+        {
+          user_id:           userId,
+          course_id:         courseId,
+          mp_payment_id:     String(paymentId),
+          mp_preference_id:  paymentData.preference_id || null,
+          status:            paymentStatus,
+          amount:            paymentData.transaction_amount ?? 0,
+          currency:          paymentData.currency_id || "ARS",
+          payer_email:       userEmail,
+          payer_name:        payerName,
+          payment_method:    paymentData.payment_method_id || null,
+          updated_at:        new Date().toISOString(),
+        },
+        { onConflict: "mp_payment_id" }
+      );
+
+    if (upsertError) {
+      // Log but don't block—enrollment is more critical
+      console.error("⚠️ [WEBHOOK] Error guardando en tabla payments:", upsertError);
+    } else {
+      console.log("✅ [WEBHOOK] Pago guardado en tabla payments");
+    }
+
+    // ── Crear enrollment solo para pagos aprobados ───────────────────────
+    if (paymentData.status !== "approved") {
+      console.log("⏭️ [WEBHOOK] Pago no aprobado, status:", paymentData.status, "– solo guardado en payments");
+      return new Response(JSON.stringify({ success: true, status: paymentData.status }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     await createEnrollment(userId, courseId, userEmail, paymentId);
 
     console.log("✅ [WEBHOOK] Pago procesado correctamente");

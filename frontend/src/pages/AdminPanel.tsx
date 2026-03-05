@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import {
   LayoutDashboard,
   BookOpen,
@@ -14,8 +14,6 @@ import {
   Eye,
   ArrowLeft,
   Mail,
-  RefreshCw,
-  CheckCircle,
   Menu,
   GraduationCap,
   Loader2,
@@ -60,6 +58,7 @@ import { supabaseAdmin, isAdminClientConfigured, logAdminOperation } from "../li
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
 import { useTeachersRealtime } from "../hooks/useTeachers";
 import { useCertificatesRealtime } from "../hooks/useCertificates";
+import { usePayments, type PaymentRow } from "../hooks/usePayments";
 import { TeacherForm } from "../components/TeacherForm";
 import { UserForm } from "../components/UserForm";
 import type { Teacher } from "../hooks/useTeachers";
@@ -110,6 +109,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [certToDelete, setCertToDelete] = useState<{ id: string; studentName: string; courseTitle: string } | null>(null);
   const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
+  const [paymentToDelete, setPaymentToDelete] = useState<{ id: string; displayName: string; courseTitle: string } | null>(null);
+  const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+  const [paymentsSearch, setPaymentsSearch] = useState("");
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeCourses: 0,
@@ -173,8 +175,18 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     return map;
   }, [realtimeCourses, realtimeTeachers]);
 
-  // Datos de ejemplo para secciones no implementadas
-  const paymentsData: Record<string, unknown>[] = [];
+  // Datos reales de pagos desde Supabase (payments + enrollments legacy)
+  const { payments: allPayments, loading: paymentsLoading, error: paymentsError, refetch: refetchPayments } = usePayments();
+
+  const filteredPayments = useMemo(() => {
+    const q = paymentsSearch.trim().toLowerCase();
+    if (!q) return allPayments;
+    return allPayments.filter(p =>
+      p.displayName.toLowerCase().includes(q) ||
+      p.displayEmail.toLowerCase().includes(q) ||
+      p.courseTitle.toLowerCase().includes(q)
+    );
+  }, [allPayments, paymentsSearch]);
 
   // Lookup: profiles.id → teacher.id (para cursos legacy)
   const profileToTeacherIdMap = useMemo(() => {
@@ -249,10 +261,15 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     const totalStudents = usersList.length;
     const activeCourses = realtimeCourses.length;
     
-    // Calcular ingresos del mes (suma de precios de cursos activos)
-    const monthlyRevenue = realtimeCourses.reduce((sum, course) => {
-      return sum + (course.price || 0);
-    }, 0);
+    // Calcular ingresos del mes (suma de pagos aprobados del mes actual)
+    const now = new Date();
+    const monthlyRevenue = allPayments
+      .filter(p =>
+        p.status === "approved" &&
+        new Date(p.created_at).getMonth() === now.getMonth() &&
+        new Date(p.created_at).getFullYear() === now.getFullYear()
+      )
+      .reduce((sum, p) => sum + p.amount, 0);
 
     setStats({
       totalStudents,
@@ -260,7 +277,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       certificatesIssued: realtimeCertificates.filter(c => c.status === 'active').length,
       monthlyRevenue,
     });
-  }, [usersList, realtimeCourses, realtimeCertificates]);
+  }, [usersList, realtimeCourses, realtimeCertificates, allPayments]);
 
   const handleSaveCourse = async (course: FullCourse) => {
     try {
@@ -750,6 +767,28 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         setDeletingTeacherId(null);
         // No need to reload - realtime subscription will update the list automatically
       }
+      if (paymentToDelete) {
+        setDeletingPaymentId(paymentToDelete.id);
+        logAdminOperation('DELETE', 'payments', { paymentId: paymentToDelete.id, user: paymentToDelete.displayName });
+
+        const { error } = await client
+          .from("payments")
+          .delete()
+          .eq("id", paymentToDelete.id);
+
+        if (error) {
+          console.error("❌ Error DELETE payment:", error);
+          toast.error("Error al eliminar el pago: " + error.message);
+          setDeletingPaymentId(null);
+          return;
+        }
+
+        toast.success(`✅ Pago de "${paymentToDelete.displayName}" eliminado exitosamente`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setDeletingPaymentId(null);
+        setPaymentToDelete(null);
+        refetchPayments();
+      }
     } catch (err) {
       toast.error("Error al eliminar");
       console.error(err);
@@ -757,12 +796,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       setDeletingTeacherId(null);
       setDeletingUserId(null);
       setDeletingCertId(null);
+      setDeletingPaymentId(null);
     } finally {
       setDeleteDialogOpen(false);
       setCourseToDelete(null);
       setTeacherToDelete(null);
       setUserToDelete(null);
       setCertToDelete(null);
+      setPaymentToDelete(null);
     }
   };
 
@@ -780,6 +821,28 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const handleRevokeCertificate = (certId: string, studentName: string, courseTitle: string) => {
     setCertToDelete({ id: certId, studentName, courseTitle });
     setDeleteDialogOpen(true);
+  };
+
+  const downloadComprobante = (payment: PaymentRow) => {
+    const lines = [
+      "=== COMPROBANTE DE PAGO - FUDENSA ===",
+      `Fecha: ${new Date(payment.created_at).toLocaleString("es-AR")}`,
+      `Estado: ${payment.status.toUpperCase()}`,
+      `Alumno: ${payment.displayName}`,
+      `Email: ${payment.displayEmail}`,
+      `Curso: ${payment.courseTitle}`,
+      `Monto: ${payment.currency} $${payment.amount.toLocaleString("es-AR")}`,
+      payment.mp_payment_id ? `ID de Pago MP: ${payment.mp_payment_id}` : "Pago legacy (sin ID de MP)",
+      payment.payment_method ? `Método: ${payment.payment_method}` : "",
+      "=====================================",
+    ].filter(Boolean).join("\n");
+    const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `comprobante-${payment.id}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const sendContactMessage = () => {
@@ -1502,7 +1565,12 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             <div className="space-y-6">
               <div className="relative sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                <Input placeholder="Buscar pagos..." className="pl-10" />
+                <Input
+                  placeholder="Buscar pagos..."
+                  className="pl-10"
+                  value={paymentsSearch}
+                  onChange={(e) => setPaymentsSearch(e.target.value)}
+                />
               </div>
 
               <Card>
@@ -1519,32 +1587,61 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paymentsData.map((payment, index) => (
-                      <TableRow key={payment.id}>
+                    {paymentsLoading && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto text-[#64748B]" />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {!paymentsLoading && paymentsError && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-[#EF4444]">
+                          Error al cargar pagos: {paymentsError}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {!paymentsLoading && !paymentsError && filteredPayments.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-[#64748B]">
+                          No se encontraron pagos.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {!paymentsLoading && filteredPayments.map((payment, index) => (
+                      <TableRow
+                        key={payment.id}
+                        className={deletingPaymentId === payment.id ? "opacity-50 transition-opacity" : ""}
+                      >
                         <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                         <TableCell>
                           <Badge
-                            variant={payment.status === "Pagado" ? "default" : "secondary"}
                             className={
-                              payment.status === "Pagado"
-                                ? "bg-[#55a5c7] text-white"
-                                : payment.status === "Pendiente"
+                              payment.status === "approved"
+                                ? "bg-[#22C55E] text-white"
+                                : payment.status === "pending" || payment.status === "legacy"
                                 ? "bg-[#F59E0B] text-white"
                                 : "bg-[#EF4444] text-white"
                             }
                           >
-                            {payment.status}
+                            {payment.status === "approved" ? "Aprobado"
+                              : payment.status === "pending" ? "Pendiente"
+                              : payment.status === "legacy" ? "Legacy"
+                              : payment.status === "rejected" ? "Rechazado"
+                              : "Cancelado"}
                           </Badge>
                         </TableCell>
-                        <TableCell>{payment.date}</TableCell>
+                        <TableCell>{new Date(payment.created_at).toLocaleDateString("es-AR")}</TableCell>
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="text-[#0F172A]">{payment.user}</span>
-                            <span className="text-xs text-[#64748B]">{payment.email}</span>
+                            <span className="text-[#0F172A]">{payment.displayName}</span>
+                            <span className="text-xs text-[#64748B]">{payment.displayEmail}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{payment.course}</TableCell>
-                        <TableCell className="font-semibold text-[#0F172A]">{payment.amount}</TableCell>
+                        <TableCell>{payment.courseTitle}</TableCell>
+                        <TableCell className="font-semibold text-[#0F172A]">
+                          {payment.currency} ${payment.amount.toLocaleString("es-AR")}
+                        </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1553,48 +1650,23 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => {
-                                toast.info(`Viendo detalles del pago ${payment.id}`);
-                              }}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Ver Detalles
+                              <DropdownMenuItem onClick={() => downloadComprobante(payment)}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Descargar Comprobante
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleContactUser(payment.user, payment.email)}>
+                              <DropdownMenuItem onClick={() => handleContactUser(payment.displayName, payment.displayEmail)}>
                                 <Mail className="mr-2 h-4 w-4" />
                                 Contactar Usuario
                               </DropdownMenuItem>
-                              {payment.status === "Pendiente" && (
-                                <DropdownMenuItem onClick={() => {
-                                  toast.success(`Pago ${payment.id} marcado como pagado`);
-                                }}>
-                                  <CheckCircle className="mr-2 h-4 w-4" />
-                                  Marcar como Pagado
-                                </DropdownMenuItem>
-                              )}
-                              {payment.status === "Pagado" && (
-                                <DropdownMenuItem 
-                                  className="text-[#F59E0B]"
-                                  onClick={() => {
-                                    toast.warning(`Procesando reembolso de ${payment.amount} para ${payment.user}`);
-                                  }}
-                                >
-                                  <RefreshCw className="mr-2 h-4 w-4" />
-                                  Reembolsar
-                                </DropdownMenuItem>
-                              )}
-                              {payment.status === "Rechazado" && (
-                                <DropdownMenuItem onClick={() => {
-                                  toast.info(`Reintentando pago ${payment.id}`);
-                                }}>
-                                  <RefreshCw className="mr-2 h-4 w-4" />
-                                  Reintentar Pago
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem onClick={() => {
-                                toast.success(`Descargando comprobante del pago ${payment.id}`);
-                              }}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Descargar Comprobante
+                              <DropdownMenuItem
+                                className="text-[#EF4444]"
+                                onClick={() => {
+                                  setPaymentToDelete({ id: payment.id, displayName: payment.displayName, courseTitle: payment.courseTitle });
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Eliminar Pago
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1726,6 +1798,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               {teacherToDelete && "Esta acción no se puede deshacer. Esto eliminará permanentemente el profesor y toda su información asociada."}
               {userToDelete && `Esta acción no se puede deshacer. Esto eliminará permanentemente al usuario "${userToDelete.name}", su perfil y su acceso a la plataforma.`}
               {certToDelete && `Esta acción no se puede deshacer. Esto revocará y eliminará permanentemente el certificado de "${certToDelete.studentName}" para el curso "${certToDelete.courseTitle}".`}
+              {paymentToDelete && `Esta acción no se puede deshacer. Esto eliminará permanentemente el registro de pago de "${paymentToDelete.displayName}" por el curso "${paymentToDelete.courseTitle}".`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
