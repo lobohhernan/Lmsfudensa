@@ -109,7 +109,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [certToDelete, setCertToDelete] = useState<{ id: string; studentName: string; courseTitle: string } | null>(null);
   const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
-  const [paymentToDelete, setPaymentToDelete] = useState<{ id: string; displayName: string; courseTitle: string } | null>(null);
+  const [paymentToDelete, setPaymentToDelete] = useState<{ id: string; displayName: string; courseTitle: string; status: string } | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [paymentsSearch, setPaymentsSearch] = useState("");
   const [stats, setStats] = useState({
@@ -770,10 +770,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       if (paymentToDelete) {
         setDeletingPaymentId(paymentToDelete.id);
 
-        // ── Detectar si es un pago legacy (desde enrollments) o real (desde payments)
-        const isLegacyPayment = paymentToDelete.status === "legacy";
+        // ── Detectar si es un pago legacy: por status O por el prefijo del ID
+        const isLegacyPayment = paymentToDelete.status === "legacy" || paymentToDelete.id.startsWith("legacy-");
         const actualId = isLegacyPayment 
-          ? paymentToDelete.id.replace("legacy-", "") // Quitar prefijo para obtener enrollment ID
+          ? paymentToDelete.id.replace("legacy-", "") // Quitar prefijo para obtener enrollment UUID
           : paymentToDelete.id;
 
         logAdminOperation('DELETE', isLegacyPayment ? 'enrollments' : 'payments', {
@@ -1673,7 +1673,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               <DropdownMenuItem
                                 className="text-[#EF4444]"
                                 onClick={() => {
-                                  setPaymentToDelete({ id: payment.id, displayName: payment.displayName, courseTitle: payment.courseTitle });
+                                  setPaymentToDelete({ id: payment.id, displayName: payment.displayName, courseTitle: payment.courseTitle, status: payment.status });
                                   setDeleteDialogOpen(true);
                                 }}
                               >
