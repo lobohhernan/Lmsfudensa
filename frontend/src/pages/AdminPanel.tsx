@@ -769,12 +769,24 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       }
       if (paymentToDelete) {
         setDeletingPaymentId(paymentToDelete.id);
-        logAdminOperation('DELETE', 'payments', { paymentId: paymentToDelete.id, user: paymentToDelete.displayName });
 
+        // ── Detectar si es un pago legacy (desde enrollments) o real (desde payments)
+        const isLegacyPayment = paymentToDelete.status === "legacy";
+        const actualId = isLegacyPayment 
+          ? paymentToDelete.id.replace("legacy-", "") // Quitar prefijo para obtener enrollment ID
+          : paymentToDelete.id;
+
+        logAdminOperation('DELETE', isLegacyPayment ? 'enrollments' : 'payments', {
+          paymentId: paymentToDelete.id,
+          user: paymentToDelete.displayName,
+          isLegacy: isLegacyPayment,
+        });
+
+        // ── Deletear de la tabla correcta según el tipo de pago
         const { error } = await client
-          .from("payments")
+          .from(isLegacyPayment ? "enrollments" : "payments")
           .delete()
-          .eq("id", paymentToDelete.id);
+          .eq("id", actualId);
 
         if (error) {
           console.error("❌ Error DELETE payment:", error);
