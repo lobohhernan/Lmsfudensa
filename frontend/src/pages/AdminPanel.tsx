@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useMemo } from "react";
+import * as XLSX from "xlsx";
 import {
   LayoutDashboard,
   BookOpen,
@@ -676,6 +677,77 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const handleDeleteCourse = (courseId: string) => {
     setCourseToDelete(courseId);
     setDeleteDialogOpen(true);
+  };
+
+  // Exportar datos del curso a Excel
+  const handleExportCourseData = (course: typeof courseList[0]) => {
+    const courseId = course.id;
+    const enrolledCount = enrollmentCounts[courseId] || 0;
+    const salesCount = salesByCourse[courseId] || 0;
+    const totalRevenue = salesCount * (course.price || 0);
+
+    // Obtener pagos relacionados con este curso
+    const coursePayments = allPayments.filter(p => p.course_id === courseId);
+    const approvedPayments = coursePayments.filter(p => p.status === "approved" || p.status === "completed");
+    const pendingPayments = coursePayments.filter(p => p.status === "pending");
+    const rejectedPayments = coursePayments.filter(p => p.status === "rejected" || p.status === "cancelled");
+
+    // Hoja 1: Resumen del curso
+    const summaryData = [
+      ["REPORTE DE CURSO - " + course.title.toUpperCase()],
+      [""],
+      ["Información General"],
+      ["Título", course.title],
+      ["Categoría", course.category || "Sin categoría"],
+      ["Nivel", course.level || "No especificado"],
+      ["Duración", course.duration || "No especificada"],
+      ["Precio", course.price ? `$${course.price.toLocaleString("es-AR")}` : "Gratis"],
+      ["Certificado", course.certified ? "Sí" : "No"],
+      [""],
+      ["Métricas"],
+      ["Total de inscriptos", enrolledCount],
+      ["Ventas completadas", salesCount],
+      ["Pagos pendientes", pendingPayments.length],
+      ["Pagos rechazados/cancelados", rejectedPayments.length],
+      [""],
+      ["Ingresos"],
+      ["Ingresos totales", `$${totalRevenue.toLocaleString("es-AR")}`],
+      ["Promedio por venta", salesCount > 0 ? `$${(totalRevenue / salesCount).toLocaleString("es-AR", { maximumFractionDigits: 2 })}` : "$0"],
+      [""],
+      ["Fecha de exportación", new Date().toLocaleString("es-AR")],
+    ];
+
+    // Hoja 2: Detalle de pagos
+    const paymentsHeader = ["Usuario", "Email", "Estado", "Monto", "Fecha"];
+    const paymentsRows = coursePayments.map(p => [
+      p.displayName || "Desconocido",
+      p.displayEmail || "-",
+      p.status === "approved" || p.status === "completed" ? "Aprobado" :
+        p.status === "pending" ? "Pendiente" : "Rechazado/Cancelado",
+      `$${(p.amount || 0).toLocaleString("es-AR")}`,
+      p.created_at ? new Date(p.created_at).toLocaleDateString("es-AR") : "-",
+    ]);
+
+    // Crear workbook
+    const wb = XLSX.utils.book_new();
+
+    // Hoja resumen
+    const wsResumen = XLSX.utils.aoa_to_sheet(summaryData);
+    wsResumen["!cols"] = [{ wch: 30 }, { wch: 40 }];
+    XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+
+    // Hoja de pagos
+    if (coursePayments.length > 0) {
+      const wsPagos = XLSX.utils.aoa_to_sheet([paymentsHeader, ...paymentsRows]);
+      wsPagos["!cols"] = [{ wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, wsPagos, "Detalle de Pagos");
+    }
+
+    // Descargar archivo
+    const fileName = `curso_${course.slug || course.id}_${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    toast.success(`Datos exportados: ${fileName}`);
   };
 
   const handleSaveTeacher = async (teacher: Partial<Teacher>) => {
@@ -1371,6 +1443,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                             <DropdownMenuItem onClick={() => handleEditCourse(course)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExportCourseData(course)}>
+                              <Download className="mr-2 h-4 w-4" />
+                              Exportar datos
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDeleteCourse(course.id)}

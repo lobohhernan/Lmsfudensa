@@ -52,6 +52,7 @@
             "tailwind-merge": "*",
             "typescript": "^5.9.3",
             "vaul": "^1.1.2",
+            "xlsx": "^0.18.5",
             "zod": "^4.3.6"
       },
       "devDependencies": {
