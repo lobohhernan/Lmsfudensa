@@ -58,6 +58,7 @@ import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
 import { supabaseAdmin, isAdminClientConfigured, logAdminOperation } from "../lib/supabaseAdmin";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
+import { useEnrollmentCounts } from "../hooks/useEnrollmentCounts";
 import { useTeachersRealtime } from "../hooks/useTeachers";
 import { useCertificatesRealtime } from "../hooks/useCertificates";
 import { usePayments, type PaymentRow } from "../hooks/usePayments";
@@ -135,6 +136,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   // Use realtime hook for courses
   const { courses: realtimeCourses } = useCoursesRealtime();
+
+  // Conteo de alumnos inscriptos en tiempo real (solo visible para admin)
+  const { counts: enrollmentCounts } = useEnrollmentCounts();
 
   // Use realtime hook for teachers
   const { teachers: realtimeTeachers, loading: teachersLoading, refetch: refetchTeachers } = useTeachersRealtime();
@@ -1246,6 +1250,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         level={course.level as "Básico" | "Intermedio" | "Avanzado"}
                         certified={course.certified || false}
                         students={course.students}
+                        enrollmentCount={enrollmentCounts[course.id] ?? 0}
                         onClick={() => handleEditCourse(course)}
                       />
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
