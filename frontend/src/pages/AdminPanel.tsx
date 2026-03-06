@@ -127,6 +127,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [usersSearch, setUsersSearch] = useState("");
   const [usersRoleFilter, setUsersRoleFilter] = useState<string>("all");
   const [usersDateFilter, setUsersDateFilter] = useState<Date | undefined>(undefined);
+  // Filtros de cursos
+  const [courseLevelFilter, setCourseLevelFilter] = useState<string>("all");
+  const [courseSortBy, setCourseSortBy] = useState<string>("default");
+  const [coursesSearch, setCoursesSearch] = useState("");
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeCourses: 0,
@@ -277,6 +281,57 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     reviews: course.reviews || 0,
     instructorId: resolveToTeacherId(course.instructor_id),
   })), [realtimeCourses, profileToTeacherIdMap, realtimeTeachers]);
+
+  // Calcular ventas por curso (pagos aprobados)
+  const salesByCourse = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const payment of allPayments) {
+      if (payment.status === "approved" || payment.status === "completed") {
+        const courseId = payment.course_id;
+        if (courseId) {
+          map[courseId] = (map[courseId] || 0) + 1;
+        }
+      }
+    }
+    return map;
+  }, [allPayments]);
+
+  // Filtrar y ordenar cursos
+  const filteredCourseList = useMemo(() => {
+    let filtered = [...courseList];
+
+    // Filtro por búsqueda
+    const q = coursesSearch.trim().toLowerCase();
+    if (q) {
+      filtered = filtered.filter(course =>
+        course.title.toLowerCase().includes(q) ||
+        course.description?.toLowerCase().includes(q) ||
+        course.category?.toLowerCase().includes(q)
+      );
+    }
+
+    // Filtro por nivel
+    if (courseLevelFilter !== "all") {
+      filtered = filtered.filter(course => course.level === courseLevelFilter);
+    }
+
+    // Ordenamiento
+    if (courseSortBy === "mostEnrolled") {
+      filtered.sort((a, b) => {
+        const enrollA = enrollmentCounts[a.id] || 0;
+        const enrollB = enrollmentCounts[b.id] || 0;
+        return enrollB - enrollA;
+      });
+    } else if (courseSortBy === "mostSold") {
+      filtered.sort((a, b) => {
+        const salesA = salesByCourse[a.id] || 0;
+        const salesB = salesByCourse[b.id] || 0;
+        return salesB - salesA;
+      });
+    }
+
+    return filtered;
+  }, [courseList, coursesSearch, courseLevelFilter, courseSortBy, enrollmentCounts, salesByCourse]);
 
   // Cargar usuarios desde Supabase
   const loadUsers = async () => {
@@ -1220,10 +1275,16 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* Courses */}
           {activeTab === "courses" && !showCourseForm && (
             <div className="space-y-6">
+              {/* Barra de búsqueda y botón nuevo curso */}
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative flex-1 sm:max-w-md">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                  <Input placeholder="Buscar cursos..." className="pl-10" />
+                  <Input 
+                    placeholder="Buscar cursos..." 
+                    className="pl-10"
+                    value={coursesSearch}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCoursesSearch(e.target.value)}
+                  />
                 </div>
                 <Button onClick={() => setShowCourseForm(true)}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -1231,9 +1292,55 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 </Button>
               </div>
 
+              {/* Filtros */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap">Nivel:</span>
+                  <Select value={courseLevelFilter} onValueChange={setCourseLevelFilter}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="Básico">Básico</SelectItem>
+                      <SelectItem value="Intermedio">Intermedio</SelectItem>
+                      <SelectItem value="Avanzado">Avanzado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap">Ordenar por:</span>
+                  <Select value={courseSortBy} onValueChange={setCourseSortBy}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="Por defecto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Por defecto</SelectItem>
+                      <SelectItem value="mostEnrolled">Más inscriptos</SelectItem>
+                      <SelectItem value="mostSold">Más vendidos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(courseLevelFilter !== "all" || courseSortBy !== "default" || coursesSearch) && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setCourseLevelFilter("all");
+                      setCourseSortBy("default");
+                      setCoursesSearch("");
+                    }}
+                    className="text-[#64748B] hover:text-[#1E293B]"
+                  >
+                    <X className="mr-1 h-3 w-3" />
+                    Limpiar filtros
+                  </Button>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {courseList.length > 0 ? (
-                  courseList.map((course) => (
+                {filteredCourseList.length > 0 ? (
+                  filteredCourseList.map((course) => (
                     <div 
                       key={course.id} 
                       className={`relative group transition-all duration-500 ${
@@ -1279,7 +1386,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   ))
                 ) : (
                   <div className="col-span-full flex items-center justify-center py-12">
-                    <p className="text-[#64748B]">No hay cursos disponibles. Crea uno para comenzar.</p>
+                    <p className="text-[#64748B]">
+                      {courseLevelFilter !== "all" || coursesSearch 
+                        ? "No se encontraron cursos con los filtros seleccionados."
+                        : "No hay cursos disponibles. Crea uno para comenzar."}
+                    </p>
                   </div>
                 )}
               </div>
