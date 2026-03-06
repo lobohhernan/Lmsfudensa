@@ -20,6 +20,8 @@ import {
   Loader2,
   CalendarIcon,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { CourseLesson, EvaluationQuestion } from "../lib/data";
 import { Button } from "../components/ui/button";
@@ -132,6 +134,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [courseLevelFilter, setCourseLevelFilter] = useState<string>("all");
   const [courseSortBy, setCourseSortBy] = useState<string>("default");
   const [coursesSearch, setCoursesSearch] = useState("");
+  const [coursesPage, setCoursesPage] = useState(1);
+  const COURSES_PER_PAGE = 8;
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeCourses: 0,
@@ -333,6 +337,18 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
     return filtered;
   }, [courseList, coursesSearch, courseLevelFilter, courseSortBy, enrollmentCounts, salesByCourse]);
+
+  // Paginación de cursos
+  const totalCoursesPages = Math.ceil(filteredCourseList.length / COURSES_PER_PAGE);
+  const paginatedCourseList = useMemo(() => {
+    const start = (coursesPage - 1) * COURSES_PER_PAGE;
+    return filteredCourseList.slice(start, start + COURSES_PER_PAGE);
+  }, [filteredCourseList, coursesPage]);
+
+  // Resetear página cuando cambian filtros
+  useEffect(() => {
+    setCoursesPage(1);
+  }, [coursesSearch, courseLevelFilter, courseSortBy]);
 
   // Cargar usuarios desde Supabase
   const loadUsers = async () => {
@@ -1488,8 +1504,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {filteredCourseList.length > 0 ? (
-                  filteredCourseList.map((course) => (
+                {paginatedCourseList.length > 0 ? (
+                  paginatedCourseList.map((course) => (
                     <div 
                       key={course.id} 
                       className={`relative group transition-all duration-500 ${
@@ -1547,6 +1563,44 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   </div>
                 )}
               </div>
+
+              {/* Paginación */}
+              {totalCoursesPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCoursesPage(p => Math.max(1, p - 1))}
+                    disabled={coursesPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalCoursesPages }, (_, i) => i + 1).map(page => (
+                      <Button
+                        key={page}
+                        variant={coursesPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCoursesPage(page)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCoursesPage(p => Math.min(totalCoursesPages, p + 1))}
+                    disabled={coursesPage === totalCoursesPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-[#64748B] ml-2">
+                    {filteredCourseList.length} curso{filteredCourseList.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
