@@ -110,7 +110,8 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
                     <li key={course.id}>
                       <button 
                         onClick={() => onNavigate?.("course", course.id)}
-                        className="body-sm text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0"
+                        className="body-sm text-[#64748B] hover:text-[#1e467c] cursor-pointer bg-none border-none p-0 text-left max-w-full truncate block"
+                        title={course.title}
                       >
                         {course.title}
                       </button>
