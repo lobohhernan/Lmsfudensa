@@ -17,6 +17,8 @@ import {
   Menu,
   GraduationCap,
   Loader2,
+  CalendarIcon,
+  X,
 } from "lucide-react";
 import { CourseLesson, EvaluationQuestion } from "../lib/data";
 import { Button } from "../components/ui/button";
@@ -79,6 +81,15 @@ import {
   SheetDescription,
   SheetTitle,
 } from "../components/ui/sheet";
+import { Calendar } from "../components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 
 interface AdminPanelProps {
   onNavigate?: (page: string) => void;
@@ -112,6 +123,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [paymentToDelete, setPaymentToDelete] = useState<{ id: string; displayName: string; courseTitle: string; status: string } | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [paymentsSearch, setPaymentsSearch] = useState("");
+  const [usersSearch, setUsersSearch] = useState("");
+  const [usersRoleFilter, setUsersRoleFilter] = useState<string>("all");
+  const [usersDateFilter, setUsersDateFilter] = useState<Date | undefined>(undefined);
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeCourses: 0,
@@ -140,6 +154,41 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       );
     });
   }, [realtimeTeachers, teacherQuery]);
+
+  // Filtro de usuarios (por texto, rol, fecha de registro)
+  const filteredUsers = useMemo(() => {
+    let result = usersList;
+
+    // Filtro por texto (busca en id, nombre, email)
+    const q = usersSearch.trim().toLowerCase();
+    if (q) {
+      result = result.filter((u) => {
+        const id = ((u.id as string) || "").toLowerCase();
+        const name = ((u.full_name as string) || "").toLowerCase();
+        const email = ((u.email as string) || "").toLowerCase();
+        return id.includes(q) || name.includes(q) || email.includes(q);
+      });
+    }
+
+    // Filtro por rol
+    if (usersRoleFilter !== "all") {
+      result = result.filter((u) => u.role === usersRoleFilter);
+    }
+
+    // Filtro por fecha de registro (mismo día)
+    if (usersDateFilter) {
+      result = result.filter((u) => {
+        const created = new Date(u.created_at as string);
+        return (
+          created.getFullYear() === usersDateFilter.getFullYear() &&
+          created.getMonth() === usersDateFilter.getMonth() &&
+          created.getDate() === usersDateFilter.getDate()
+        );
+      });
+    }
+
+    return result;
+  }, [usersList, usersSearch, usersRoleFilter, usersDateFilter]);
 
   // Mapa dinámico: teacher.id → cursos que dicta
   // Soporta tanto instructor_id=teacher.id (cursos nuevos) como instructor_id=profile.id (cursos legacy)
@@ -1427,21 +1476,85 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* Users */}
           {activeTab === "users" && !showUserForm && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="relative sm:max-w-md flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                  <Input placeholder="Buscar usuarios..." className="pl-10" />
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div className="relative sm:max-w-md flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+                    <Input
+                      placeholder="Buscar por ID, nombre o correo..."
+                      className="pl-10"
+                      value={usersSearch}
+                      onChange={(e) => setUsersSearch(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setEditingUser(undefined);
+                      setShowUserForm(true);
+                    }}
+                    className="ml-4 bg-[#1e467c] hover:bg-[#2d5f93]"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Crear Usuario
+                  </Button>
                 </div>
-                <Button
-                  onClick={() => {
-                    setEditingUser(undefined);
-                    setShowUserForm(true);
-                  }}
-                  className="ml-4 bg-[#1e467c] hover:bg-[#2d5f93]"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Crear Usuario
-                </Button>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Filtro por Rol */}
+                  <Select value={usersRoleFilter} onValueChange={setUsersRoleFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filtrar por rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los roles</SelectItem>
+                      <SelectItem value="student">Estudiante</SelectItem>
+                      <SelectItem value="instructor">Profesor</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Filtro por Fecha de registro */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[220px] justify-start text-left font-normal",
+                          !usersDateFilter && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {usersDateFilter
+                          ? usersDateFilter.toLocaleDateString("es-AR")
+                          : "Fecha de registro"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={usersDateFilter}
+                        onSelect={setUsersDateFilter}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Limpiar filtros */}
+                  {(usersSearch || usersRoleFilter !== "all" || usersDateFilter) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setUsersSearch("");
+                        setUsersRoleFilter("all");
+                        setUsersDateFilter(undefined);
+                      }}
+                    >
+                      <X className="mr-1 h-4 w-4" />
+                      Limpiar filtros
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <Card>
@@ -1477,8 +1590,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           No hay usuarios registrados aún
                         </TableCell>
                       </TableRow>
+                    ) : filteredUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                          No se encontraron usuarios con los filtros aplicados
+                        </TableCell>
+                      </TableRow>
                     ) : (
-                      usersList.map((user, index) => (
+                      filteredUsers.map((user, index) => (
                         <TableRow key={user.id} className={cn(
                           deletingUserId === user.id && "opacity-50 transition-opacity duration-500"
                         )}>
