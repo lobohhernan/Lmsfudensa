@@ -1680,8 +1680,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       <TableHead>#</TableHead>
                       <TableHead>Nombre</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>País</TableHead>
-                      <TableHead>Teléfono</TableHead>
                       <TableHead>Rol</TableHead>
                       <TableHead>Registrado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
@@ -1690,25 +1688,25 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <TableBody>
                     {usersLoading ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-4">
+                        <TableCell colSpan={6} className="text-center py-4">
                           <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
                     ) : usersError ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-4 text-red-600">
+                        <TableCell colSpan={6} className="text-center py-4 text-red-600">
                           Error cargando usuarios: {usersError}
                         </TableCell>
                       </TableRow>
                     ) : usersList.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={6} className="text-center py-4 text-gray-500">
                           No hay usuarios registrados aún
                         </TableCell>
                       </TableRow>
                     ) : filteredUsers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={6} className="text-center py-4 text-gray-500">
                           No se encontraron usuarios con los filtros aplicados
                         </TableCell>
                       </TableRow>
@@ -1720,8 +1718,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                           <TableCell className="text-[#0F172A] font-medium">{user.full_name || "Sin nombre"}</TableCell>
                           <TableCell className="text-sm">{user.email}</TableCell>
-                          <TableCell>{user.country || "-"}</TableCell>
-                          <TableCell>{user.phone || "-"}</TableCell>
                           <TableCell>
                             <Badge className={user.role === 'admin' ? 'bg-purple-100 text-purple-800' : user.role === 'instructor' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}>
                               {user.role === 'admin' ? 'Administrador' : user.role === 'instructor' ? 'Profesor' : 'Estudiante'}
