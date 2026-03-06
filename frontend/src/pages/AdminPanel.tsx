@@ -1314,9 +1314,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   );
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC]">
+    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className="hidden w-64 border-r bg-white lg:block">
+      <aside className="hidden w-64 flex-shrink-0 border-r bg-white lg:block lg:sticky lg:top-0 lg:h-screen overflow-y-auto">
         <SidebarContent />
       </aside>
 
