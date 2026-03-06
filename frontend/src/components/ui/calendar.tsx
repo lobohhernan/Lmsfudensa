@@ -24,8 +24,8 @@ function Calendar({
         caption_label: "text-sm font-medium",
         nav: "flex items-center gap-1",
         nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+          buttonVariants({ variant: "ghost" }),
+          "h-7 w-7 p-0 hover:bg-accent",
         ),
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
@@ -61,10 +61,10 @@ function Calendar({
       }}
       components={{
         IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("size-4", className)} {...props} />
+          <ChevronLeft className={cn("h-4 w-4", className)} {...props} />
         ),
         IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("size-4", className)} {...props} />
+          <ChevronRight className={cn("h-4 w-4", className)} {...props} />
         ),
       }}
       {...props}
