@@ -1333,21 +1333,15 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
-        {/* Header */}
-        <header className="sticky top-0 z-10 border-b bg-white">
-          <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="lg:hidden"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </div>
-            <Button variant="outline" onClick={() => onNavigate?.("home")}>
-              Ver Sitio Web
+        {/* Header - solo visible en móvil */}
+        <header className="sticky top-0 z-10 border-b bg-white lg:hidden">
+          <div className="flex h-16 items-center px-4 sm:px-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
             </Button>
           </div>
         </header>
@@ -1810,16 +1804,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       onChange={(e) => setUsersSearch(e.target.value)}
                     />
                   </div>
-                  <Button
-                    onClick={() => {
-                      setEditingUser(undefined);
-                      setShowUserForm(true);
-                    }}
-                    className="ml-4 bg-[#1e467c] hover:bg-[#2d5f93]"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Crear Usuario
-                  </Button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
