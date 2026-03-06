@@ -46,6 +46,7 @@ CREATE TRIGGER trg_payments_updated_at
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
 -- Admins: acceso total
+DROP POLICY IF EXISTS "Admin full access payments" ON public.payments;
 CREATE POLICY "Admin full access payments"
   ON public.payments
   FOR ALL
@@ -54,6 +55,7 @@ CREATE POLICY "Admin full access payments"
   WITH CHECK (public.is_admin());
 
 -- Usuarios: solo pueden ver sus propios pagos
+DROP POLICY IF EXISTS "Users can view own payments" ON public.payments;
 CREATE POLICY "Users can view own payments"
   ON public.payments
   FOR SELECT

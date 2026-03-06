@@ -358,6 +358,6 @@ export interface Payment {
   created_at: string;
   updated_at: string;
   // Joined relations (optional)
-  profiles?: { full_name: string; email: string } | null;
-  courses?: { title: string } | null;
+  profiles?: { full_name: string | null; email: string | null } | null;
+  courses?: { title: string; price?: number | null } | null;
 }

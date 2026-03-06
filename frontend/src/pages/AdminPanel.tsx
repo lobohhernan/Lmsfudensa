@@ -261,15 +261,15 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     const totalStudents = usersList.length;
     const activeCourses = realtimeCourses.length;
     
-    // Calcular ingresos del mes (suma de pagos aprobados del mes actual)
+    // Calcular ingresos del mes (pagos aprobados o legacy del mes actual)
     const now = new Date();
     const monthlyRevenue = allPayments
       .filter(p =>
-        p.status === "approved" &&
+        (p.status === "approved" || p.status === "legacy") &&
         new Date(p.created_at).getMonth() === now.getMonth() &&
         new Date(p.created_at).getFullYear() === now.getFullYear()
       )
-      .reduce((sum, p) => sum + p.amount, 0);
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
 
     setStats({
       totalStudents,
