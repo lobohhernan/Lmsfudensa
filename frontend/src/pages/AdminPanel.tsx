@@ -750,6 +750,83 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     toast.success(`Datos exportados: ${fileName}`);
   };
 
+  // Exportar todos los pagos a Excel
+  const handleExportAllPayments = () => {
+    if (filteredPayments.length === 0) {
+      toast.error("No hay pagos para exportar");
+      return;
+    }
+
+    // Calcular totales
+    const totalApproved = filteredPayments.filter(p => p.status === "approved" || p.status === "completed");
+    const totalPending = filteredPayments.filter(p => p.status === "pending" || p.status === "legacy");
+    const totalRejected = filteredPayments.filter(p => p.status === "rejected" || p.status === "cancelled");
+    const totalRevenue = totalApproved.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const pendingRevenue = totalPending.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    // Hoja 1: Resumen
+    const summaryData = [
+      ["REPORTE DE PAGOS - LMS FUDENSA"],
+      [""],
+      ["Resumen General"],
+      ["Total de pagos", filteredPayments.length],
+      ["Pagos aprobados", totalApproved.length],
+      ["Pagos pendientes", totalPending.length],
+      ["Pagos rechazados/cancelados", totalRejected.length],
+      [""],
+      ["Ingresos"],
+      ["Ingresos totales (aprobados)", `$${totalRevenue.toLocaleString("es-AR")}`],
+      ["Ingresos pendientes", `$${pendingRevenue.toLocaleString("es-AR")}`],
+      [""],
+      ["Fecha de exportación", new Date().toLocaleString("es-AR")],
+    ];
+
+    // Hoja 2: Detalle de todos los pagos
+    const paymentsHeader = ["#", "Estado", "Fecha", "Usuario", "Email", "Curso", "Monto", "Moneda", "ID de Pago"];
+    const paymentsRows = filteredPayments.map((p, idx) => [
+      idx + 1,
+      p.status === "approved" || p.status === "completed" ? "Aprobado" :
+        p.status === "pending" ? "Pendiente" :
+        p.status === "legacy" ? "Legacy" : "Rechazado/Cancelado",
+      p.created_at ? new Date(p.created_at).toLocaleDateString("es-AR") : "-",
+      p.displayName || "Desconocido",
+      p.displayEmail || "-",
+      p.courseTitle || "-",
+      p.amount || 0,
+      p.currency || "ARS",
+      p.id || "-",
+    ]);
+
+    // Crear workbook
+    const wb = XLSX.utils.book_new();
+
+    // Hoja resumen
+    const wsResumen = XLSX.utils.aoa_to_sheet(summaryData);
+    wsResumen["!cols"] = [{ wch: 35 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+
+    // Hoja detalle de pagos
+    const wsPagos = XLSX.utils.aoa_to_sheet([paymentsHeader, ...paymentsRows]);
+    wsPagos["!cols"] = [
+      { wch: 5 },  // #
+      { wch: 15 }, // Estado
+      { wch: 12 }, // Fecha
+      { wch: 25 }, // Usuario
+      { wch: 30 }, // Email
+      { wch: 30 }, // Curso
+      { wch: 12 }, // Monto
+      { wch: 8 },  // Moneda
+      { wch: 36 }, // ID
+    ];
+    XLSX.utils.book_append_sheet(wb, wsPagos, "Detalle de Pagos");
+
+    // Descargar archivo
+    const fileName = `pagos_${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    toast.success(`${filteredPayments.length} pagos exportados: ${fileName}`);
+  };
+
   const handleSaveTeacher = async (teacher: Partial<Teacher>) => {
     try {
       const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
@@ -1882,14 +1959,20 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* Payments */}
           {activeTab === "payments" && (
             <div className="space-y-6">
-              <div className="relative sm:max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                <Input
-                  placeholder="Buscar pagos..."
-                  className="pl-10"
-                  value={paymentsSearch}
-                  onChange={(e) => setPaymentsSearch(e.target.value)}
-                />
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative flex-1 sm:max-w-md">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+                  <Input
+                    placeholder="Buscar pagos..."
+                    className="pl-10"
+                    value={paymentsSearch}
+                    onChange={(e) => setPaymentsSearch(e.target.value)}
+                  />
+                </div>
+                <Button onClick={handleExportAllPayments} variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar
+                </Button>
               </div>
 
               <Card>
