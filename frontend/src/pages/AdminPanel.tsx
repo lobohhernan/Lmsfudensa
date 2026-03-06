@@ -787,7 +787,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       idx + 1,
       p.status === "approved" || p.status === "completed" ? "Aprobado" :
         p.status === "pending" ? "Pendiente" :
-        p.status === "legacy" ? "Legacy" : "Rechazado/Cancelado",
+        p.status === "legacy" ? "Manual" : "Rechazado/Cancelado",
       p.created_at ? new Date(p.created_at).toLocaleDateString("es-AR") : "-",
       p.displayName || "Desconocido",
       p.displayEmail || "-",
@@ -2028,7 +2028,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           >
                             {payment.status === "approved" ? "Aprobado"
                               : payment.status === "pending" ? "Pendiente"
-                              : payment.status === "legacy" ? "Legacy"
+                              : payment.status === "legacy" ? "Manual"
                               : payment.status === "rejected" ? "Rechazado"
                               : "Cancelado"}
                           </Badge>
