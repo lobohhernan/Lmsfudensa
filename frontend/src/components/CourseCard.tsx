@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Clock, BarChart3, Award } from "lucide-react";
+import { Clock, BarChart3, Award, User } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
@@ -12,6 +12,7 @@ export interface CourseCardProps {
   level: "Básico" | "Intermedio" | "Avanzado";
   certified: boolean;
   students?: number;
+  enrollmentCount?: number;
   onClick?: () => void;
   role?: string;
 }
@@ -23,6 +24,7 @@ export const CourseCard = memo(function CourseCard({
   level,
   certified,
   students,
+  enrollmentCount,
   onClick,
   role,
 }: CourseCardProps) {
@@ -71,6 +73,12 @@ export const CourseCard = memo(function CourseCard({
               {level}
             </Badge>
           </div>
+          {enrollmentCount !== undefined && (
+            <div className="flex items-center gap-1 text-[#64748B] ml-auto">
+              <User className="h-4 w-4" />
+              <span className="text-sm font-medium">{enrollmentCount}</span>
+            </div>
+          )}
         </div>
       </CardContent>
       {students !== undefined && students !== null ? (
