@@ -52,7 +52,16 @@ export interface DeleteRequest {
   }
 }
 
-type AdminRequest = IssueRequest | SaveCourseRequest | SaveTeacherRequest | SaveUserRequest | DeleteRequest
+export interface ToggleActiveRequest {
+  action: 'toggle_active'
+  data: {
+    type: 'course' | 'user' | 'teacher'
+    id: string
+    is_active: boolean
+  }
+}
+
+type AdminRequest = IssueRequest | SaveCourseRequest | SaveTeacherRequest | SaveUserRequest | DeleteRequest | ToggleActiveRequest
 
 /**
  * Invoca operación administrativa via Edge Function
@@ -120,6 +129,16 @@ export async function saveUserViaAdmin(params: SaveUserRequest['data']) {
 export async function deleteResourceViaAdmin(params: DeleteRequest['data']) {
   return invokeAdminOperation({
     action: 'delete_resource',
+    data: params
+  })
+}
+
+/**
+ * Activa o desactiva un recurso via Edge Function
+ */
+export async function toggleActiveViaAdmin(params: ToggleActiveRequest['data']) {
+  return invokeAdminOperation({
+    action: 'toggle_active',
     data: params
   })
 }

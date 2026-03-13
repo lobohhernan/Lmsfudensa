@@ -52,7 +52,16 @@ interface DeleteRequestType {
   }
 }
 
-type AdminRequest = IssueRequest | SaveCourseRequest | SaveTeacherRequest | SaveUserRequest | DeleteRequestType
+interface ToggleActiveRequest {
+  action: 'toggle_active'
+  data: {
+    type: 'course' | 'user' | 'teacher'
+    id: string
+    is_active: boolean
+  }
+}
+
+type AdminRequest = IssueRequest | SaveCourseRequest | SaveTeacherRequest | SaveUserRequest | DeleteRequestType | ToggleActiveRequest
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -501,6 +510,46 @@ Deno.serve(async (req: Request) => {
 
           default:
             throw new Error('Unknown deletion type')
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      case 'toggle_active': {
+        const { type, id, is_active } = data
+
+        console.log(`🔄 [Admin] Toggle active ${type} (${id}): ${is_active}`)
+
+        switch (type) {
+          case 'course': {
+            const { error } = await supabaseAdmin
+              .from('courses')
+              .update({ is_active, updated_at: new Date().toISOString() })
+              .eq('id', id)
+            if (error) throw error
+            break
+          }
+          case 'teacher': {
+            const { error } = await supabaseAdmin
+              .from('teachers')
+              .update({ is_active, updated_at: new Date().toISOString() })
+              .eq('id', id)
+            if (error) throw error
+            break
+          }
+          case 'user': {
+            const { error } = await supabaseAdmin
+              .from('profiles')
+              .update({ is_active, updated_at: new Date().toISOString() })
+              .eq('id', id)
+            if (error) throw error
+            break
+          }
+          default:
+            throw new Error('Unknown toggle_active type')
         }
 
         return new Response(

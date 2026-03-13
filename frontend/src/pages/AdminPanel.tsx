@@ -13,6 +13,7 @@ import {
   Trash2,
   Download,
   Eye,
+  EyeOff,
   ArrowLeft,
   Mail,
   Menu,
@@ -60,6 +61,7 @@ import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
 import { supabaseAdmin, isAdminClientConfigured, logAdminOperation } from "../lib/supabaseAdmin";
+import { toggleActiveViaAdmin } from "../lib/adminOperations";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
 import { useEnrollmentCounts } from "../hooks/useEnrollmentCounts";
 import { useTeachersRealtime } from "../hooks/useTeachers";
@@ -126,6 +128,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
   const [paymentToDelete, setPaymentToDelete] = useState<{ id: string; displayName: string; courseTitle: string; status: string } | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+  const [togglingActiveId, setTogglingActiveId] = useState<string | null>(null);
   const [paymentsSearch, setPaymentsSearch] = useState("");
   const [usersSearch, setUsersSearch] = useState("");
   const [usersRoleFilter, setUsersRoleFilter] = useState<string>("all");
@@ -199,6 +202,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         );
       });
     }
+
+    // Inactive users always go to the bottom
+    result = [...result].sort((a, b) => {
+      const aActive = (a.is_active as boolean) !== false ? 1 : 0;
+      const bActive = (b.is_active as boolean) !== false ? 1 : 0;
+      return bActive - aActive;
+    });
 
     return result;
   }, [usersList, usersSearch, usersRoleFilter, usersDateFilter]);
@@ -285,6 +295,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     rating: course.rating || 0,
     reviews: course.reviews || 0,
     instructorId: resolveToTeacherId(course.instructor_id),
+    is_active: course.is_active !== false,
   })), [realtimeCourses, profileToTeacherIdMap, realtimeTeachers]);
 
   // Calcular ventas por curso (pagos aprobados)
@@ -335,6 +346,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       });
     }
 
+    // Inactive courses always go to the bottom, regardless of other sorts
+    filtered.sort((a, b) => {
+      const aActive = a.is_active !== false ? 1 : 0;
+      const bActive = b.is_active !== false ? 1 : 0;
+      return bActive - aActive;
+    });
+
     return filtered;
   }, [courseList, coursesSearch, courseLevelFilter, courseSortBy, enrollmentCounts, salesByCourse]);
 
@@ -350,21 +368,43 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setCoursesPage(1);
   }, [coursesSearch, courseLevelFilter, courseSortBy]);
 
-  // Cargar usuarios desde Supabase
+  // Cargar usuarios desde Supabase (Stage 1: activos, Stage 2: inactivos diferido)
   const loadUsers = async () => {
     setUsersLoading(true);
     setUsersError(null);
     try {
-      // Direct fetch with longer timeout for Supabase
-      const { data, error } = await supabase.from("profiles").select("*");
-      
-      if (error) {
-        console.error("Supabase error:", error);
-        throw error;
+      // Stage 1: load only active users first for fast render
+      const { data: activeData, error: activeError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("is_active", true);
+
+      if (activeError) {
+        // Fallback: if is_active column doesn't exist yet, load everything
+        const { data, error } = await supabase.from("profiles").select("*");
+        if (error) throw error;
+        setUsersList(data || []);
+        debug("Usuarios cargados (fallback):", data?.length);
+        return;
       }
-      
-      setUsersList(data || []);
-      debug("Usuarios cargados:", data?.length);
+
+      setUsersList(activeData || []);
+      debug("Usuarios activos cargados:", activeData?.length);
+
+      // Stage 2: defer loading inactive users after active ones are displayed
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("is_active", false)
+        .then(({ data: inactiveData }) => {
+          if (inactiveData && inactiveData.length > 0) {
+            setUsersList((prev) => {
+              const activeOnly = prev.filter((u) => (u.is_active as boolean) !== false);
+              return [...activeOnly, ...inactiveData];
+            });
+            debug("Usuarios inactivos cargados:", inactiveData.length);
+          }
+        });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setUsersError(msg);
@@ -384,7 +424,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   // Calcular estadísticas en tiempo real
   useEffect(() => {
     const totalStudents = usersList.length;
-    const activeCourses = realtimeCourses.length;
+    const activeCourses = realtimeCourses.filter(c => c.is_active !== false).length;
     
     // Calcular ingresos del mes (pagos aprobados o legacy del mes actual)
     const now = new Date();
@@ -1103,6 +1143,49 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setDeleteDialogOpen(true);
   };
 
+  const handleToggleActiveCourse = async (courseId: string, newIsActive: boolean) => {
+    setTogglingActiveId(courseId);
+    try {
+      await toggleActiveViaAdmin({ type: 'course', id: courseId, is_active: newIsActive });
+      toast.success(newIsActive ? "Curso activado" : "Curso desactivado");
+    } catch (err) {
+      console.error("Error toggling course active state:", err);
+      toast.error("Error al cambiar el estado del curso");
+    } finally {
+      setTogglingActiveId(null);
+    }
+  };
+
+  const handleToggleActiveTeacher = async (teacherId: string, newIsActive: boolean) => {
+    setTogglingActiveId(teacherId);
+    try {
+      await toggleActiveViaAdmin({ type: 'teacher', id: teacherId, is_active: newIsActive });
+      toast.success(newIsActive ? "Profesor activado" : "Profesor desactivado");
+    } catch (err) {
+      console.error("Error toggling teacher active state:", err);
+      toast.error("Error al cambiar el estado del profesor");
+    } finally {
+      setTogglingActiveId(null);
+    }
+  };
+
+  const handleToggleActiveUser = async (userId: string, newIsActive: boolean) => {
+    setTogglingActiveId(userId);
+    try {
+      await toggleActiveViaAdmin({ type: 'user', id: userId, is_active: newIsActive });
+      // Update local state optimistically since users have no realtime subscription
+      setUsersList((prev) =>
+        prev.map((u) => u.id === userId ? { ...u, is_active: newIsActive } : u)
+      );
+      toast.success(newIsActive ? "Usuario activado" : "Usuario desactivado");
+    } catch (err) {
+      console.error("Error toggling user active state:", err);
+      toast.error("Error al cambiar el estado del usuario");
+    } finally {
+      setTogglingActiveId(null);
+    }
+  };
+
   const handleRevokeCertificate = (certId: string, studentName: string, courseTitle: string) => {
     setCertToDelete({ id: certId, studentName, courseTitle });
     setDeleteDialogOpen(true);
@@ -1500,14 +1583,22 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {paginatedCourseList.length > 0 ? (
                   paginatedCourseList.map((course) => (
-                    <div 
-                      key={course.id} 
-                      className={`relative group transition-all duration-500 ${
-                        deletingCourseId === course.id 
-                          ? "opacity-0 scale-95" 
+                    <div
+                      key={course.id}
+                      className={cn(
+                        "relative group transition-all duration-500",
+                        deletingCourseId === course.id
+                          ? "opacity-0 scale-95"
+                          : !course.is_active
+                          ? "opacity-55 scale-100"
                           : "opacity-100 scale-100"
-                      }`}
+                      )}
                     >
+                      {!course.is_active && (
+                        <div className="absolute inset-0 z-10 flex items-start justify-start p-2 pointer-events-none">
+                          <Badge className="bg-gray-700/80 text-white text-xs">Inactivo</Badge>
+                        </div>
+                      )}
                       <CourseCard
                         id={course.id}
                         title={course.title}
@@ -1534,6 +1625,17 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                             <DropdownMenuItem onClick={() => handleExportCourseData(course)}>
                               <Download className="mr-2 h-4 w-4" />
                               Exportar datos
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleToggleActiveCourse(course.id, !course.is_active)}
+                              disabled={togglingActiveId === course.id}
+                              className={course.is_active ? "text-amber-600" : "text-green-600"}
+                            >
+                              {course.is_active ? (
+                                <><EyeOff className="mr-2 h-4 w-4" />Desactivar</>
+                              ) : (
+                                <><Eye className="mr-2 h-4 w-4" />Activar</>
+                              )}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDeleteCourse(course.id)}
@@ -1698,13 +1800,16 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       </TableRow>
                     ) : (
                       filteredTeachers.map((teacher, index) => (
-                        <TableRow 
+                        <TableRow
                           key={teacher.id}
-                          className={`transition-all duration-500 ${
+                          className={cn(
+                            "transition-all duration-500",
                             deletingTeacherId === teacher.id
                               ? "opacity-0 bg-red-50/50"
+                              : !teacher.is_active
+                              ? "opacity-55 bg-gray-50"
                               : "opacity-100 bg-transparent"
-                          }`}
+                          )}
                         >
                           <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                           <TableCell className="text-[#0F172A] font-medium">{teacher.full_name}</TableCell>
@@ -1745,6 +1850,17 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                                 <DropdownMenuItem onClick={() => handleEditTeacher(teacher)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleToggleActiveTeacher(teacher.id, !teacher.is_active)}
+                                  disabled={togglingActiveId === teacher.id}
+                                  className={teacher.is_active ? "text-amber-600" : "text-green-600"}
+                                >
+                                  {teacher.is_active ? (
+                                    <><EyeOff className="mr-2 h-4 w-4" />Desactivar</>
+                                  ) : (
+                                    <><Eye className="mr-2 h-4 w-4" />Activar</>
+                                  )}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteTeacher(teacher.id)}
@@ -1872,6 +1988,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       <TableHead>Nombre</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Rol</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead>Registrado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
@@ -1879,32 +1996,34 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <TableBody>
                     {usersLoading ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-4">
+                        <TableCell colSpan={7} className="text-center py-4">
                           <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
                     ) : usersError ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-4 text-red-600">
+                        <TableCell colSpan={7} className="text-center py-4 text-red-600">
                           Error cargando usuarios: {usersError}
                         </TableCell>
                       </TableRow>
                     ) : usersList.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={7} className="text-center py-4 text-gray-500">
                           No hay usuarios registrados aún
                         </TableCell>
                       </TableRow>
                     ) : filteredUsers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={7} className="text-center py-4 text-gray-500">
                           No se encontraron usuarios con los filtros aplicados
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredUsers.map((user, index) => (
                         <TableRow key={user.id} className={cn(
-                          deletingUserId === user.id && "opacity-50 transition-opacity duration-500"
+                          "transition-all duration-300",
+                          deletingUserId === user.id && "opacity-50 transition-opacity duration-500",
+                          (user.is_active as boolean) === false && deletingUserId !== user.id && "opacity-55 bg-gray-50"
                         )}>
                           <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                           <TableCell className="text-[#0F172A] font-medium">{user.full_name || "Sin nombre"}</TableCell>
@@ -1914,7 +2033,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               {user.role === 'admin' ? 'Administrador' : user.role === 'instructor' ? 'Profesor' : 'Estudiante'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-sm">{new Date(user.created_at).toLocaleDateString('es-AR')}</TableCell>
+                          <TableCell>
+                            {(user.is_active as boolean) !== false ? (
+                              <Badge className="bg-green-100 text-green-800 text-xs">Activo</Badge>
+                            ) : (
+                              <Badge className="bg-gray-100 text-gray-600 text-xs">Inactivo</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm">{new Date(user.created_at as string).toLocaleDateString('es-AR')}</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -1930,8 +2056,22 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                                   <Edit className="mr-2 h-4 w-4" />
                                   Editar
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleToggleActiveUser(
+                                    user.id as string,
+                                    (user.is_active as boolean) === false
+                                  )}
+                                  disabled={togglingActiveId === (user.id as string)}
+                                  className={(user.is_active as boolean) !== false ? "text-amber-600" : "text-green-600"}
+                                >
+                                  {(user.is_active as boolean) !== false ? (
+                                    <><EyeOff className="mr-2 h-4 w-4" />Desactivar</>
+                                  ) : (
+                                    <><Eye className="mr-2 h-4 w-4" />Activar</>
+                                  )}
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => {
-                                  setContactUser({ name: user.full_name || user.email, email: user.email });
+                                  setContactUser({ name: (user.full_name || user.email) as string, email: user.email as string });
                                   setContactDialogOpen(true);
                                 }}>
                                   <Mail className="mr-2 h-4 w-4" />
