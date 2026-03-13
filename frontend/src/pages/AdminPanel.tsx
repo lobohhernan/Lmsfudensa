@@ -129,6 +129,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [paymentToDelete, setPaymentToDelete] = useState<{ id: string; displayName: string; courseTitle: string; status: string } | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [togglingActiveId, setTogglingActiveId] = useState<string | null>(null);
+  const [optimisticActiveState, setOptimisticActiveState] = useState<Record<string, boolean>>({});
   const [paymentsSearch, setPaymentsSearch] = useState("");
   const [usersSearch, setUsersSearch] = useState("");
   const [usersRoleFilter, setUsersRoleFilter] = useState<string>("all");
@@ -1143,13 +1144,32 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setDeleteDialogOpen(true);
   };
 
+  // Helper: obtener el estado actual del curso (real + optimistic)
+  const getCourseActiveState = (courseId: string, realState: boolean): boolean => {
+    return optimisticActiveState[courseId] !== undefined ? optimisticActiveState[courseId] : realState;
+  };
+
+  // Helper: obtener el estado actual del profesor (real + optimistic)
+  const getTeacherActiveState = (teacherId: string, realState: boolean): boolean => {
+    return optimisticActiveState[teacherId] !== undefined ? optimisticActiveState[teacherId] : realState;
+  };
+
   const handleToggleActiveCourse = async (courseId: string, newIsActive: boolean) => {
     setTogglingActiveId(courseId);
+    // Optimistic update: mostrar estado nuevo inmediatamente
+    setOptimisticActiveState((prev) => ({ ...prev, [courseId]: newIsActive }));
+
     try {
       await toggleActiveViaAdmin({ type: 'course', id: courseId, is_active: newIsActive });
-      toast.success(newIsActive ? "Curso activado" : "Curso desactivado");
+      toast.success(newIsActive ? "✅ Curso activado" : "❌ Curso desactivado");
     } catch (err) {
       console.error("Error toggling course active state:", err);
+      // Revert optimistic state on error
+      setOptimisticActiveState((prev) => {
+        const updated = { ...prev };
+        delete updated[courseId];
+        return updated;
+      });
       toast.error("Error al cambiar el estado del curso");
     } finally {
       setTogglingActiveId(null);
@@ -1158,11 +1178,20 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   const handleToggleActiveTeacher = async (teacherId: string, newIsActive: boolean) => {
     setTogglingActiveId(teacherId);
+    // Optimistic update
+    setOptimisticActiveState((prev) => ({ ...prev, [teacherId]: newIsActive }));
+
     try {
       await toggleActiveViaAdmin({ type: 'teacher', id: teacherId, is_active: newIsActive });
-      toast.success(newIsActive ? "Profesor activado" : "Profesor desactivado");
+      toast.success(newIsActive ? "✅ Profesor activado" : "❌ Profesor desactivado");
     } catch (err) {
       console.error("Error toggling teacher active state:", err);
+      // Revert optimistic state on error
+      setOptimisticActiveState((prev) => {
+        const updated = { ...prev };
+        delete updated[teacherId];
+        return updated;
+      });
       toast.error("Error al cambiar el estado del profesor");
     } finally {
       setTogglingActiveId(null);
@@ -1177,7 +1206,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       setUsersList((prev) =>
         prev.map((u) => u.id === userId ? { ...u, is_active: newIsActive } : u)
       );
-      toast.success(newIsActive ? "Usuario activado" : "Usuario desactivado");
+      toast.success(newIsActive ? "✅ Usuario activado" : "❌ Usuario desactivado");
     } catch (err) {
       console.error("Error toggling user active state:", err);
       toast.error("Error al cambiar el estado del usuario");
@@ -1582,21 +1611,30 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {paginatedCourseList.length > 0 ? (
-                  paginatedCourseList.map((course) => (
+                  paginatedCourseList.map((course) => {
+                    const isActive = getCourseActiveState(course.id, course.is_active !== false);
+                    const isToggling = togglingActiveId === course.id;
+
+                    return (
                     <div
                       key={course.id}
                       className={cn(
-                        "relative group transition-all duration-500",
+                        "relative group transition-all duration-300",
                         deletingCourseId === course.id
                           ? "opacity-0 scale-95"
-                          : !course.is_active
-                          ? "opacity-55 scale-100"
+                          : !isActive
+                          ? "opacity-40 scale-100 grayscale pointer-events-none"
                           : "opacity-100 scale-100"
                       )}
                     >
-                      {!course.is_active && (
-                        <div className="absolute inset-0 z-10 flex items-start justify-start p-2 pointer-events-none">
-                          <Badge className="bg-gray-700/80 text-white text-xs">Inactivo</Badge>
+                      {!isActive && (
+                        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/20 rounded-lg pointer-events-none">
+                          <Badge className="bg-red-600 text-white text-xs font-bold">INACTIVO</Badge>
+                        </div>
+                      )}
+                      {isToggling && (
+                        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 rounded-lg">
+                          <Loader2 className="h-8 w-8 animate-spin text-white" />
                         </div>
                       )}
                       <CourseCard
@@ -1627,11 +1665,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               Exportar datos
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleToggleActiveCourse(course.id, !course.is_active)}
-                              disabled={togglingActiveId === course.id}
-                              className={course.is_active ? "text-amber-600" : "text-green-600"}
+                              onClick={() => handleToggleActiveCourse(course.id, !isActive)}
+                              disabled={isToggling}
+                              className={isActive ? "text-amber-600" : "text-green-600"}
                             >
-                              {course.is_active ? (
+                              {isActive ? (
                                 <><EyeOff className="mr-2 h-4 w-4" />Desactivar</>
                               ) : (
                                 <><Eye className="mr-2 h-4 w-4" />Activar</>
@@ -1647,8 +1685,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="col-span-full flex items-center justify-center py-12">
                     <p className="text-[#64748B]">
@@ -1803,15 +1841,19 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         <TableRow
                           key={teacher.id}
                           className={cn(
-                            "transition-all duration-500",
+                            "transition-all duration-300 relative",
                             deletingTeacherId === teacher.id
                               ? "opacity-0 bg-red-50/50"
-                              : !teacher.is_active
-                              ? "opacity-55 bg-gray-50"
+                              : !getTeacherActiveState(teacher.id, teacher.is_active !== false)
+                              ? "opacity-40 bg-gray-100 grayscale"
                               : "opacity-100 bg-transparent"
                           )}
                         >
-                          <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
+                          {togglingActiveId === teacher.id && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded z-20">
+                              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                            </div>
+                          )}
                           <TableCell className="text-[#0F172A] font-medium">{teacher.full_name}</TableCell>
                           <TableCell className="text-sm">{teacher.email}</TableCell>
                           <TableCell>{teacher.specialization || "-"}</TableCell>
@@ -1833,7 +1875,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                             )}
                           </TableCell>
                           <TableCell>
-                            {teacher.is_active ? (
+                            {getTeacherActiveState(teacher.id, teacher.is_active !== false) ? (
                               <Badge className="bg-green-100 text-green-800">Activo</Badge>
                             ) : (
                               <Badge className="bg-gray-100 text-gray-800">Inactivo</Badge>
@@ -1852,11 +1894,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                                   Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => handleToggleActiveTeacher(teacher.id, !teacher.is_active)}
+                                  onClick={() => handleToggleActiveTeacher(teacher.id, !getTeacherActiveState(teacher.id, teacher.is_active !== false))}
                                   disabled={togglingActiveId === teacher.id}
-                                  className={teacher.is_active ? "text-amber-600" : "text-green-600"}
+                                  className={getTeacherActiveState(teacher.id, teacher.is_active !== false) ? "text-amber-600" : "text-green-600"}
                                 >
-                                  {teacher.is_active ? (
+                                  {getTeacherActiveState(teacher.id, teacher.is_active !== false) ? (
                                     <><EyeOff className="mr-2 h-4 w-4" />Desactivar</>
                                   ) : (
                                     <><Eye className="mr-2 h-4 w-4" />Activar</>
@@ -2021,10 +2063,15 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     ) : (
                       filteredUsers.map((user, index) => (
                         <TableRow key={user.id} className={cn(
-                          "transition-all duration-300",
+                          "transition-all duration-300 relative",
                           deletingUserId === user.id && "opacity-50 transition-opacity duration-500",
-                          (user.is_active as boolean) === false && deletingUserId !== user.id && "opacity-55 bg-gray-50"
+                          (user.is_active as boolean) === false && deletingUserId !== user.id && "opacity-40 bg-gray-100 grayscale"
                         )}>
+                          {togglingActiveId === (user.id as string) && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded z-20">
+                              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                            </div>
+                          )}
                           <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                           <TableCell className="text-[#0F172A] font-medium">{user.full_name || "Sin nombre"}</TableCell>
                           <TableCell className="text-sm">{user.email}</TableCell>
