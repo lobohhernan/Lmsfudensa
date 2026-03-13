@@ -1685,6 +1685,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
+                    </div>
                     );
                   })
                 ) : (
