@@ -35,6 +35,8 @@ npx supabase db push
 npx supabase functions serve
 
 # Deploy a producción
+npx supabase functions deploy admin-operations
+npx supabase functions deploy bright-action
 npx supabase functions deploy mercadopago-preference --no-verify-jwt
 npx supabase functions deploy mercadopago-webhook --no-verify-jwt
 

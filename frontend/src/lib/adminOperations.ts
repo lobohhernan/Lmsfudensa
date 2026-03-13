@@ -1,5 +1,8 @@
 import { supabase } from './supabase'
 
+const PRIMARY_ADMIN_FUNCTION = 'admin-operations'
+const LEGACY_ADMIN_FUNCTION = 'bright-action'
+
 /**
  * Llama a operaciones administrativas via Edge Function
  * Reemplaza el uso directo de supabaseAdmin en frontend
@@ -63,23 +66,76 @@ export interface ToggleActiveRequest {
 
 type AdminRequest = IssueRequest | SaveCourseRequest | SaveTeacherRequest | SaveUserRequest | DeleteRequest | ToggleActiveRequest
 
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (typeof err === 'string') return err
+
+  if (err && typeof err === 'object' && 'message' in err) {
+    const maybeMessage = (err as { message?: unknown }).message
+    if (typeof maybeMessage === 'string') return maybeMessage
+  }
+
+  return 'Admin operation failed'
+}
+
+function isRecoverableFunctionError(err: unknown): boolean {
+  const rawMessage = extractErrorMessage(err).toLowerCase()
+
+  if (
+    rawMessage.includes('failed to fetch') ||
+    rawMessage.includes('cors') ||
+    rawMessage.includes('not found') ||
+    rawMessage.includes('404') ||
+    rawMessage.includes('does not exist') ||
+    rawMessage.includes('network')
+  ) {
+    return true
+  }
+
+  const status = err && typeof err === 'object' && 'status' in err
+    ? Number((err as { status?: number }).status)
+    : undefined
+
+  return status === 404
+}
+
+async function invokeFunction(functionName: string, request: AdminRequest) {
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    body: request,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
 /**
  * Invoca operación administrativa via Edge Function
  */
 export async function invokeAdminOperation(request: AdminRequest) {
   try {
-    const { data, error } = await supabase.functions.invoke('admin-operations', {
-      body: request
-    })
+    return await invokeFunction(PRIMARY_ADMIN_FUNCTION, request)
+  } catch (primaryErr) {
+    const shouldTryLegacy = request.action === 'toggle_active' && isRecoverableFunctionError(primaryErr)
 
-    if (error) {
-      throw new Error(error.message || 'Admin operation failed')
+    if (shouldTryLegacy) {
+      console.warn('⚠️ Primary admin function unavailable, trying legacy endpoint...')
+
+      try {
+        return await invokeFunction(LEGACY_ADMIN_FUNCTION, request)
+      } catch (legacyErr) {
+        console.error('❌ Admin operation error (primary + legacy):', {
+          primary: extractErrorMessage(primaryErr),
+          legacy: extractErrorMessage(legacyErr),
+        })
+        throw new Error(extractErrorMessage(legacyErr))
+      }
     }
 
-    return data
-  } catch (err) {
-    console.error('❌ Admin operation error:', err)
-    throw err
+    console.error('❌ Admin operation error:', primaryErr)
+    throw new Error(extractErrorMessage(primaryErr))
   }
 }
 
