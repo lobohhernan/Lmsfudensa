@@ -119,6 +119,7 @@ export interface CourseDB {
   category: string;
   created_at: string;
   updated_at: string;
+  is_active?: boolean;
 }
 
 export interface LessonDB {
@@ -182,6 +183,7 @@ export interface Profile {
   role: 'student' | 'instructor' | 'admin';
   created_at: string;
   updated_at: string;
+  is_active?: boolean;
 }
 
 // Course completo (con relaciones)
