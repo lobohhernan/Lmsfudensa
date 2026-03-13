@@ -1623,32 +1623,37 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         deletingCourseId === course.id
                           ? "opacity-0 scale-95"
                           : !isActive
-                          ? "opacity-40 scale-100 grayscale pointer-events-none"
+                          ? "opacity-40 scale-100 grayscale"
                           : "opacity-100 scale-100"
                       )}
                     >
                       {!isActive && (
-                        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/20 rounded-lg pointer-events-none">
+                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 rounded-lg pointer-events-none">
                           <Badge className="bg-red-600 text-white text-xs font-bold">INACTIVO</Badge>
                         </div>
                       )}
                       {isToggling && (
-                        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 rounded-lg">
+                        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 rounded-lg pointer-events-none">
                           <Loader2 className="h-8 w-8 animate-spin text-white" />
                         </div>
                       )}
-                      <CourseCard
-                        id={course.id}
-                        title={course.title}
-                        image={course.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=1200"}
-                        duration={course.duration || "4 semanas"}
-                        level={course.level as "Básico" | "Intermedio" | "Avanzado"}
-                        certified={course.certified || false}
-                        students={course.students}
-                        enrollmentCount={enrollmentCounts[course.id] ?? 0}
-                        onClick={() => handleEditCourse(course)}
-                      />
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className={cn(!isActive && "pointer-events-none")}>
+                        <CourseCard
+                          id={course.id}
+                          title={course.title}
+                          image={course.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=1200"}
+                          duration={course.duration || "4 semanas"}
+                          level={course.level as "Básico" | "Intermedio" | "Avanzado"}
+                          certified={course.certified || false}
+                          students={course.students}
+                          enrollmentCount={enrollmentCounts[course.id] ?? 0}
+                          onClick={() => handleEditCourse(course)}
+                        />
+                      </div>
+                      <div className={cn(
+                        "absolute top-2 right-2 transition-opacity z-20",
+                        !isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      )}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" className="bg-white/80 backdrop-blur-sm hover:bg-white">
