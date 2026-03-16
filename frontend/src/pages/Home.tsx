@@ -85,8 +85,11 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
   
   debug('🏠 [Home] Renderizando:', { coursesCount: allCourses.length, loading, error, isLoggedIn, enrollmentsCount: coursesInProgress.length })
   
-  // Mostrar los primeros 6 cursos en la sección destacada (memoized)
-  const displayCourses = useMemo(() => allCourses.slice(0, 6).map(course => ({
+  // Mostrar los primeros 6 cursos ACTIVOS en la sección destacada (memoized)
+  const displayCourses = useMemo(() => allCourses
+    .filter(course => course.is_active !== false)
+    .slice(0, 6)
+    .map(course => ({
     id: course.id,
     title: course.title,
     slug: course.slug,

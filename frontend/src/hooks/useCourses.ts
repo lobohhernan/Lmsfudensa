@@ -36,6 +36,7 @@ export function useCourses() {
       const { data, error: queryError } = await supabase
         .from('courses')
         .select('*')
+        .eq('is_active', true)
         .order('created_at', { ascending: false })
 
       if (queryError) throw queryError
@@ -114,6 +115,7 @@ export function useCoursesByCategory(category: string) {
         .from('courses')
         .select('*')
         .eq('category', category)
+        .eq('is_active', true)
         .order('created_at', { ascending: false })
 
       if (queryError) throw queryError
