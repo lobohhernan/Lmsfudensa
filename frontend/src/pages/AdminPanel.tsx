@@ -1629,12 +1629,14 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     >
                       {!isActive && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 rounded-lg pointer-events-none">
-                          <Badge className="bg-red-600 text-white text-sm font-bold px-3 py-1 shadow-md">INACTIVO</Badge>
+                          <Badge className="bg-white text-red-600 text-sm font-bold px-3 py-1 shadow-md border border-red-600">INACTIVO</Badge>
                         </div>
                       )}
                       {isToggling && (
-                        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 rounded-lg pointer-events-none">
-                          <Loader2 className="h-8 w-8 animate-spin text-white" />
+                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 rounded-lg pointer-events-none">
+                          <div className="flex flex-col items-center gap-2">
+                            <Loader2 className="h-10 w-10 animate-spin text-white" />
+                          </div>
                         </div>
                       )}
                       <div className={cn(!isActive && "pointer-events-none")}>
