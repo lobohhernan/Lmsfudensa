@@ -112,7 +112,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [editingUser, setEditingUser] = useState<any>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
-  const [teacherToDelete, setTeacherToDelete] = useState<string | null>(null);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactUser, setContactUser] = useState<{ name: string; email: string } | null>(null);
   const [contactMessage, setContactMessage] = useState("");
@@ -121,9 +120,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
-  const [deletingTeacherId, setDeletingTeacherId] = useState<string | null>(null);
-  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [certToDelete, setCertToDelete] = useState<{ id: string; studentName: string; courseTitle: string } | null>(null);
   const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
   const [paymentToDelete, setPaymentToDelete] = useState<{ id: string; displayName: string; courseTitle: string; status: string } | null>(null);
@@ -959,11 +955,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setShowTeacherForm(true);
   };
 
-  const handleDeleteTeacher = (teacherId: string) => {
-    setTeacherToDelete(teacherId);
-    setDeleteDialogOpen(true);
-  };
-
   const confirmDelete = async () => {
     try {
       const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
@@ -1015,72 +1006,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         setDeletingCertId(null);
         setCertToDelete(null);
       }
-      if (userToDelete) {
-        setDeletingUserId(userToDelete.id);
-        logAdminOperation('DELETE', 'user', { userId: userToDelete.id, userName: userToDelete.name });
-
-        if (!isAdminClientConfigured()) {
-          toast.error("Se requiere la SERVICE_ROLE_KEY para eliminar usuarios");
-          setDeletingUserId(null);
-          return;
-        }
-
-        // 1. Eliminar perfil de la tabla profiles
-        const { error: profileError } = await supabaseAdmin
-          .from("profiles")
-          .delete()
-          .eq("id", userToDelete.id);
-
-        if (profileError) {
-          console.error("❌ Error DELETE profile:", profileError);
-          toast.error("Error al eliminar perfil: " + profileError.message);
-          setDeletingUserId(null);
-          return;
-        }
-
-        // 2. Eliminar usuario de auth (esto revoca todo acceso)
-        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userToDelete.id);
-
-        if (authError) {
-          console.error("❌ Error DELETE auth user:", authError);
-          toast.error("Error al eliminar usuario de auth: " + authError.message);
-          setDeletingUserId(null);
-          return;
-        }
-
-        toast.success(`✅ Usuario "${userToDelete.name}" eliminado exitosamente`);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setDeletingUserId(null);
-        setUserToDelete(null);
-        // Recargar lista de usuarios
-        loadUsers();
-      }
-      if (teacherToDelete) {
-        // ✅ Mostrar estado de eliminación (animación visual)
-        setDeletingTeacherId(teacherToDelete);
-        
-        // Eliminar profesor de Supabase
-        logAdminOperation('DELETE', 'teachers', { teacherId: teacherToDelete });
-        
-        const { error } = await client
-          .from("teachers")
-          .delete()
-          .eq("id", teacherToDelete);
-        
-        if (error) {
-          console.error("❌ Error DELETE teacher:", error);
-          toast.error("Error al eliminar el profesor: " + error.message);
-          setDeletingTeacherId(null); // Reset animation state on error
-          return;
-        }
-        
-        toast.success("✅ Profesor eliminado exitosamente");
-        
-        // ✅ Delay de 500ms para mostrar animación de desaparición antes de actualizar UI
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setDeletingTeacherId(null);
-        // No need to reload - realtime subscription will update the list automatically
-      }
       if (paymentToDelete) {
         setDeletingPaymentId(paymentToDelete.id);
 
@@ -1119,15 +1044,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       toast.error("Error al eliminar");
       console.error(err);
       setDeletingCourseId(null);
-      setDeletingTeacherId(null);
-      setDeletingUserId(null);
       setDeletingCertId(null);
       setDeletingPaymentId(null);
     } finally {
       setDeleteDialogOpen(false);
       setCourseToDelete(null);
-      setTeacherToDelete(null);
-      setUserToDelete(null);
       setCertToDelete(null);
       setPaymentToDelete(null);
     }
@@ -1137,11 +1058,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setContactUser({ name, email });
     setContactMessage("");
     setContactDialogOpen(true);
-  };
-
-  const handleDeleteUser = (userId: string, userName: string) => {
-    setUserToDelete({ id: userId, name: userName });
-    setDeleteDialogOpen(true);
   };
 
   // Helper: obtener el estado actual del curso (real + optimistic)
@@ -1845,14 +1761,12 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredTeachers.map((teacher, index) => (
+                      filteredTeachers.map((teacher) => (
                         <TableRow
                           key={teacher.id}
                           className={cn(
                             "transition-all duration-300 relative",
-                            deletingTeacherId === teacher.id
-                              ? "opacity-0 bg-red-50/50"
-                              : !getTeacherActiveState(teacher.id, teacher.is_active !== false)
+                            !getTeacherActiveState(teacher.id, teacher.is_active !== false)
                               ? "opacity-40 bg-gray-100 grayscale"
                               : "opacity-100 bg-transparent"
                           )}
@@ -1911,13 +1825,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                                   ) : (
                                     <><Eye className="mr-2 h-4 w-4" />Activar</>
                                   )}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteTeacher(teacher.id)}
-                                  className="text-[#EF4444]"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Eliminar
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -2072,8 +1979,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       filteredUsers.map((user, index) => (
                         <TableRow key={user.id} className={cn(
                           "transition-all duration-300 relative",
-                          deletingUserId === user.id && "opacity-50 transition-opacity duration-500",
-                          (user.is_active as boolean) === false && deletingUserId !== user.id && "opacity-40 bg-gray-100 grayscale"
+                          (user.is_active as boolean) === false && "opacity-40 bg-gray-100 grayscale"
                         )}>
                           {togglingActiveId === (user.id as string) && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded z-20">
@@ -2131,16 +2037,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                                 }}>
                                   <Mail className="mr-2 h-4 w-4" />
                                   Contactar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  data-variant="destructive"
-                                  onClick={() => handleDeleteUser(
-                                    user.id as string,
-                                    (user.full_name || user.email || "Usuario") as string
-                                  )}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Eliminar usuario
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -2429,9 +2325,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              {courseToDelete && "Esta acción no se puede deshacer. Esto eliminará permanentemente el curso y todas sus lecciones y evaluaciones asociadas."}
-              {teacherToDelete && "Esta acción no se puede deshacer. Esto eliminará permanentemente el profesor y toda su información asociada."}
-              {userToDelete && `Esta acción no se puede deshacer. Esto eliminará permanentemente al usuario "${userToDelete.name}", su perfil y su acceso a la plataforma.`}
+              {courseToDelete && "QUIERES ELIMINAR ESTE CURSO? (NO PODRAS RECUPERARLO SI LO ELIMINAS)"}
               {certToDelete && `Esta acción no se puede deshacer. Esto revocará y eliminará permanentemente el certificado de "${certToDelete.studentName}" para el curso "${certToDelete.courseTitle}".`}
               {paymentToDelete && `Esta acción no se puede deshacer. Esto eliminará permanentemente el registro de pago de "${paymentToDelete.displayName}" por el curso "${paymentToDelete.courseTitle}".`}
             </AlertDialogDescription>
