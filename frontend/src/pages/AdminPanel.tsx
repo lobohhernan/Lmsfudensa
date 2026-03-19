@@ -867,27 +867,32 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     return bytes.buffer;
   };
 
-  const normalizeColumnsToTargetWidth = (widths: number[], target = EXCEL_TOTAL_WIDTH) => {
-    if (!widths.length) {
-      return widths;
-    }
+  const autoFitColumnWidths = (
+    headers: string[],
+    dataRows?: Array<Array<string | number>>,
+    minWidth = 8,
+    maxWidth = 50,
+  ) => {
+    const widths = headers.map((header) => {
+      let calculatedWidth = header.length;
 
-    const currentTotal = widths.reduce((acc, width) => acc + width, 0);
-    if (currentTotal <= 0) {
-      const even = Number((target / widths.length).toFixed(2));
-      const normalized = widths.map(() => even);
-      const diff = Number((target - normalized.reduce((acc, width) => acc + width, 0)).toFixed(2));
-      normalized[normalized.length - 1] = Number((normalized[normalized.length - 1] + diff).toFixed(2));
-      return normalized;
-    }
+      if (dataRows && dataRows.length > 0) {
+        const col = headers.indexOf(header);
+        const maxContentLength = Math.max(
+          ...dataRows.map((row) => {
+            const cell = row[col];
+            const str = String(cell || "");
+            return str.length;
+          }),
+        );
+        calculatedWidth = Math.max(calculatedWidth, maxContentLength);
+      }
 
-    const scale = target / currentTotal;
-    const normalized = widths.map((width) => Number((width * scale).toFixed(2)));
-    const adjustedTotal = normalized.reduce((acc, width) => acc + width, 0);
-    const diff = Number((target - adjustedTotal).toFixed(2));
-    normalized[normalized.length - 1] = Number((normalized[normalized.length - 1] + diff).toFixed(2));
+      const widthWithPadding = calculatedWidth + 2;
+      return Math.max(minWidth, Math.min(widthWithPadding, maxWidth));
+    });
 
-    return normalized;
+    return widths;
   };
 
   const blobToDataUrl = (blob: Blob) =>
@@ -1093,7 +1098,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     });
 
     worksheet.properties.tabColor = { argb: EXCEL_BRAND.primary };
-    const coverWidths = normalizeColumnsToTargetWidth([20, 20, 20, 20]);
+    const coverWidths = [22, 22, 22, 22];
     worksheet.columns = coverWidths.map((width) => ({ width }));
 
     worksheet.mergeCells("A1:D2");
@@ -1192,7 +1197,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       views: [{ state: "frozen", ySplit: 6, showGridLines: false }],
     });
 
-    const summaryWidths = normalizeColumnsToTargetWidth([20, 24, 20, 24]);
+    const summaryWidths = [22, 28, 22, 28];
     worksheet.columns = summaryWidths.map((width) => ({ width }));
 
     worksheet.properties.tabColor = { argb: EXCEL_BRAND.primary };
@@ -1330,8 +1335,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
     worksheet.properties.tabColor = { argb: EXCEL_BRAND.secondary };
 
-    const normalizedDetailWidths = normalizeColumnsToTargetWidth(columns);
-    worksheet.columns = normalizedDetailWidths.map((width) => ({ width }));
+    const finalWidths = autoFitColumnWidths(headers, dataRows, 8, 50);
+    const adaptedColumns = columns.map((_, idx) => finalWidths[idx] || columns[idx]);
+    worksheet.columns = adaptedColumns.map((width) => ({ width }));
 
     insertBrandLogo(worksheet, assets, {
       col: Math.max(0, headers.length - 3),
