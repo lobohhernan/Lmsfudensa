@@ -144,7 +144,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   });
 
   // Use realtime hook for courses
-  const { courses: realtimeCourses } = useCoursesRealtime();
+  const { courses: realtimeCourses, refetch: refetchCourses } = useCoursesRealtime();
 
   // Conteo de alumnos inscriptos en tiempo real (solo visible para admin)
   const { counts: enrollmentCounts } = useEnrollmentCounts();
@@ -629,9 +629,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         }
       }
 
-      // ✅ Delay de 2.5 segundos para que la suscripción realtime actualice la UI
-      debug("⏳ Esperando 2.5 segundos para que se sincronice el realtime...");
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      await refetchCourses();
       
       debug("✅ Curso guardado completamente, cerrando formulario");
       setShowCourseForm(false);
@@ -983,7 +981,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         // ✅ Delay de 500ms para mostrar animación de desaparición antes de actualizar UI
         await new Promise(resolve => setTimeout(resolve, 500));
         setDeletingCourseId(null);
-        // No need to reload - realtime subscription will update the list automatically
+        await refetchCourses();
       }
       if (certToDelete) {
         setDeletingCertId(certToDelete.id);
