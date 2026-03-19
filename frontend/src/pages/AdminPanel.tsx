@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useMemo } from "react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import {
   LayoutDashboard,
   BookOpen,
@@ -71,6 +71,8 @@ import { TeacherForm } from "../components/TeacherForm";
 import { UserForm } from "../components/UserForm";
 import type { Teacher } from "../hooks/useTeachers";
 import logoHorizontal from "../assets/logo-horizontal.svg";
+import logoIco from "../assets/logo-ico.svg";
+import logoHorizontalPng from "../assets/logo_horizontalpng.png";
 import {
   Dialog,
   DialogContent,
@@ -732,152 +734,969 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     setDeleteDialogOpen(true);
   };
 
-  // Exportar datos del curso a Excel
-  const handleExportCourseData = (course: typeof courseList[0]) => {
-    const courseId = course.id;
-    const enrolledCount = enrollmentCounts[courseId] || 0;
-    const salesCount = salesByCourse[courseId] || 0;
-    const totalRevenue = salesCount * (course.price || 0);
+  type ExportSummarySection = {
+    title: string;
+    rows: Array<[string, string | number]>;
+  };
 
-    // Obtener pagos relacionados con este curso
-    const coursePayments = allPayments.filter(p => p.course_id === courseId);
-    const approvedPayments = coursePayments.filter(p => p.status === "approved" || p.status === "completed");
-    const pendingPayments = coursePayments.filter(p => p.status === "pending");
-    const rejectedPayments = coursePayments.filter(p => p.status === "rejected" || p.status === "cancelled");
+  type ExportKpiTone = "primary" | "secondary" | "success" | "warning";
 
-    // Hoja 1: Resumen del curso
-    const summaryData = [
-      ["REPORTE DE CURSO - " + course.title.toUpperCase()],
-      [""],
-      ["Información General"],
-      ["Título", course.title],
-      ["Categoría", course.category || "Sin categoría"],
-      ["Nivel", course.level || "No especificado"],
-      ["Duración", course.duration || "No especificada"],
-      ["Precio", course.price ? `$${course.price.toLocaleString("es-AR")}` : "Gratis"],
-      ["Certificado", course.certified ? "Sí" : "No"],
-      [""],
-      ["Métricas"],
-      ["Total de inscriptos", enrolledCount],
-      ["Ventas completadas", salesCount],
-      ["Pagos pendientes", pendingPayments.length],
-      ["Pagos rechazados/cancelados", rejectedPayments.length],
-      [""],
-      ["Ingresos"],
-      ["Ingresos totales", `$${totalRevenue.toLocaleString("es-AR")}`],
-      ["Promedio por venta", salesCount > 0 ? `$${(totalRevenue / salesCount).toLocaleString("es-AR", { maximumFractionDigits: 2 })}` : "$0"],
-      [""],
-      ["Fecha de exportación", new Date().toLocaleString("es-AR")],
-    ];
+  type ExportKpi = {
+    label: string;
+    value: string | number;
+    tone: ExportKpiTone;
+  };
 
-    // Hoja 2: Detalle de pagos
-    const paymentsHeader = ["Usuario", "Email", "Estado", "Monto", "Fecha"];
-    const paymentsRows = coursePayments.map(p => [
-      p.displayName || "Desconocido",
-      p.displayEmail || "-",
-      p.status === "approved" || p.status === "completed" ? "Aprobado" :
-        p.status === "pending" ? "Pendiente" : "Rechazado/Cancelado",
-      `$${(p.amount || 0).toLocaleString("es-AR")}`,
-      p.created_at ? new Date(p.created_at).toLocaleDateString("es-AR") : "-",
-    ]);
+  type WorkbookBrandAssets = {
+    logoImageId?: number;
+  };
 
-    // Crear workbook
-    const wb = XLSX.utils.book_new();
+  const EXCEL_BRAND = {
+    primary: "FF1E467C",
+    secondary: "FF55A5C7",
+    light: "FFEFF6FB",
+    border: "FFD8E2EC",
+    textDark: "FF0F172A",
+    textMuted: "FF475569",
+    white: "FFFFFFFF",
+    zebra: "FFF8FBFF",
+    statusSuccess: "FFE8F8EF",
+    statusWarning: "FFFFF5E6",
+    statusDanger: "FFFEECEC",
+  };
 
-    // Hoja resumen
-    const wsResumen = XLSX.utils.aoa_to_sheet(summaryData);
-    wsResumen["!cols"] = [{ wch: 30 }, { wch: 40 }];
-    XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+  const EXCEL_TOTAL_WIDTH = 88.11;
 
-    // Hoja de pagos
-    if (coursePayments.length > 0) {
-      const wsPagos = XLSX.utils.aoa_to_sheet([paymentsHeader, ...paymentsRows]);
-      wsPagos["!cols"] = [{ wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
-      XLSX.utils.book_append_sheet(wb, wsPagos, "Detalle de Pagos");
+  const getExportDateLabel = () => new Date().toLocaleString("es-AR");
+
+  const getExportFooterLabel = () =>
+    `Documento interno de gestion - LMS FUDENSA | ${new Date().toLocaleDateString("es-AR")}`;
+
+  const getExportFileTimestamp = () => {
+    const date = new Date();
+    const pad = (value: number) => value.toString().padStart(2, "0");
+    return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}`;
+  };
+
+  const sanitizeFilePart = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 40) || "reporte";
+
+  const downloadWorkbook = async (workbook: ExcelJS.Workbook, fileName: string) => {
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([
+      buffer,
+    ], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  };
+
+  const createStyledWorkbook = (title: string, subject: string) => {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "LMS FUDENSA";
+    workbook.lastModifiedBy = "LMS FUDENSA";
+    workbook.created = new Date();
+    workbook.modified = new Date();
+    workbook.title = title;
+    workbook.subject = subject;
+    return workbook;
+  };
+
+  const svgToPngDataUrl = async (svgText: string, width: number, height: number) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("No se pudo crear contexto canvas para el logo");
     }
 
-    // Descargar archivo
-    const fileName = `curso_${course.slug || course.id}_${new Date().toISOString().split("T")[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
 
-    toast.success(`Datos exportados: ${fileName}`);
+    try {
+      // Canvg renderiza SVG complejos de forma mas confiable que drawImage nativo.
+      const { Canvg } = await import("canvg");
+      const canvg = await Canvg.from(ctx, svgText, {
+        ignoreAnimation: true,
+        ignoreMouse: true,
+        ignoreDimensions: true,
+      });
+      await canvg.render();
+      return canvas.toDataURL("image/png");
+    } catch {
+      // Fallback para entornos donde falle Canvg.
+      const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+      const svgUrl = URL.createObjectURL(svgBlob);
+      try {
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("No se pudo cargar el SVG del logo"));
+          img.src = svgUrl;
+        });
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(image, 0, 0, width, height);
+        return canvas.toDataURL("image/png");
+      } finally {
+        URL.revokeObjectURL(svgUrl);
+      }
+    }
+  };
+
+  const dataUrlToArrayBuffer = (dataUrl: string) => {
+    const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+    const binaryString = window.atob(base64);
+    const length = binaryString.length;
+    const bytes = new Uint8Array(length);
+    for (let index = 0; index < length; index += 1) {
+      bytes[index] = binaryString.charCodeAt(index);
+    }
+    return bytes.buffer;
+  };
+
+  const normalizeColumnsToTargetWidth = (widths: number[], target = EXCEL_TOTAL_WIDTH) => {
+    if (!widths.length) {
+      return widths;
+    }
+
+    const currentTotal = widths.reduce((acc, width) => acc + width, 0);
+    if (currentTotal <= 0) {
+      const even = Number((target / widths.length).toFixed(2));
+      const normalized = widths.map(() => even);
+      const diff = Number((target - normalized.reduce((acc, width) => acc + width, 0)).toFixed(2));
+      normalized[normalized.length - 1] = Number((normalized[normalized.length - 1] + diff).toFixed(2));
+      return normalized;
+    }
+
+    const scale = target / currentTotal;
+    const normalized = widths.map((width) => Number((width * scale).toFixed(2)));
+    const adjustedTotal = normalized.reduce((acc, width) => acc + width, 0);
+    const diff = Number((target - adjustedTotal).toFixed(2));
+    normalized[normalized.length - 1] = Number((normalized[normalized.length - 1] + diff).toFixed(2));
+
+    return normalized;
+  };
+
+  const blobToDataUrl = (blob: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("No se pudo convertir el blob a base64"));
+      reader.readAsDataURL(blob);
+    });
+
+  const getImageExtensionFromDataUrl = (dataUrl: string): "png" | "jpeg" | null => {
+    const match = dataUrl.match(/^data:image\/(png|jpe?g);base64,/i);
+    if (!match) {
+      return null;
+    }
+    return match[1].toLowerCase().startsWith("jp") ? "jpeg" : "png";
+  };
+
+  const prepareWorkbookBrandAssets = async (workbook: ExcelJS.Workbook): Promise<WorkbookBrandAssets> => {
+    const createBrandFallbackPng = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 420;
+      canvas.height = 120;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("No se pudo crear fallback de marca");
+      }
+
+      ctx.fillStyle = "#1E467C";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#55A5C7";
+      ctx.fillRect(0, 0, 24, canvas.height);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 36px Calibri";
+      ctx.fillText("FUDENSA", 42, 62);
+      ctx.font = "bold 16px Calibri";
+      ctx.fillText("LMS", 44, 90);
+
+      return canvas.toDataURL("image/png");
+    };
+
+    const loadLogoAsPngData = async (logoUrl: string) => {
+      const response = await fetch(logoUrl);
+      if (!response.ok) {
+        throw new Error(`No se pudo descargar el logo SVG: ${response.status}`);
+      }
+      const logoSource = await response.text();
+      return svgToPngDataUrl(logoSource, 420, 120);
+    };
+
+    const loadRasterLogoAsDataUrl = async (logoUrl: string) => {
+      const response = await fetch(logoUrl);
+      if (!response.ok) {
+        throw new Error(`No se pudo descargar el logo raster: ${response.status}`);
+      }
+      const logoBlob = await response.blob();
+      const imgUrl = URL.createObjectURL(logoBlob);
+
+      try {
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("No se pudo cargar el logo PNG"));
+          img.src = imgUrl;
+        });
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 420;
+        canvas.height = 120;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          throw new Error("No se pudo crear contexto canvas para logo raster");
+        }
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        return canvas.toDataURL("image/png");
+      } finally {
+        URL.revokeObjectURL(imgUrl);
+      }
+    };
+
+    try {
+      let logoDataUrl: string;
+      let logoExtension: "png" | "jpeg" = "png";
+
+      try {
+        logoDataUrl = await loadRasterLogoAsDataUrl(logoHorizontalPng);
+        logoExtension = getImageExtensionFromDataUrl(logoDataUrl) || "png";
+      } catch {
+        try {
+          logoDataUrl = await loadLogoAsPngData(logoHorizontal);
+          logoExtension = "png";
+        } catch {
+          try {
+            logoDataUrl = await loadLogoAsPngData(logoIco);
+            logoExtension = "png";
+          } catch {
+            logoDataUrl = createBrandFallbackPng();
+            logoExtension = "png";
+          }
+        }
+      }
+
+      let logoImageId: number | undefined;
+      const normalizedExtension = getImageExtensionFromDataUrl(logoDataUrl);
+      if (!normalizedExtension) {
+        throw new Error("La conversion del logo no devolvio base64 valido");
+      }
+      logoExtension = normalizedExtension;
+
+      const logoBuffer = dataUrlToArrayBuffer(logoDataUrl);
+      try {
+        logoImageId = workbook.addImage({
+          base64: logoDataUrl,
+          extension: logoExtension,
+        });
+      } catch {
+        logoImageId = workbook.addImage({
+          buffer: logoBuffer,
+          extension: logoExtension,
+        });
+      }
+
+      if (!logoImageId) {
+        throw new Error("ExcelJS no pudo registrar la imagen del logo");
+      }
+
+      return { logoImageId };
+    } catch (error) {
+      console.warn("No se pudo adjuntar el logo al Excel:", error);
+      return {};
+    }
+  };
+
+  const insertBrandLogo = (
+    worksheet: ExcelJS.Worksheet,
+    assets: WorkbookBrandAssets,
+    options: { col: number; row: number; width: number; height: number; range?: string },
+  ) => {
+    if (!assets.logoImageId) {
+      return;
+    }
+
+    if (options.range) {
+      worksheet.addImage(assets.logoImageId, options.range);
+      return;
+    }
+
+    worksheet.addImage(assets.logoImageId, {
+      tl: { col: options.col, row: options.row },
+      ext: { width: options.width, height: options.height },
+      editAs: "oneCell",
+    });
+  };
+
+  const appendBrandFooter = (
+    worksheet: ExcelJS.Worksheet,
+    rowNumber: number,
+    totalColumns: number,
+    note?: string,
+  ) => {
+    if (totalColumns <= 0) {
+      return;
+    }
+
+    worksheet.mergeCells(rowNumber, 1, rowNumber, totalColumns);
+    const footerCell = worksheet.getCell(rowNumber, 1);
+    footerCell.value = note || getExportFooterLabel();
+    footerCell.font = { name: "Calibri", size: 10, bold: true, color: { argb: EXCEL_BRAND.white } };
+    footerCell.alignment = { vertical: "middle", horizontal: "center" };
+    footerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.primary } };
+    footerCell.border = {
+      top: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+      left: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+      bottom: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+      right: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+    };
+    worksheet.getRow(rowNumber).height = 20;
+  };
+
+  const createCoverSheet = (
+    workbook: ExcelJS.Workbook,
+    assets: WorkbookBrandAssets,
+    reportTitle: string,
+    reportSubtitle: string,
+    kpis: ExportKpi[],
+    generatedAt: string,
+  ) => {
+    const worksheet = workbook.addWorksheet("Portada", {
+      properties: { defaultRowHeight: 24 },
+      pageSetup: {
+        paperSize: 9,
+        orientation: "portrait",
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 1,
+        margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.2, footer: 0.2 },
+      },
+      views: [{ showGridLines: false }],
+    });
+
+    worksheet.properties.tabColor = { argb: EXCEL_BRAND.primary };
+    const coverWidths = normalizeColumnsToTargetWidth([20, 20, 20, 20]);
+    worksheet.columns = coverWidths.map((width) => ({ width }));
+
+    worksheet.mergeCells("A1:D2");
+    const titleCell = worksheet.getCell("A1");
+    titleCell.value = reportTitle;
+    titleCell.font = { name: "Calibri", size: 24, bold: true, color: { argb: EXCEL_BRAND.white } };
+    titleCell.alignment = { vertical: "middle", horizontal: "left" };
+    titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.primary } };
+
+    worksheet.mergeCells("A3:D3");
+    const subtitleCell = worksheet.getCell("A3");
+    subtitleCell.value = reportSubtitle;
+    subtitleCell.font = { name: "Calibri", size: 13, bold: true, color: { argb: EXCEL_BRAND.textDark } };
+    subtitleCell.alignment = { vertical: "middle", horizontal: "left" };
+    subtitleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.light } };
+
+    insertBrandLogo(worksheet, assets, { col: 2.6, row: 0.05, width: 250, height: 70, range: "C1:D3" });
+
+    worksheet.mergeCells("A5:D5");
+    const kpiTitle = worksheet.getCell("A5");
+    kpiTitle.value = "Indicadores Clave";
+    kpiTitle.font = { name: "Calibri", size: 14, bold: true, color: { argb: EXCEL_BRAND.primary } };
+    kpiTitle.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.light } };
+
+    const toneMap: Record<ExportKpiTone, { bg: string; text: string }> = {
+      primary: { bg: EXCEL_BRAND.primary, text: EXCEL_BRAND.white },
+      secondary: { bg: EXCEL_BRAND.secondary, text: EXCEL_BRAND.white },
+      success: { bg: "FF16A34A", text: EXCEL_BRAND.white },
+      warning: { bg: "FFD97706", text: EXCEL_BRAND.white },
+    };
+
+    kpis.slice(0, 4).forEach((kpi, idx) => {
+      const startCol = idx % 2 === 0 ? 1 : 3;
+      const endCol = startCol + 1;
+      const rowStart = 6 + Math.floor(idx / 2) * 3;
+      const rowEnd = rowStart + 1;
+      const tone = toneMap[kpi.tone];
+
+      worksheet.mergeCells(rowStart, startCol, rowEnd, endCol);
+      const kpiCell = worksheet.getCell(rowStart, startCol);
+      kpiCell.value = `${kpi.label}\n${kpi.value}`;
+      kpiCell.font = { name: "Calibri", size: 13, bold: true, color: { argb: tone.text } };
+      kpiCell.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+      kpiCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: tone.bg } };
+      kpiCell.border = {
+        top: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        left: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        bottom: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        right: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+      };
+    });
+
+    worksheet.mergeCells("A13:D13");
+    const generatedCell = worksheet.getCell("A13");
+    generatedCell.value = `Generado: ${generatedAt}`;
+    generatedCell.font = { name: "Calibri", size: 11, italic: true, color: { argb: EXCEL_BRAND.textMuted } };
+
+    worksheet.mergeCells("A15:D15");
+    const noteCell = worksheet.getCell("A15");
+    noteCell.value = "Documento interno de gestion - LMS FUDENSA";
+    noteCell.font = { name: "Calibri", size: 10, bold: true, color: { argb: EXCEL_BRAND.white } };
+    noteCell.alignment = { vertical: "middle", horizontal: "center" };
+    noteCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.primary } };
+  };
+
+  const createSummarySheet = (
+    workbook: ExcelJS.Workbook,
+    assets: WorkbookBrandAssets,
+    reportTitle: string,
+    reportSubtitle: string,
+    sections: ExportSummarySection[],
+    kpis: ExportKpi[],
+    generatedAt: string,
+  ) => {
+    const kpiToneMap: Record<ExportKpiTone, { bg: string; text: string }> = {
+      primary: { bg: EXCEL_BRAND.primary, text: EXCEL_BRAND.white },
+      secondary: { bg: EXCEL_BRAND.secondary, text: EXCEL_BRAND.white },
+      success: { bg: "FF16A34A", text: EXCEL_BRAND.white },
+      warning: { bg: "FFD97706", text: EXCEL_BRAND.white },
+    };
+
+    const worksheet = workbook.addWorksheet("Resumen", {
+      properties: { defaultRowHeight: 20 },
+      pageSetup: {
+        paperSize: 9,
+        orientation: "portrait",
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 2,
+        margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 },
+      },
+      headerFooter: {
+        firstHeader: "&L&BLMS FUDENSA&RResumen Ejecutivo",
+        firstFooter: "&LExportado desde Admin Dashboard&RPagina &P de &N",
+      },
+      views: [{ state: "frozen", ySplit: 6, showGridLines: false }],
+    });
+
+    const summaryWidths = normalizeColumnsToTargetWidth([20, 24, 20, 24]);
+    worksheet.columns = summaryWidths.map((width) => ({ width }));
+
+    worksheet.properties.tabColor = { argb: EXCEL_BRAND.primary };
+
+    insertBrandLogo(worksheet, assets, { col: 2.55, row: 0.1, width: 220, height: 58, range: "C1:D3" });
+
+    worksheet.mergeCells("A1:D1");
+    worksheet.getCell("A1").value = reportTitle;
+    worksheet.getCell("A1").font = { name: "Calibri", size: 16, bold: true, color: { argb: EXCEL_BRAND.white } };
+    worksheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.primary } };
+    worksheet.getCell("A1").alignment = { vertical: "middle", horizontal: "left" };
+    worksheet.getCell("A1").border = {
+      top: { style: "thin", color: { argb: EXCEL_BRAND.primary } },
+      left: { style: "thin", color: { argb: EXCEL_BRAND.primary } },
+      bottom: { style: "thin", color: { argb: EXCEL_BRAND.primary } },
+      right: { style: "thin", color: { argb: EXCEL_BRAND.primary } },
+    };
+
+    worksheet.mergeCells("A2:D2");
+    worksheet.getCell("A2").value = reportSubtitle;
+    worksheet.getCell("A2").font = { name: "Calibri", size: 11, bold: true, color: { argb: EXCEL_BRAND.textDark } };
+    worksheet.getCell("A2").fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.light } };
+    worksheet.getCell("A2").alignment = { vertical: "middle", horizontal: "left" };
+
+    worksheet.getRow(1).height = 30;
+    worksheet.getRow(2).height = 24;
+
+    let currentRow = 4;
+    kpis.forEach((kpi, index) => {
+      const leftColumn = index % 2 === 0 ? 1 : 3;
+      const rightColumn = leftColumn + 1;
+      const rowBase = 4 + Math.floor(index / 2) * 3;
+      const palette = kpiToneMap[kpi.tone];
+
+      worksheet.mergeCells(rowBase, leftColumn, rowBase + 1, rightColumn);
+      const kpiCell = worksheet.getCell(rowBase, leftColumn);
+      kpiCell.value = `${kpi.label}\n${kpi.value}`;
+      kpiCell.font = { name: "Calibri", size: 12, bold: true, color: { argb: palette.text } };
+      kpiCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: palette.bg } };
+      kpiCell.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+      kpiCell.border = {
+        top: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        left: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        bottom: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        right: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+      };
+
+      worksheet.getRow(rowBase).height = 22;
+      worksheet.getRow(rowBase + 1).height = 22;
+      currentRow = Math.max(currentRow, rowBase + 3);
+    });
+
+    sections.forEach((section) => {
+      worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+      const sectionCell = worksheet.getCell(`A${currentRow}`);
+      sectionCell.value = section.title;
+      sectionCell.font = { name: "Calibri", size: 12, bold: true, color: { argb: EXCEL_BRAND.primary } };
+      sectionCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.light } };
+      sectionCell.border = {
+        top: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        left: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        bottom: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        right: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+      };
+      currentRow += 1;
+
+      section.rows.forEach(([label, value], index) => {
+        const isZebra = index % 2 === 1;
+        worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
+        worksheet.mergeCells(`C${currentRow}:D${currentRow}`);
+        const labelCell = worksheet.getCell(`A${currentRow}`);
+        const valueCell = worksheet.getCell(`C${currentRow}`);
+        labelCell.value = label;
+        valueCell.value = value;
+
+        labelCell.font = { name: "Calibri", size: 11, bold: true, color: { argb: EXCEL_BRAND.textDark } };
+        valueCell.font = { name: "Calibri", size: 11, color: { argb: EXCEL_BRAND.textDark } };
+        valueCell.alignment = { vertical: "middle", horizontal: typeof value === "number" ? "right" : "left" };
+
+        const fill = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: isZebra ? EXCEL_BRAND.zebra : EXCEL_BRAND.white } };
+        labelCell.fill = fill;
+        valueCell.fill = fill;
+
+        const border = {
+          top: { style: "thin" as const, color: { argb: EXCEL_BRAND.border } },
+          left: { style: "thin" as const, color: { argb: EXCEL_BRAND.border } },
+          bottom: { style: "thin" as const, color: { argb: EXCEL_BRAND.border } },
+          right: { style: "thin" as const, color: { argb: EXCEL_BRAND.border } },
+        };
+        labelCell.border = border;
+        valueCell.border = border;
+
+        currentRow += 1;
+      });
+
+      currentRow += 1;
+    });
+
+    appendBrandFooter(
+      worksheet,
+      currentRow,
+      4,
+      `Documento interno de gestion - LMS FUDENSA | Generado: ${generatedAt}`,
+    );
+  };
+
+  const createDetailSheet = (
+    workbook: ExcelJS.Workbook,
+    assets: WorkbookBrandAssets,
+    reportTitle: string,
+    reportSubtitle: string,
+    headers: string[],
+    dataRows: Array<Array<string | number>>,
+    columns: number[],
+    generatedAt: string,
+    amountColumnIndex?: number,
+    statusColumnIndex?: number,
+  ) => {
+    const worksheet = workbook.addWorksheet("Detalle de Pagos", {
+      properties: { defaultRowHeight: 20 },
+      pageSetup: {
+        paperSize: 9,
+        orientation: "landscape",
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 3,
+        margins: { left: 0.35, right: 0.35, top: 0.55, bottom: 0.55, header: 0.25, footer: 0.25 },
+      },
+      headerFooter: {
+        firstHeader: "&L&BLMS FUDENSA&RDetalle Operativo",
+        firstFooter: "&LReporte de pagos&RPagina &P de &N",
+      },
+      views: [{ state: "frozen", ySplit: 4, showGridLines: false }],
+    });
+
+    worksheet.properties.tabColor = { argb: EXCEL_BRAND.secondary };
+
+    const normalizedDetailWidths = normalizeColumnsToTargetWidth(columns);
+    worksheet.columns = normalizedDetailWidths.map((width) => ({ width }));
+
+    insertBrandLogo(worksheet, assets, {
+      col: Math.max(0, headers.length - 3),
+      row: 0.1,
+      width: 200,
+      height: 52,
+    });
+
+    worksheet.mergeCells(1, 1, 1, headers.length);
+    const titleCell = worksheet.getCell(1, 1);
+    titleCell.value = reportTitle;
+    titleCell.font = { name: "Calibri", size: 16, bold: true, color: { argb: EXCEL_BRAND.white } };
+    titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.primary } };
+    titleCell.alignment = { vertical: "middle", horizontal: "left" };
+
+    worksheet.mergeCells(2, 1, 2, headers.length);
+    const subtitleCell = worksheet.getCell(2, 1);
+    subtitleCell.value = reportSubtitle;
+    subtitleCell.font = { name: "Calibri", size: 11, bold: true, color: { argb: EXCEL_BRAND.textDark } };
+    subtitleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.light } };
+    subtitleCell.alignment = { vertical: "middle", horizontal: "left" };
+
+    worksheet.getRow(1).height = 30;
+    worksheet.getRow(2).height = 24;
+
+    const headerRow = worksheet.getRow(4);
+    headers.forEach((header, index) => {
+      const cell = headerRow.getCell(index + 1);
+      cell.value = header;
+      cell.font = { name: "Calibri", size: 11, bold: true, color: { argb: EXCEL_BRAND.white } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.secondary } };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.border = {
+        top: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        left: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        bottom: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        right: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+      };
+    });
+    headerRow.height = 22;
+
+    dataRows.forEach((rowData, rowIndex) => {
+      const rowNumber = rowIndex + 5;
+      const row = worksheet.getRow(rowNumber);
+      rowData.forEach((value, cellIndex) => {
+        const cell = row.getCell(cellIndex + 1);
+        cell.value = value;
+        cell.font = { name: "Calibri", size: 10.5, color: { argb: EXCEL_BRAND.textDark } };
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: typeof value === "number" ? "right" : "left",
+        };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: rowIndex % 2 === 1 ? EXCEL_BRAND.zebra : EXCEL_BRAND.white },
+        };
+        cell.border = {
+          top: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+          left: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+          bottom: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+          right: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        };
+      });
+
+      if (typeof amountColumnIndex === "number") {
+        const amountCell = row.getCell(amountColumnIndex + 1);
+        amountCell.numFmt = '"$" #,##0.00';
+      }
+
+      if (typeof statusColumnIndex === "number") {
+        const statusCell = row.getCell(statusColumnIndex + 1);
+        const statusText = String(statusCell.value || "").toLowerCase();
+        if (statusText.includes("aprobado")) {
+          statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.statusSuccess } };
+          statusCell.font = { name: "Calibri", size: 10.5, bold: true, color: { argb: "FF166534" } };
+        } else if (statusText.includes("pendiente") || statusText.includes("manual")) {
+          statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.statusWarning } };
+          statusCell.font = { name: "Calibri", size: 10.5, bold: true, color: { argb: "FF92400E" } };
+        } else {
+          statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.statusDanger } };
+          statusCell.font = { name: "Calibri", size: 10.5, bold: true, color: { argb: "FF991B1B" } };
+        }
+      }
+    });
+
+    if (typeof amountColumnIndex === "number" && dataRows.length > 0) {
+      const totalRowNumber = dataRows.length + 6;
+      const totalStartCol = 1;
+      const totalEndCol = Math.max(1, amountColumnIndex);
+
+      worksheet.mergeCells(totalRowNumber, totalStartCol, totalRowNumber, totalEndCol);
+      const totalLabelCell = worksheet.getCell(totalRowNumber, totalStartCol);
+      totalLabelCell.value = "TOTAL";
+      totalLabelCell.font = { name: "Calibri", size: 11, bold: true, color: { argb: EXCEL_BRAND.white } };
+      totalLabelCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.primary } };
+      totalLabelCell.alignment = { vertical: "middle", horizontal: "right" };
+
+      const amountColLetter = worksheet.getColumn(amountColumnIndex + 1).letter;
+      const totalAmountCell = worksheet.getCell(totalRowNumber, amountColumnIndex + 1);
+      totalAmountCell.value = {
+        formula: `SUM(${amountColLetter}5:${amountColLetter}${dataRows.length + 4})`,
+      };
+      totalAmountCell.numFmt = '"$" #,##0.00';
+      totalAmountCell.font = { name: "Calibri", size: 11, bold: true, color: { argb: EXCEL_BRAND.white } };
+      totalAmountCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: EXCEL_BRAND.primary } };
+      totalAmountCell.alignment = { vertical: "middle", horizontal: "right" };
+
+      for (let columnIndex = 1; columnIndex <= headers.length; columnIndex += 1) {
+        const totalCell = worksheet.getCell(totalRowNumber, columnIndex);
+        totalCell.border = {
+          top: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+          left: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+          bottom: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+          right: { style: "thin", color: { argb: EXCEL_BRAND.border } },
+        };
+      }
+    }
+
+    const detailFooterRow =
+      typeof amountColumnIndex === "number" && dataRows.length > 0
+        ? dataRows.length + 8
+        : dataRows.length + 6;
+
+    appendBrandFooter(
+      worksheet,
+      detailFooterRow,
+      headers.length,
+      `Documento interno de gestion - LMS FUDENSA | Exportado: ${generatedAt}`,
+    );
+
+    worksheet.autoFilter = {
+      from: { row: 4, column: 1 },
+      to: { row: 4, column: headers.length },
+    };
+  };
+
+  // Exportar datos del curso a Excel
+  const handleExportCourseData = async (course: typeof courseList[0]) => {
+    try {
+      const courseId = course.id;
+      const enrolledCount = enrollmentCounts[courseId] || 0;
+      const salesCount = salesByCourse[courseId] || 0;
+      const totalRevenue = salesCount * (course.price || 0);
+
+      // Obtener pagos relacionados con este curso
+      const coursePayments = allPayments.filter(p => p.course_id === courseId);
+      const pendingPayments = coursePayments.filter(p => p.status === "pending");
+      const rejectedPayments = coursePayments.filter(p => p.status === "rejected" || p.status === "cancelled");
+
+      const exportDate = getExportDateLabel();
+      const workbook = createStyledWorkbook(`Reporte curso ${course.title}`, "Analitica de curso");
+      const assets = await prepareWorkbookBrandAssets(workbook);
+      const courseKpis: ExportKpi[] = [
+        { label: "Total inscriptos", value: enrolledCount, tone: "primary" },
+        { label: "Ventas", value: salesCount, tone: "secondary" },
+        { label: "Pendientes", value: pendingPayments.length, tone: "warning" },
+        { label: "Ingresos", value: `$${totalRevenue.toLocaleString("es-AR")}`, tone: "success" },
+      ];
+
+      createCoverSheet(
+        workbook,
+        assets,
+        `Reporte de curso: ${course.title}`,
+        "Analitica comercial y operativa",
+        courseKpis,
+        exportDate,
+      );
+
+      // Hoja 1: Resumen del curso
+      createSummarySheet(
+        workbook,
+        assets,
+        `Reporte de curso: ${course.title}`,
+        `LMS FUDENSA | Generado el ${exportDate}`,
+        [
+          {
+            title: "Informacion general",
+            rows: [
+              ["Titulo", course.title],
+              ["Categoria", course.category || "Sin categoria"],
+              ["Nivel", course.level || "No especificado"],
+              ["Duracion", course.duration || "No especificada"],
+              ["Precio", course.price ? `$${course.price.toLocaleString("es-AR")}` : "Gratis"],
+              ["Certificado", course.certified ? "Si" : "No"],
+            ],
+          },
+          {
+            title: "Metricas de inscripcion y pagos",
+            rows: [
+              ["Total de inscriptos", enrolledCount],
+              ["Ventas completadas", salesCount],
+              ["Pagos pendientes", pendingPayments.length],
+              ["Pagos rechazados/cancelados", rejectedPayments.length],
+            ],
+          },
+          {
+            title: "Resumen financiero",
+            rows: [
+              ["Ingresos totales", `$${totalRevenue.toLocaleString("es-AR")}`],
+              [
+                "Ingreso promedio por venta",
+                salesCount > 0
+                  ? `$${(totalRevenue / salesCount).toLocaleString("es-AR", { maximumFractionDigits: 2 })}`
+                  : "$0",
+              ],
+            ],
+          },
+          {
+            title: "Trazabilidad del reporte",
+            rows: [["Fecha de exportacion", exportDate]],
+          },
+        ],
+        courseKpis,
+        exportDate,
+      );
+
+      // Hoja 2: Detalle de pagos
+      if (coursePayments.length > 0) {
+        const paymentsHeader = ["N", "Usuario", "Email", "Estado", "Monto (ARS)", "Fecha", "ID de pago"];
+        const paymentsRows = coursePayments.map((p, idx) => [
+          idx + 1,
+          p.displayName || "Desconocido",
+          p.displayEmail || "-",
+          p.status === "approved" || p.status === "completed"
+            ? "Aprobado"
+            : p.status === "pending"
+              ? "Pendiente"
+              : "Rechazado/Cancelado",
+          Number(p.amount || 0),
+          p.created_at ? new Date(p.created_at).toLocaleDateString("es-AR") : "-",
+          p.id || "-",
+        ]);
+
+        createDetailSheet(
+          workbook,
+          assets,
+          `Detalle de pagos - ${course.title}`,
+          `LMS FUDENSA | Registros: ${coursePayments.length} | Exportado: ${exportDate}`,
+          paymentsHeader,
+          paymentsRows,
+          [6, 26, 34, 20, 16, 14, 36],
+          exportDate,
+          4,
+          3,
+        );
+      }
+
+      // Descargar archivo
+      const fileName = `reporte_curso_${sanitizeFilePart(course.slug || course.id)}_${getExportFileTimestamp()}.xlsx`;
+      await downloadWorkbook(workbook, fileName);
+
+      toast.success(`Datos exportados: ${fileName}`);
+    } catch (error) {
+      console.error("Error exportando datos del curso:", error);
+      toast.error("No se pudo exportar el archivo Excel del curso");
+    }
   };
 
   // Exportar todos los pagos a Excel
-  const handleExportAllPayments = () => {
+  const handleExportAllPayments = async () => {
     if (filteredPayments.length === 0) {
       toast.error("No hay pagos para exportar");
       return;
     }
 
-    // Calcular totales
-    const totalApproved = filteredPayments.filter(p => p.status === "approved" || p.status === "completed");
-    const totalPending = filteredPayments.filter(p => p.status === "pending" || p.status === "legacy");
-    const totalRejected = filteredPayments.filter(p => p.status === "rejected" || p.status === "cancelled");
-    const totalRevenue = totalApproved.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const pendingRevenue = totalPending.reduce((sum, p) => sum + (p.amount || 0), 0);
+    try {
+      // Calcular totales
+      const totalApproved = filteredPayments.filter(p => p.status === "approved" || p.status === "completed");
+      const totalPending = filteredPayments.filter(p => p.status === "pending" || p.status === "legacy");
+      const totalRejected = filteredPayments.filter(p => p.status === "rejected" || p.status === "cancelled");
+      const totalRevenue = totalApproved.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const pendingRevenue = totalPending.reduce((sum, p) => sum + (p.amount || 0), 0);
 
-    // Hoja 1: Resumen
-    const summaryData = [
-      ["REPORTE DE PAGOS - LMS FUDENSA"],
-      [""],
-      ["Resumen General"],
-      ["Total de pagos", filteredPayments.length],
-      ["Pagos aprobados", totalApproved.length],
-      ["Pagos pendientes", totalPending.length],
-      ["Pagos rechazados/cancelados", totalRejected.length],
-      [""],
-      ["Ingresos"],
-      ["Ingresos totales (aprobados)", `$${totalRevenue.toLocaleString("es-AR")}`],
-      ["Ingresos pendientes", `$${pendingRevenue.toLocaleString("es-AR")}`],
-      [""],
-      ["Fecha de exportación", new Date().toLocaleString("es-AR")],
-    ];
+      const exportDate = getExportDateLabel();
+      const workbook = createStyledWorkbook("Reporte general de pagos", "Analitica financiera");
+      const assets = await prepareWorkbookBrandAssets(workbook);
+      const paymentsKpis: ExportKpi[] = [
+        { label: "Total pagos", value: filteredPayments.length, tone: "primary" },
+        { label: "Aprobados", value: totalApproved.length, tone: "success" },
+        { label: "Pendientes", value: totalPending.length, tone: "warning" },
+        { label: "Ingresos aprobados", value: `$${totalRevenue.toLocaleString("es-AR")}`, tone: "secondary" },
+      ];
 
-    // Hoja 2: Detalle de todos los pagos
-    const paymentsHeader = ["#", "Estado", "Fecha", "Usuario", "Email", "Curso", "Monto", "Moneda", "ID de Pago"];
-    const paymentsRows = filteredPayments.map((p, idx) => [
-      idx + 1,
-      p.status === "approved" || p.status === "completed" ? "Aprobado" :
-        p.status === "pending" ? "Pendiente" :
-        p.status === "legacy" ? "Manual" : "Rechazado/Cancelado",
-      p.created_at ? new Date(p.created_at).toLocaleDateString("es-AR") : "-",
-      p.displayName || "Desconocido",
-      p.displayEmail || "-",
-      p.courseTitle || "-",
-      p.amount || 0,
-      p.currency || "ARS",
-      p.id || "-",
-    ]);
+      createCoverSheet(
+        workbook,
+        assets,
+        "Reporte general de pagos",
+        "Consolidado financiero y estado de cobranza",
+        paymentsKpis,
+        exportDate,
+      );
 
-    // Crear workbook
-    const wb = XLSX.utils.book_new();
+      // Hoja 1: Resumen
+      createSummarySheet(
+        workbook,
+        assets,
+        "Reporte general de pagos",
+        `LMS FUDENSA | Generado el ${exportDate}`,
+        [
+          {
+            title: "Resumen operativo",
+            rows: [
+              ["Total de pagos", filteredPayments.length],
+              ["Pagos aprobados", totalApproved.length],
+              ["Pagos pendientes", totalPending.length],
+              ["Pagos rechazados/cancelados", totalRejected.length],
+            ],
+          },
+          {
+            title: "Resumen financiero",
+            rows: [
+              ["Ingresos aprobados", `$${totalRevenue.toLocaleString("es-AR")}`],
+              ["Ingresos pendientes", `$${pendingRevenue.toLocaleString("es-AR")}`],
+            ],
+          },
+          {
+            title: "Trazabilidad del reporte",
+            rows: [["Fecha de exportacion", exportDate]],
+          },
+        ],
+        paymentsKpis,
+        exportDate,
+      );
 
-    // Hoja resumen
-    const wsResumen = XLSX.utils.aoa_to_sheet(summaryData);
-    wsResumen["!cols"] = [{ wch: 35 }, { wch: 30 }];
-    XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+      // Hoja 2: Detalle de todos los pagos
+      const paymentsHeader = ["N", "Estado", "Fecha", "Usuario", "Email", "Curso", "Monto (ARS)", "Moneda", "ID de pago"];
+      const paymentsRows = filteredPayments.map((p, idx) => [
+        idx + 1,
+        p.status === "approved" || p.status === "completed" ? "Aprobado" :
+          p.status === "pending" ? "Pendiente" :
+          p.status === "legacy" ? "Manual" : "Rechazado/Cancelado",
+        p.created_at ? new Date(p.created_at).toLocaleDateString("es-AR") : "-",
+        p.displayName || "Desconocido",
+        p.displayEmail || "-",
+        p.courseTitle || "-",
+        Number(p.amount || 0),
+        p.currency || "ARS",
+        p.id || "-",
+      ]);
 
-    // Hoja detalle de pagos
-    const wsPagos = XLSX.utils.aoa_to_sheet([paymentsHeader, ...paymentsRows]);
-    wsPagos["!cols"] = [
-      { wch: 5 },  // #
-      { wch: 15 }, // Estado
-      { wch: 12 }, // Fecha
-      { wch: 25 }, // Usuario
-      { wch: 30 }, // Email
-      { wch: 30 }, // Curso
-      { wch: 12 }, // Monto
-      { wch: 8 },  // Moneda
-      { wch: 36 }, // ID
-    ];
-    XLSX.utils.book_append_sheet(wb, wsPagos, "Detalle de Pagos");
+      createDetailSheet(
+        workbook,
+        assets,
+        "Detalle de pagos",
+        `LMS FUDENSA | Registros: ${filteredPayments.length} | Exportado: ${exportDate}`,
+        paymentsHeader,
+        paymentsRows,
+        [6, 18, 14, 25, 34, 34, 16, 10, 36],
+        exportDate,
+        6,
+        1,
+      );
 
-    // Descargar archivo
-    const fileName = `pagos_${new Date().toISOString().split("T")[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+      // Descargar archivo
+      const fileName = `reporte_pagos_${getExportFileTimestamp()}.xlsx`;
+      await downloadWorkbook(workbook, fileName);
 
-    toast.success(`${filteredPayments.length} pagos exportados: ${fileName}`);
+      toast.success(`${filteredPayments.length} pagos exportados: ${fileName}`);
+    } catch (error) {
+      console.error("Error exportando pagos:", error);
+      toast.error("No se pudo exportar el reporte de pagos");
+    }
   };
 
   const handleSaveTeacher = async (teacher: Partial<Teacher>) => {
