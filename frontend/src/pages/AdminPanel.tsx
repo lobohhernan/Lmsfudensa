@@ -1393,9 +1393,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2 bg-white/20 flex-1">
+                  <CardContent className="bg-white/20 flex-1">
                     <div className="text-4xl">{stats.totalStudents.toLocaleString()}</div>
-                    <p className="text-sm text-[#64748B]">+12% desde el mes pasado</p>
                   </CardContent>
                 </Card>
 
@@ -1412,9 +1411,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2 bg-white/20 flex-1">
+                  <CardContent className="bg-white/20 flex-1">
                     <div className="text-4xl">{stats.activeCourses}</div>
-                    <p className="text-sm text-[#64748B]">3 en borrador</p>
                   </CardContent>
                 </Card>
 
@@ -1431,9 +1429,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2 bg-white/20 flex-1">
+                  <CardContent className="bg-white/20 flex-1">
                     <div className="text-4xl">{stats.certificatesIssued.toLocaleString()}</div>
-                    <p className="text-sm text-[#64748B]">+245 esta semana</p>
                   </CardContent>
                 </Card>
 
@@ -1450,9 +1447,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2 bg-white/20 flex-1">
+                  <CardContent className="bg-white/20 flex-1">
                     <div className="text-4xl">ARS ${(stats.monthlyRevenue).toLocaleString()}</div>
-                    <p className="text-sm text-[#64748B]">+8% desde el mes pasado</p>
                   </CardContent>
                 </Card>
               </div>
