@@ -380,20 +380,29 @@ export default function App() {
         setIsLoggedIn(true)
         
         // 🔑 Usar userData existente de sessionStorage si:
-        // 1. Ya tenemos userData
+        // 1. Ya tenemos userData en sessionStorage
         // 2. El email coincide (misma persona)
-        // 3. El nombre en sessionStorage es diferente (fue actualizado recientemente)
-        // Esto evita el parpadeo al hacer F5 después de actualizar el nombre
+        // 3. Algún dato (nombre o rol) en sessionStorage es diferente (fue actualizado recientemente)
+        // Esto evita parpadeos y asegura que datos recientes se mantengan
         const currentData = sessionStorage.getItem('user_session');
         if (currentData) {
           try {
             const cached = JSON.parse(currentData);
-            if (cached.email === userData_.email && cached.name !== userData_.name) {
-              // El nombre en sessionStorage es más reciente, úsalo
-              debug('✅ [App] Usando nombre de sessionStorage (más reciente)')
-              setUserData({ ...userData_, name: cached.name });
-              sessionStorage.setItem('user_session', JSON.stringify({ ...userData_, name: cached.name }))
-              return
+            if (cached.email === userData_.email) {
+              // Si el nombre O el rol en sessionStorage son diferentes al metadata, usarlos
+              // (significa que fueron actualizados recientemente en la DB)
+              const nameNewer = cached.name !== userData_.name;
+              const roleNewer = cached.role !== userData_.role;
+              
+              if (nameNewer || roleNewer) {
+                debug('✅ [App] Usando datos frescos de sessionStorage')
+                const updated = { ...userData_ };
+                if (nameNewer) updated.name = cached.name;
+                if (roleNewer) updated.role = cached.role;
+                setUserData(updated);
+                sessionStorage.setItem('user_session', JSON.stringify(updated))
+                return
+              }
             }
           } catch { /* ignorar */ }
         }
@@ -506,7 +515,20 @@ export default function App() {
         const dbFullName = profile?.full_name || authUser.name
         
         console.warn('🔑 [App] Perfil desde DB:', { name: dbFullName, role: dbRole }, '| user:', authUser.email)
-        setUserData(prev => prev ? { ...prev, role: dbRole, name: dbFullName } : prev)
+        
+        // 🔑 IMPORTANTE: Asegurar que siempre actualizamos userData, incluso si prev es null
+        setUserData(prev => {
+          if (!prev) {
+            // Si userData está null, crear uno nuevo con datos de DB
+            debug(`📍 [App] userData era null, creando con rol: ${dbRole}`);
+            return { email: authUser.email, name: dbFullName, role: dbRole };
+          }
+          // Si ya existe, actualizar con datos de DB
+          if (prev.role !== dbRole || prev.name !== dbFullName) {
+            debug(`📍 [App] Actualizando userData - rol: ${prev.role} → ${dbRole}, nombre: ${prev.name} → ${dbFullName}`);
+          }
+          return { ...prev, role: dbRole, name: dbFullName };
+        })
         
         // 3. Actualizar sessionStorage con datos frescos
         const cached = sessionStorage.getItem('user_session')
