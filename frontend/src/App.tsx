@@ -346,6 +346,8 @@ export default function App() {
     initCacheManager()
 
     // Helper: extraer userData SIN REST calls, usando solo metadata del token
+    // ⚠️ IMPORTANTE: No usar full_name del metadata, ya que tarda en sincronizarse con Auth
+    // El nombre correcto vendrá del useEffect de syncProfile que obtiene de DB
     const extractUserDataFromMeta = (user: {
       id: string;
       email?: string | null;
@@ -354,7 +356,9 @@ export default function App() {
     }) => {
       const userMeta = user.user_metadata ?? {}
       const appMeta = user.app_metadata ?? {}
-      const fullName = (userMeta.full_name || userMeta.name || user.email?.split('@')[0] || 'Usuario') as string
+      // 🔑 No usar full_name de metadata - usar email como placeholder
+      // El nombre real se sincronizará desde la DB en el siguiente useEffect
+      const fullName = (user.email?.split('@')[0] || 'Usuario') as string
       const role: 'student' | 'instructor' | 'admin' =
         (appMeta.role || userMeta.role || 'student') as 'student' | 'instructor' | 'admin'
       return { email: user.email || '', name: fullName, role }
@@ -374,6 +378,26 @@ export default function App() {
         authUserRef.current = { id: session.user.id, email: userData_.email, name: userData_.name }
 
         setIsLoggedIn(true)
+        
+        // 🔑 Usar userData existente de sessionStorage si:
+        // 1. Ya tenemos userData
+        // 2. El email coincide (misma persona)
+        // 3. El nombre en sessionStorage es diferente (fue actualizado recientemente)
+        // Esto evita el parpadeo al hacer F5 después de actualizar el nombre
+        const currentData = sessionStorage.getItem('user_session');
+        if (currentData) {
+          try {
+            const cached = JSON.parse(currentData);
+            if (cached.email === userData_.email && cached.name !== userData_.name) {
+              // El nombre en sessionStorage es más reciente, úsalo
+              debug('✅ [App] Usando nombre de sessionStorage (más reciente)')
+              setUserData({ ...userData_, name: cached.name });
+              sessionStorage.setItem('user_session', JSON.stringify({ ...userData_, name: cached.name }))
+              return
+            }
+          } catch { /* ignorar */ }
+        }
+        
         setUserData(userData_)
         sessionStorage.setItem('user_session', JSON.stringify(userData_))
       } else {
@@ -453,46 +477,50 @@ export default function App() {
 
     const syncProfile = async () => {
       try {
-        // 1. Asegurar que exista profile (upsert idempotente)
-        const { error: upsertError } = await supabase.from('profiles').upsert([{
-          id: authUser.id,
-          email: authUser.email,
-          full_name: authUser.name,
-          updated_at: new Date().toISOString(),
-        }], { onConflict: 'id', ignoreDuplicates: true })
-        if (upsertError) {
-          logError('⚠️ [App] Error en upsert profile:', upsertError.message, upsertError)
-        } else {
-          debug('✅ [App] Profile asegurado para', authUser.email)
-        }
-      } catch (err) {
-        logError('⚠️ [App] Error asegurando profile (exception):', err)
-      }
-
-      try {
-        // 2. Obtener rol real desde DB (puede ser admin/instructor)
-        const { data: profile, error: roleError } = await supabase.from('profiles').select('role').eq('id', authUser.id).single()
-        if (roleError) {
-          logError('⚠️ [App] Error obteniendo rol desde DB:', roleError.message, roleError)
-        }
-        if (profile?.role) {
-          const dbRole = profile.role as 'student' | 'instructor' | 'admin'
-          console.warn('🔑 [App] Rol desde DB:', dbRole, '| user:', authUser.email)
-          setUserData(prev => prev ? { ...prev, role: dbRole } : prev)
-          // Actualizar sessionStorage con rol correcto
-          const cached = sessionStorage.getItem('user_session')
-          if (cached) {
-            try {
-              const parsed = JSON.parse(cached)
-              parsed.role = dbRole
-              sessionStorage.setItem('user_session', JSON.stringify(parsed))
-            } catch { /* ignorar */ }
+        // 1. Obtener el perfil completo desde DB (incluyendo nombre actualizado)
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, role')
+          .eq('id', authUser.id)
+          .single()
+        
+        if (profileError) {
+          logError('⚠️ [App] Error obteniendo profile desde DB:', profileError.message, profileError)
+          // Si no existe, crear uno básico
+          const { error: insertError } = await supabase.from('profiles').insert({
+            id: authUser.id,
+            email: authUser.email,
+            full_name: authUser.name,
+            role: 'student',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          if (insertError) {
+            logError('⚠️ [App] Error creando profile:', insertError.message, insertError)
           }
-        } else if (!roleError) {
-          console.warn('⚠️ [App] Perfil sin rol asignado para:', authUser.email, '| profile:', profile)
+          return
         }
+
+        // 2. Actualizar userData con datos frescos de DB (nombre y rol)
+        const dbRole = (profile?.role || 'student') as 'student' | 'instructor' | 'admin'
+        const dbFullName = profile?.full_name || authUser.name
+        
+        console.warn('🔑 [App] Perfil desde DB:', { name: dbFullName, role: dbRole }, '| user:', authUser.email)
+        setUserData(prev => prev ? { ...prev, role: dbRole, name: dbFullName } : prev)
+        
+        // 3. Actualizar sessionStorage con datos frescos
+        const cached = sessionStorage.getItem('user_session')
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached)
+            parsed.role = dbRole
+            parsed.name = dbFullName
+            sessionStorage.setItem('user_session', JSON.stringify(parsed))
+          } catch { /* ignorar */ }
+        }
+        debug('✅ [App] Profile sincronizado para', authUser.email)
       } catch (err) {
-        logError('⚠️ [App] Error obteniendo rol desde DB (exception):', err)
+        logError('⚠️ [App] Error sincronizando profile (exception):', err)
       }
     }
 
@@ -503,6 +531,31 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentPage]);
+
+  // Escuchar eventos de actualización de perfil desde UserProfile
+  // Sincronizar sessionStorage además de userData
+  useEffect(() => {
+    const handleUserProfileUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { fullName } = customEvent.detail;
+      
+      // 1. Actualizar userData con el nuevo nombre
+      setUserData(prev => prev ? { ...prev, name: fullName } : prev);
+      
+      // 2. Sincronizar sessionStorage para evitar flash en F5
+      try {
+        const userSession = sessionStorage.getItem('user_session');
+        if (userSession) {
+          const parsed = JSON.parse(userSession);
+          parsed.name = fullName;
+          sessionStorage.setItem('user_session', JSON.stringify(parsed));
+        }
+      } catch { /* ignorar */ }
+    };
+
+    window.addEventListener('userProfileUpdated', handleUserProfileUpdate);
+    return () => window.removeEventListener('userProfileUpdated', handleUserProfileUpdate);
+  }, []);
 
   const handleNavigate = useCallback((page: string, courseId?: string, courseSlug?: string, lessonId?: string) => {
     // Proteger acceso al panel admin - solo usuarios con rol admin
