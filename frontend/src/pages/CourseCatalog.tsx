@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
-import { Search } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
 import { CourseCard } from "../components/CourseCard";
 import { Card } from "../components/ui/card";
 import { Skeleton } from "../components/ui/skeleton";
@@ -21,7 +22,14 @@ interface CourseCatalogProps {
 export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLevel, setSelectedLevel] = useState<string>("");
+  const [catalogPage, setCatalogPage] = useState(1);
+  const COURSES_PER_PAGE = 8;
   const { courses, loading } = useCourses();
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCatalogPage(1);
+  }, [searchQuery, selectedLevel]);
 
   // Filter courses (memoized)
   const filteredCourses = useMemo(() => courses.filter((course) => {
@@ -32,6 +40,13 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
       !selectedLevel || selectedLevel === "all" || course.level === selectedLevel;
     return matchesSearch && matchesLevel;
   }), [courses, searchQuery, selectedLevel]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCourses.length / COURSES_PER_PAGE);
+  const paginatedCourses = useMemo(() => {
+    const start = (catalogPage - 1) * COURSES_PER_PAGE;
+    return filteredCourses.slice(start, start + COURSES_PER_PAGE);
+  }, [filteredCourses, catalogPage]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -127,8 +142,8 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
           </div>
           
           {loading ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {[...Array(4)].map((_, i) => (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[...Array(8)].map((_, i) => (
                 <Card key={i} className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
                   {/* Skeleton de imagen - h-48 para tarjeta vertical */}
                   <Skeleton className="h-48 w-full" />
@@ -155,24 +170,69 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
               </div>
             </div>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredCourses.map((course) => (
-                <CourseCard
-                  key={course.id}
-                  id={course.id}
-                  title={course.title}
-                  image={course.image}
-                  duration={course.duration}
-                  level={course.level as "Básico" | "Intermedio" | "Avanzado"}
-                  certified={course.certified}
-                  students={course.students}
-                  onClick={() => onNavigate?.("course", course.id, course.slug)}
-                />
-              ))}
-            </div>
-          )}
+            <>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {paginatedCourses.map((course) => (
+                  <CourseCard
+                    key={course.id}
+                    id={course.id}
+                    title={course.title}
+                    image={course.image}
+                    duration={course.duration}
+                    level={course.level as "Básico" | "Intermedio" | "Avanzado"}
+                    certified={course.certified}
+                    students={course.students}
+                    onClick={() => onNavigate?.("course", course.id, course.slug)}
+                  />
+                ))}
+              </div>
 
-          {/* Pagination - Removed for now */}
+              {/* Paginación */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-8">
+                  {/* BOTÓN ANTERIOR */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCatalogPage(p => Math.max(1, p - 1))}
+                    disabled={catalogPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  {/* BOTONES NUMERADOS */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <Button
+                        key={page}
+                        variant={catalogPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCatalogPage(page)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {/* BOTÓN SIGUIENTE */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCatalogPage(p => Math.min(totalPages, p + 1))}
+                    disabled={catalogPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+
+                  {/* CONTADOR TOTAL */}
+                  <span className="text-sm text-[#64748B] ml-2">
+                    {filteredCourses.length} curso{filteredCourses.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
