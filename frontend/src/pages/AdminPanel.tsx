@@ -1735,7 +1735,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       <TableHead>Email</TableHead>
                       <TableHead>Especialización</TableHead>
                       <TableHead>Valoración</TableHead>
-                      <TableHead>Estudiantes</TableHead>
                       <TableHead>Cursos</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
@@ -1744,19 +1743,19 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <TableBody>
                     {teachersLoading ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4">
+                        <TableCell colSpan={8} className="text-center py-4">
                           <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
                     ) : realtimeTeachers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
                           No hay profesores registrados aún
                         </TableCell>
                       </TableRow>
                     ) : filteredTeachers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
                           No se encontraron profesores para "{teacherQuery}"
                         </TableCell>
                       </TableRow>
@@ -1782,7 +1781,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           <TableCell>
                             <Badge variant="outline">{teacher.rating} ⭐</Badge>
                           </TableCell>
-                          <TableCell>{teacher.total_students.toLocaleString()}</TableCell>
                           <TableCell>
                             {(teacherCoursesMap[teacher.id] || []).length > 0 ? (
                               <div className="flex flex-wrap gap-1 max-w-[200px]">
@@ -2229,27 +2227,26 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       <TableHead>Estudiante</TableHead>
                       <TableHead>Curso</TableHead>
                       <TableHead>Hash</TableHead>
-                      <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {certificatesLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={6} className="text-center py-8">
                           <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#55a5c7]" />
                           <p className="text-sm text-[#64748B] mt-2">Cargando certificados...</p>
                         </TableCell>
                       </TableRow>
                     ) : certificatesError ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-[#EF4444]">
+                        <TableCell colSpan={6} className="text-center py-8 text-[#EF4444]">
                           Error: {certificatesError}
                         </TableCell>
                       </TableRow>
                     ) : realtimeCertificates.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-[#64748B]">
+                        <TableCell colSpan={6} className="text-center py-8 text-[#64748B]">
                           No hay certificados emitidos aún
                         </TableCell>
                       </TableRow>
@@ -2264,17 +2261,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           <TableCell>{cert.course_title}</TableCell>
                           <TableCell className="font-mono text-xs">
                             {cert.hash.substring(0, 16)}...
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              className={cn(
-                                cert.status === 'active' && "bg-[#55a5c7] text-white",
-                                cert.status === 'voided' && "bg-[#EF4444] text-white",
-                                cert.status === 'expired' && "bg-[#64748B] text-white"
-                              )}
-                            >
-                              {cert.status}
-                            </Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
