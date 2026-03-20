@@ -96,8 +96,37 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
           throw courseResult.error;
         }
 
+        const course = courseResult.data;
+        if (course.instructor_id) {
+          try {
+            // Intentar buscar primero en la tabla teachers (pública)
+            const { data: teacherData, error: teacherError } = await supabase
+              .from("teachers")
+              .select("full_name")
+              .or(`id.eq.${course.instructor_id},user_id.eq.${course.instructor_id}`)
+              .maybeSingle();
+
+            if (teacherData && teacherData.full_name) {
+              course.instructor_name = teacherData.full_name;
+            } else {
+              // Fallback a profiles (podría fallar por RLS si no está autenticado o no es admin)
+              const { data: profileData } = await supabase
+                .from("profiles")
+                .select("full_name")
+                .eq("id", course.instructor_id)
+                .maybeSingle();
+                
+              if (profileData && profileData.full_name) {
+                course.instructor_name = profileData.full_name;
+              }
+            }
+          } catch (e) {
+            debug("Error fetching instructor:", e);
+          }
+        }
+
         setCourseId(resolvedId);
-        setCourseData(courseResult.data);
+        setCourseData(course);
         setCurrentSlug(slug ?? undefined);
         setUserEnrolled(!!enrolled);
 
@@ -190,6 +219,14 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
               <h1 className="text-[#0F172A]">
                 {courseData.title}
               </h1>
+
+              <div className="text-sm font-medium text-[#64748B]">
+                {courseData.instructor_name ? (
+                  <span>Profesor: <span className="text-[#0F172A]">{String(courseData.instructor_name)}</span></span>
+                ) : (
+                  <span className="italic">Aún no se identificó el profesor de este curso</span>
+                )}
+              </div>
 
               <div className="flex flex-wrap items-center gap-4 text-[#64748B]">
                 <div className="flex items-center gap-1">

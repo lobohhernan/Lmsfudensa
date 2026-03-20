@@ -1,4 +1,4 @@
-import { ArrowRight, Award, CheckCircle, MessageCircle, Star, Play, Clock } from "lucide-react";
+import { ArrowRight, Award, CheckCircle, MessageCircle, Play, Clock } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { CourseCard } from "../components/CourseCard";
 import { Card, CardContent } from "../components/ui/card";
@@ -18,30 +18,6 @@ interface HomeProps {
 }
 
 // ❌ Eliminados cursos hardcodeados - ahora se cargan desde enrollments reales
-
-const testimonials = [
-  {
-    name: "María González",
-    role: "Enfermera Profesional",
-    avatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=faces",
-    content: "Excelente plataforma. Los cursos son muy completos y el certificado es válido internacionalmente. Totalmente recomendado.",
-    rating: 5,
-  },
-  {
-    name: "Carlos Rodríguez",
-    role: "Paramédico",
-    avatar: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=faces",
-    content: "La calidad del contenido es excepcional. Pude certificarme sin salir de casa y con soporte constante del equipo.",
-    rating: 5,
-  },
-  {
-    name: "Ana Martínez",
-    role: "Estudiante de Medicina",
-    avatar: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=faces",
-    content: "Los videos son muy didácticos y las evaluaciones realmente ponen a prueba lo aprendido. Gran experiencia de aprendizaje.",
-    rating: 5,
-  },
-];
 
 export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
   const { courses: allCourses, loading, error } = useCoursesRealtime();
@@ -424,47 +400,6 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                 </CardContent>
               </Card>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-16" role="region" aria-labelledby="testimonials-heading">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 text-center">
-            <h2 id="testimonials-heading" className="heading-h4 mb-2 text-[#0F172A]">Lo que dicen nuestros estudiantes</h2>
-            <p className="body-sm text-[#64748B]">
-              Miles de profesionales ya confían en FUDENSA
-            </p>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3" role="list" aria-label="Testimonios de estudiantes">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} role="listitem" className="group relative border border-warning-200 bg-gradient-to-br from-white to-warning-50 backdrop-blur-sm transition-all duration-300 hover:border-warning-300 hover:shadow-[0_8px_32px_0_rgba(245,158,11,0.15)] hover:scale-105 cursor-pointer flex flex-col h-full">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/30 to-transparent" />
-                <CardContent className="space-y-4 p-6 bg-white/20 flex flex-col h-full">
-                  <div className="flex gap-1 flex-shrink-0">
-                    {Array.from({ length: testimonial.rating }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className="h-4 w-4 fill-[#F59E0B] text-[#F59E0B]"
-                      />
-                    ))}
-                  </div>
-                  <p className="body-sm text-[#64748B] flex-1 line-clamp-4">{testimonial.content}</p>
-                  <div className="flex items-center gap-3 pt-4 flex-shrink-0">
-                    <Avatar>
-                      <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
-                      <AvatarFallback>{testimonial.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="label-md text-[#0F172A] truncate">{testimonial.name}</p>
-                      <p className="body-xs text-[#64748B] truncate">{testimonial.role}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         </div>
       </section>
