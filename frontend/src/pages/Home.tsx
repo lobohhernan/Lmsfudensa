@@ -61,10 +61,10 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
   
   debug('🏠 [Home] Renderizando:', { coursesCount: allCourses.length, loading, error, isLoggedIn, enrollmentsCount: coursesInProgress.length })
   
-  // Mostrar los primeros 6 cursos ACTIVOS en la sección destacada (memoized)
+  // Mostrar los primeros 3 cursos ACTIVOS en la sección destacada (memoized)
   const displayCourses = useMemo(() => allCourses
     .filter(course => course.is_active !== false)
-    .slice(0, 6)
+    .slice(0, 3)
     .map(course => ({
     id: course.id,
     title: course.title,
