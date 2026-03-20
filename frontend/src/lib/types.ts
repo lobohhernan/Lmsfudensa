@@ -157,7 +157,6 @@ export interface Teacher {
   email: string;
   specialization?: string;
   years_of_experience?: number;
-  rating?: number;
   total_students?: number;
   total_courses?: number;
   hourly_rate?: number;
