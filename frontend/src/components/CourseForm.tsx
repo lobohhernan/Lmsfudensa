@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Plus, Trash2, GripVertical, Save, Upload, Youtube } from "lucide-react";
+import { Plus, Trash2, GripVertical, Save, Upload, Youtube, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -51,7 +51,7 @@ function extractYoutubeId(input: string): string {
 interface CourseFormProps {
   course?: FullCourse;
   teachers: Teacher[]; // Lista de profesores disponibles
-  onSave: (course: FullCourse) => void;
+  onSave: (course: FullCourse) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -210,7 +210,10 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
     setQuestions(updated);
   };
 
-  const handleSubmit = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
     // Validation
     if (!formData.title || !formData.slug || !formData.category) {
       toast.error("Por favor completa los campos obligatorios");
@@ -242,7 +245,7 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
       evaluation: questions.filter((q) => q.question.trim() !== ""),
     };
 
-    onSave(completeCourse);
+    try { setIsSubmitting(true); await onSave(completeCourse); } finally { setIsSubmitting(false); }
   };
 
   return (
@@ -260,9 +263,9 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
           <Button variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit}>
-            <Save className="mr-2 h-4 w-4" />
-            {course ? "Guardar Cambios" : "Crear Curso"}
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {isSubmitting ? (course ? "Guardando..." : "Creando...") : (course ? "Guardar Cambios" : "Crear Curso")}
           </Button>
         </div>
       </div>

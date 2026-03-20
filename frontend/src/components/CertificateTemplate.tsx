@@ -1,14 +1,8 @@
 // components/CertificateTemplate.tsx
 import { forwardRef } from "react";
 
-// Note: Figma asset imports removed for production build compatibility
-// Original imports used special figma: scheme that breaks Vite build
-// const firmaMariaImg = "figma:asset/93fb65c60964c4fd2af7191af141992cd0edfa1c.png";
-// const firmaEstebanImg = "figma:asset/8ff5fda1303461ce550e6b0900e7dc6bcd7fce1a.png";
-// const caduceoImg = "figma:asset/83ce44e6f1ef2c1e350a4b446694c175d0b24de9.png";
-
-// Placeholder SVGs - in production, replace with actual image URLs
-const placeholderSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='100'%3E%3Crect fill='%23eee' width='200' height='100'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='12' fill='%23999'%3ESignature%3C/text%3E%3C/svg%3E";
+// Obtener la URL de la imagen del template
+const TEMPLATE_IMAGE = new URL("../assets/Certificado Template.png", import.meta.url).href;
 
 export interface CertificateData {
   studentName: string;
@@ -26,8 +20,6 @@ interface CertificateTemplateProps {
 export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplateProps>(
   ({ data }, ref) => {
     const navy = "#0f2d52";
-    const inner = "#7fb8d1";
-    const accent = "#55a5c7";
 
     return (
       <div
@@ -39,223 +31,81 @@ export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplat
           background: "#fff",
           color: navy,
           fontFamily: `'Times New Roman', ui-serif, Georgia, 'Liberation Serif', serif`,
+          backgroundImage: `url("${TEMPLATE_IMAGE}")`,
+          backgroundSize: "100% 100%",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "scroll",
         }}
       >
-        {/* ===== Marcos dobles ===== */}
-        <div style={{ position: "absolute", inset: 54, border: `22px solid ${navy}`, borderRadius: 6 }} />
-        <div style={{ position: "absolute", inset: 118, border: `10px solid ${inner}`, borderRadius: 4 }} />
-
-        {/* ===== Encabezado (FUDENSA) – corregido ===== */}
+        {/* ===== Nombre del Estudiante ===== */}
+        {/* Posicionado donde va el nombre en el template */}
         <div
           style={{
             position: "absolute",
-            top: 270,          // antes 250
-            left: 0,
-            right: 0,
-            textAlign: "center",
-            letterSpacing: 5.5,
-            fontWeight: 700,
-            fontSize: 144,     // un toque más chico para evitar cruce
-            lineHeight: 1,     // evita solaparse con el subtítulo
-          }}
-        >
-          FUDENSA
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            top: 410,          // antes 372 (lo bajamos para que no se superponga)
-            left: 0,
-            right: 0,
-            textAlign: "center",
-            fontSize: 40,
-            lineHeight: 1.2,   // separación correcta en las dos líneas
-            whiteSpace: "pre-line",
-          }}
-        >
-          Fundación para el desarrollo de{'\n'}la enfermería y la salud
-        </div>
-
-        {/* ===== Se certifica ===== */}
-        <div
-          style={{
-            position: "absolute",
-            top: 640,
-            left: 0,
-            right: 0,
-            textAlign: "center",
-            fontSize: 66,
-            fontWeight: 600,
-          }}
-        >
-          Se certifica que
-        </div>
-
-        {/* ===== Nombre ===== */}
-        <div
-          style={{
-            position: "absolute",
-            top: 740,
+            top: 790,
             left: 220,
             right: 220,
             textAlign: "center",
-            fontSize: 108,
+            fontSize: 120,
             fontWeight: 800,
             lineHeight: 1.1,
             wordBreak: "break-word",
+            color: navy,
+            maxHeight: 200,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textTransform: "uppercase",
+            letterSpacing: 2,
           }}
         >
           {data.studentName}
         </div>
 
-        {/* ===== Línea y DNI ===== */}
-        <div style={{ position: "absolute", top: 920, left: 360, right: 360, height: 6, backgroundColor: inner }} />
+        {/* ===== Nombre del Curso ===== */}
+        {/* Posicionado donde va el nombre del curso en el template */}
         <div
           style={{
             position: "absolute",
-            top: 952,
-            left: 0,
-            right: 0,
-            textAlign: "center",
-            fontSize: 42,
-            fontWeight: 800,
-            letterSpacing: 1,
-          }}
-        >
-          DNI{" "}
-          <span style={{ fontWeight: 500 }}>{data.dni}</span>
-        </div>
-
-        {/* ===== Texto intermedio ===== */}
-        <div
-          style={{
-            position: "absolute",
-            top: 1080,
-            left: 0,
-            right: 0,
-            textAlign: "center",
-            fontSize: 58,
-            fontWeight: 500,
-          }}
-        >
-          Ha concluido satisfactoriamente el cursado de
-        </div>
-
-        {/* ===== Curso ===== */}
-        <div
-          style={{
-            position: "absolute",
-            top: 1185,
+            top: 1170,
             left: 220,
             right: 220,
             textAlign: "center",
-            fontSize: 104,
+            fontSize: 115,
             fontWeight: 900,
             lineHeight: 1.15,
+            color: navy,
+            maxHeight: 250,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textTransform: "uppercase",
+            letterSpacing: 1,
+            whiteSpace: "normal",
+            overflowWrap: "break-word",
           }}
         >
           {data.courseName}
         </div>
 
-        {/* ===== Fecha ===== */}
-        <div style={{ position: "absolute", top: 1368, left: 0, right: 0, textAlign: "center", fontSize: 54 }}>
-          Finalizado el día
-        </div>
-        <div style={{ position: "absolute", top: 1448, left: 0, right: 0, textAlign: "center", fontSize: 36 }}>
+        {/* ===== Fecha de Emisión ===== */}
+        {/* Posicionado donde va la fecha en el template */}
+        <div
+          style={{
+            position: "absolute",
+            top: 1448,
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            fontSize: 50,
+            fontWeight: 600,
+            color: navy,
+            letterSpacing: 1,
+          }}
+        >
           {data.issueDate}
         </div>
-
-        {/* ===== Caduceo (placeholder) ===== */}
-        <img
-          src={placeholderSvg}
-          alt="Caduceo"
-          style={{
-            position: "absolute",
-            top: 1508,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 360,
-            height: 360,
-            objectFit: "contain",
-            opacity: 0.95,
-            filter: "saturate(1.05)",
-          }}
-        />
-
-        {/* ===== P.J. ===== */}
-        <div style={{ position: "absolute", top: 1868, left: 0, right: 0, textAlign: "center", fontSize: 30 }}>
-          P. J. N° 420/09
-        </div>
-
-        {/* ===== Firmas ===== */}
-        {/* Izquierda */}
-        <div style={{ position: "absolute", left: 320, bottom: 430, width: 700, height: 4, backgroundColor: inner }} />
-        <img
-          src={placeholderSvg}
-          alt="Firma Lic. Maria Elisa Villoldo"
-          style={{
-            position: "absolute",
-            left: 360,
-            bottom: 480,   // +10 para que respire
-            width: 560,
-            height: 170,
-            objectFit: "contain",
-            opacity: 0.95,
-          }}
-        />
-        <div style={{ position: "absolute", left: 320, bottom: 340, width: 700, textAlign: "center", fontSize: 40, fontWeight: 800 }}>
-          Lic. Maria Elisa Villoldo
-        </div>
-        <div style={{ position: "absolute", left: 320, bottom: 300, width: 700, textAlign: "center", fontSize: 30 }}>
-          Directora
-        </div>
-
-        {/* Derecha */}
-        <div style={{ position: "absolute", right: 320, bottom: 430, width: 700, height: 4, backgroundColor: inner }} />
-        <img
-          src={placeholderSvg}
-          alt="Firma Dr. Esteban J. Lobo Campero"
-          style={{
-            position: "absolute",
-            right: 360,
-            bottom: 482,
-            width: 560,
-            height: 160,
-            objectFit: "contain",
-            opacity: 0.95,
-          }}
-        />
-        <div style={{ position: "absolute", right: 320, bottom: 340, width: 700, textAlign: "center", fontSize: 40, fontWeight: 800 }}>
-          Dr. Esteban J. Lobo Campero
-        </div>
-        <div style={{ position: "absolute", right: 320, bottom: 300, width: 700, textAlign: "center", fontSize: 30 }}>
-          Comité de Docencia e Investigación
-        </div>
-
-        {/* ===== Olas inferiores – versión más fiel con sombra ===== */}
-        <svg
-          viewBox="0 0 3508 560"
-          width={3508}
-          height={560}
-          style={{ position: "absolute", bottom: 46, left: 60, right: 60 }}
-          preserveAspectRatio="none"
-        >
-          {/* sombra suave */}
-          <defs>
-            <filter id="drop" x="-10%" y="-30%" width="120%" height="200%">
-              <feGaussianBlur in="SourceAlpha" stdDeviation="12" result="blur"/>
-              <feOffset dy="-6" result="off"/>
-              <feMerge>
-                <feMergeNode in="off"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
-
-          <path d="M0 310c350 110 700 110 1050 0s700-110 1050 0 700 110 1050 0v250H0Z" fill={navy} filter="url(#drop)"/>
-          <path d="M0 230c350 120 700 120 1050 0s700-120 1050 0 700 120 1050 0v330H0Z" fill={inner} opacity=".97"/>
-          <path d="M0 385c350 85 700 85 1050 0s700-85 1050 0 700 85 1050 0v175H0Z" fill={accent}/>
-        </svg>
       </div>
     );
   }

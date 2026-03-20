@@ -296,6 +296,36 @@ npx supabase functions deploy mercadopago-webhook --no-verify-jwt
 
 ---
 
+## 🎓 Sistema de Certificados
+
+**Estado**: ✅ Implementado y Funcional
+
+El sistema de certificados está completamente funcional con generación automática de PDFs:
+
+### Características
+- ✅ Generación automática al completar cursos (score ≥ 60%)
+- ✅ Diseño profesional acorde a marca FUDENSA
+- ✅ Datos dinámicos: Nombre estudiante, Curso, Fecha
+- ✅ PDF en alta calidad (300 DPI, A4 apaisado)
+- ✅ Vista previa antes de descargar
+- ✅ Hash único de verificación
+- ✅ Almacenamiento en base de datos
+
+### Archivos Relacionados
+- [CERTIFICATE_IMPLEMENTATION.md](./CERTIFICATE_IMPLEMENTATION.md) - Documentación técnica completa
+- [CERTIFICATE_QUICK_TEST.md](./CERTIFICATE_QUICK_TEST.md) - Guía de pruebas
+
+### Cómo Probar
+```bash
+cd frontend
+npm run dev
+# 1. Completa un examen con score ≥ 60%
+# 2. Haz clic en "Ver" para ver preview
+# 3. Haz clic en "Descargar" para obtener PDF
+```
+
+---
+
 ## 📞 Soporte y Contacto
 
 - **GitHub Issues**: [Reportar un problema](https://github.com/lobohhernan/Lmsfudensa/issues)
@@ -306,6 +336,8 @@ npx supabase functions deploy mercadopago-webhook --no-verify-jwt
 ## 📄 Documentación Adicional
 
 - [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) - Guía de despliegue
+- [CERTIFICATE_IMPLEMENTATION.md](./CERTIFICATE_IMPLEMENTATION.md) - Documentación de certificados
+- [CERTIFICATE_QUICK_TEST.md](./CERTIFICATE_QUICK_TEST.md) - Guía de pruebas de certificados
 - [README Frontend](./frontend/README.md) - Instrucciones específicas del frontend
 - [README Backend](./backend/README.md) - Instrucciones del backend
 

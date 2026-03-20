@@ -25,7 +25,6 @@ export function TeacherForm({ teacher, onSave, onCancel }: TeacherFormProps) {
       avatar_url: "",
       specialization: "",
       years_of_experience: 0,
-      rating: 0,
       total_students: 0,
       total_courses: 0,
       hourly_rate: undefined,
@@ -53,7 +52,6 @@ export function TeacherForm({ teacher, onSave, onCancel }: TeacherFormProps) {
         specialization: formData.specialization || "",
         years_of_experience: formData.years_of_experience,
         hourly_rate: formData.hourly_rate,
-        rating: formData.rating,
         is_active: formData.is_active,
       });
 
@@ -199,21 +197,7 @@ export function TeacherForm({ teacher, onSave, onCancel }: TeacherFormProps) {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="rating">Valoración (0-5)</Label>
-              <Input
-                id="rating"
-                type="number"
-                value={formData.rating || 0}
-                onChange={(e) =>
-                  handleInputChange("rating", parseFloat(e.target.value))
-                }
-                min="0"
-                max="5"
-                step="0.1"
-              />
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="total_students">Total Estudiantes</Label>
               <Input
