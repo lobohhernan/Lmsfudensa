@@ -716,7 +716,7 @@ export default function App() {
         />
 
         <main id="main-content" className="flex-1" role="main">
-          <Evaluation onNavigate={handleNavigate} courseId={currentCourseId} />
+          <Evaluation onNavigate={handleNavigate} courseId={currentCourseId} courseSlug={currentCourseSlug} />
         </main>
 
         <AppFooter onNavigate={handleNavigate} />

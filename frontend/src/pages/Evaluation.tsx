@@ -40,14 +40,16 @@ import { CertificateTemplate, type CertificateData } from "../components/Certifi
 import { generateCertificatePDF, generateCertificateId, formatCertificateDate, generateCertificatePreview } from "../utils/certificate";
 import { issueCertificate } from "../utils/issueCertificate";
 import { supabase } from "../lib/supabase";
+import { useCertificates } from "../hooks/useCertificates";
 import { toast } from "sonner";
 
 interface EvaluationProps {
-  onNavigate?: (page: string) => void;
+  onNavigate?: (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => void;
   courseId?: string;
+  courseSlug?: string;
 }
 
-export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
+export function Evaluation({ onNavigate, courseId = "1", courseSlug }: EvaluationProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -62,9 +64,65 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
   const [certificatePreviewUrl, setCertificatePreviewUrl] = useState<string>("");
   const [certificateHash, setCertificateHash] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [passedCertificate, setPassedCertificate] = useState<any>(null);
+  const [certificateChecked, setCertificateChecked] = useState(false);
+  const { certificates, loading: certificatesLoading } = useCertificates();
   const certificateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Verificar si ya aprobó este examen
+    const checkIfPassed = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user && certificates.length > 0) {
+          const passedCert = certificates.find(
+            cert => String(cert.course_id) === String(courseId) && 
+                    cert.status === "active" && 
+                    cert.grade !== null &&
+                    cert.grade >= 70
+          );
+          
+          if (passedCert) {
+            // Usuario ya aprobó - cargar datos del certificado
+            setCertificateHash(passedCert.hash);
+            setPassedCertificate(passedCert);
+            setIsSubmitted(true);
+            
+            // Cargar título del curso
+            const { data: courseData } = await supabase
+              .from("courses")
+              .select("title")
+              .eq("id", courseId)
+              .single();
+            
+            if (courseData) {
+              setCourseTitle(courseData.title);
+            }
+            
+            setIsLoading(false);
+            setCertificateChecked(true);
+            return;
+          }
+        }
+        
+        // No encontró certificado aprobado - marcar como chequeado
+        setCertificateChecked(true);
+      } catch (error) {
+        console.error("Error checking certificates:", error);
+        setCertificateChecked(true);
+      }
+    };
+
+    if (!certificatesLoading) {
+      checkIfPassed();
+    }
+  }, [certificatesLoading, certificates, courseId]);
+
+  useEffect(() => {
+    // Si ya fue chequeado pero no aprobó, cargar evaluación
+    if (!certificateChecked || isSubmitted) return;
+
     // Cargar evaluación desde Supabase
     const loadEvaluation = async () => {
       try {
@@ -124,7 +182,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     };
 
     loadEvaluation();
-  }, [courseId]);
+  }, [courseId, isSubmitted, certificateChecked]);
 
   const totalQuestions = evaluationData.length;
   const answeredQuestions = Object.keys(answers).length;
@@ -316,8 +374,8 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     }
   };
 
-  // Results View
-  if (isSubmitted) {
+  // Results View - Only if didn't already pass
+  if (isSubmitted && !passedCertificate) {
     const score = calculateScore();
     const passed = score.percentage >= 70;
 
@@ -486,7 +544,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => onNavigate?.("lesson")}
+                      onClick={() => onNavigate?.("lesson", courseId, courseSlug)}
                       className="flex-1"
                     >
                       Volver al Curso
@@ -500,7 +558,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => onNavigate?.("lesson")}
+                      onClick={() => onNavigate?.("lesson", courseId, courseSlug)}
                       className="flex-1"
                     >
                       Revisar Lecciones
@@ -561,7 +619,117 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
     );
   }
 
-  // Check if there are questions
+  // Check if checking for previous certificate
+  if (!certificateChecked) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center py-8">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 text-[#0B5FFF] animate-spin" />
+          <div className="text-center">
+            <p className="text-[#0F172A] font-medium">Cargando evaluación</p>
+            <p className="text-[#64748B] text-sm mt-1">Un momento por favor...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If already passed, don't load questions - just show results
+  if (isSubmitted && passedCertificate) {
+    console.log('👤 passedCertificate:', passedCertificate);
+    console.log('📊 passedCertificate.grade:', passedCertificate.grade, 'tipo:', typeof passedCertificate.grade);
+    
+    const gradeValue = Number(passedCertificate.grade) || 0;
+    const passed = gradeValue >= 70;
+
+    return (
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[#F1F5F9]">
+                {passed ? (
+                  <CheckCircle2 className="h-12 w-12 text-[#55a5c7]" />
+                ) : (
+                  <XCircle className="h-12 w-12 text-[#EF4444]" />
+                )}
+              </div>
+              <CardTitle className="text-[#0F172A]">
+                {passed ? "¡Felicitaciones! Has aprobado" : "No has alcanzado el puntaje mínimo"}
+              </CardTitle>
+              <CardDescription>
+                {passed
+                  ? "Ya aprobaste exitosamente esta evaluación del curso"
+                  : "Necesitas un 70% o más para aprobar"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Score Summary */}
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-lg bg-[#F8FAFC] p-4 text-center">
+                  <p className="text-sm text-[#64748B]">&nbsp;</p>
+                </div>
+                <div className="rounded-lg bg-[#F8FAFC] p-4 text-center">
+                  <div className="text-3xl text-[#1e467c]">{gradeValue}%</div>
+                  <p className="text-sm text-[#64748B]">Puntaje</p>
+                </div>
+                <div className="rounded-lg bg-[#F8FAFC] p-4 text-center">
+                  <p className="text-sm text-[#64748B]">&nbsp;</p>
+                </div>
+              </div>
+
+              {/* Certificate Section */}
+              {passed && passedCertificate && (
+                <Card className="bg-gradient-to-br from-[#55a5c7]/5 to-[#1e467c]/5 border-[#55a5c7]/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-[#1e467c]">
+                      <Award className="h-6 w-6" />
+                      Tu Certificado está Listo
+                    </CardTitle>
+                    <CardDescription>
+                      ¡Felicitaciones! Has completado exitosamente el curso. Visualiza y descarga tu certificado oficial.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {certificateHash && (
+                      <div className="rounded-lg bg-[#F8FAFC] p-4 border border-[#E2E8F0]">
+                        <p className="text-xs text-[#64748B] mb-1">Hash de Verificación</p>
+                        <p className="text-sm font-mono text-[#0F172A] break-all">{certificateHash}</p>
+                        <p className="text-xs text-[#64748B] mt-2">Este hash único verifica la autenticidad de tu certificado</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Actions */}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button
+                  onClick={() => {
+                    sessionStorage.setItem('profileTab', 'certificates');
+                    onNavigate?.("profile");
+                  }}
+                  className="flex-1"
+                >
+                  <Award className="mr-2 h-4 w-4" />
+                  Ver Mi Certificado
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => onNavigate?.("lesson", courseId, courseSlug)}
+                  className="flex-1"
+                >
+                  Volver al Curso
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if loading questions
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center py-8">
@@ -591,7 +759,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => onNavigate?.("lesson")} className="w-full">
+              <Button onClick={() => onNavigate?.("lesson", courseId, courseSlug)} className="w-full">
                 Volver al Curso
               </Button>
             </CardContent>
@@ -775,7 +943,7 @@ export function Evaluation({ onNavigate, courseId = "1" }: EvaluationProps) {
             <AlertDialogCancel>No, continuar examen</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               setShowExitDialog(false);
-              onNavigate?.("lesson");
+              onNavigate?.("lesson", courseId, courseSlug);
             }}>
               Sí, abandonar
             </AlertDialogAction>

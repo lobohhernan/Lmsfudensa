@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { resolveCourseSlugToId } from "../lib/courseResolver"
 import { isUserEnrolled } from "../lib/enrollments"
 import { CourseLesson } from "../lib/data"
+import { useCertificates } from "../hooks/useCertificates"
 import { toast } from "sonner"
 
 interface LessonPlayerProps {
@@ -33,6 +34,8 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
   const [courseId, setCourseId] = useState<string | undefined>(initialCourseId);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [savingProgress, setSavingProgress] = useState(false);
+  const [hasPassedEvaluation, setHasPassedEvaluation] = useState(false);
+  const { certificates } = useCertificates();
 
   // ✅ PASO 1: Resolver courseSlug a courseId si es necesario
   useEffect(() => {
@@ -187,6 +190,22 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
       }
     }
   }, [lessons]);
+
+  // Verificar si ya aprobó la evaluación
+  useEffect(() => {
+    if (courseId && certificates && certificates.length > 0) {
+      const passedCert = certificates.find(
+        cert => String(cert.course_id) === String(courseId) && 
+                cert.status === "active" && 
+                cert.grade !== null &&
+                cert.grade >= 70
+      );
+      setHasPassedEvaluation(!!passedCert);
+    } else {
+      // Si no hay certificados o no se encuentra uno aprobado, es false
+      setHasPassedEvaluation(false);
+    }
+  }, [courseId, certificates]);
 
   const currentLessonData = lessons.find((l) => l.id === currentLesson);
   const currentIndex = lessons.findIndex((l) => l.id === currentLesson);
@@ -460,16 +479,20 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
             <div className="mt-6 space-y-3 rounded-lg border-2 border-[#1e467c] bg-[#F8FAFC] p-4">
               <div className="flex items-center gap-2 text-[#1e467c]">
                 <Award className="h-5 w-5" />
-                <h4 className="font-semibold">Evaluación Final</h4>
+                <h4 className="font-semibold">
+                  {hasPassedEvaluation ? "Evaluación Completada" : "Evaluación Final"}
+                </h4>
               </div>
               <p className="text-sm text-[#64748B]">
-                Completa la evaluación para obtener tu certificado
+                {hasPassedEvaluation 
+                  ? "¡Ya aprobaste este curso! Accede a tu certificado" 
+                  : "Completa la evaluación para obtener tu certificado"}
               </p>
               <Button 
                 onClick={() => onNavigate?.("evaluation", courseId, courseSlug)}
-                className="w-full"
+                className="w-full bg-[#1e467c] hover:bg-[#0d2d54] text-white"
               >
-                Iniciar Evaluación
+                {hasPassedEvaluation ? "Ver Certificado" : "Iniciar Evaluación"}
               </Button>
             </div>
           </div>

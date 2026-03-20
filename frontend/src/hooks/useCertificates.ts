@@ -28,9 +28,21 @@ export function useCertificates() {
     try {
       setLoading(true);
       setError(null);
+      
+      // Obtener usuario autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setCertificates([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Filtrar SOLO certificados del usuario actual
       const { data, error: fetchError } = await supabase
         .from("certificates")
         .select("*")
+        .eq("student_id", user.id)
         .order("created_at", { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -45,39 +57,58 @@ export function useCertificates() {
   };
 
   useEffect(() => {
-    fetchCertificates();
+    let userId: string | null = null;
 
-    // Suscripción realtime — updates quirúrgicos sin refetch completo
-    const channel = supabase
-      .channel("certificates-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "certificates",
-        },
-        (payload) => {
-          debug("Certificates realtime event:", payload.eventType);
+    const initializeAndSubscribe = async () => {
+      // Obtener usuario autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id || null;
 
-          if (payload.eventType === "INSERT") {
-            setCertificates((prev) => [payload.new as Certificate, ...prev]);
-          } else if (payload.eventType === "UPDATE") {
-            const updated = payload.new as Certificate;
-            setCertificates((prev) =>
-              prev.map((c) => (c.id === updated.id ? updated : c))
-            );
-          } else if (payload.eventType === "DELETE") {
-            const deleted = payload.old as Certificate;
-            setCertificates((prev) => prev.filter((c) => c.id !== deleted.id));
+      if (!userId) return;
+
+      // Fetch inicial
+      await fetchCertificates();
+
+      // Suscripción realtime — updates quirúrgicos sin refetch completo
+      const channel = supabase
+        .channel("certificates-changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "certificates",
+          },
+          (payload) => {
+            debug("Certificates realtime event:", payload.eventType);
+
+            // Solo procesar si es del usuario actual
+            const certificate = payload.new as Certificate | undefined;
+            if (certificate && certificate.student_id !== userId) {
+              return; // Ignorar certificados de otros usuarios
+            }
+
+            if (payload.eventType === "INSERT") {
+              setCertificates((prev) => [payload.new as Certificate, ...prev]);
+            } else if (payload.eventType === "UPDATE") {
+              const updated = payload.new as Certificate;
+              setCertificates((prev) =>
+                prev.map((c) => (c.id === updated.id ? updated : c))
+              );
+            } else if (payload.eventType === "DELETE") {
+              const deleted = payload.old as Certificate;
+              setCertificates((prev) => prev.filter((c) => c.id !== deleted.id));
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
+      return () => {
+        supabase.removeChannel(channel);
+      };
     };
+
+    initializeAndSubscribe();
   }, []);
 
   return { certificates, loading, error, refetch: fetchCertificates };
