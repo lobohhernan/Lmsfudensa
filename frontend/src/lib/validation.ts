@@ -68,12 +68,6 @@ export const TeacherFormSchema = z.object({
     .positive('La tarifa debe ser un número positivo')
     .optional(),
   
-  rating: z
-    .number()
-    .min(0, 'La calificación mínima es 0')
-    .max(5, 'La calificación máxima es 5')
-    .optional(),
-  
   is_active: z
     .boolean()
     .optional(),

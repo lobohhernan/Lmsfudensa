@@ -35,12 +35,111 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const { courses: userCourses, loading: coursesLoading } = useEnrollmentProgress(isLoggedIn);
   
+  // Estados para edición de perfil
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  
+  // Función para guardar cambios del perfil
+  const handleSaveProfile = async () => {
+    // Validación
+    if (!firstName.trim()) {
+      setSaveMessage({ type: 'error', text: 'El nombre es requerido' });
+      return;
+    }
+
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+
+    if (fullName.length < 2) {
+      setSaveMessage({ type: 'error', text: 'El nombre debe tener al menos 2 caracteres' });
+      return;
+    }
+
+    if (fullName.length > 100) {
+      setSaveMessage({ type: 'error', text: 'El nombre no puede exceder 100 caracteres' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error('No hay usuario autenticado');
+      }
+
+      // 1. Actualizar perfil en tabla profiles
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: fullName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // 2. Actualizar metadata de Auth para evitar parpadeos en F5
+      // Esto sincroniza el nombre entre Auth metadata y la tabla profiles
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: { full_name: fullName }
+      });
+
+      if (metadataError) {
+        console.warn('⚠️ Advancia: No se pudo actualizar metadata de Auth:', metadataError);
+        // No relanzar error, ya que el cambio en DB fue exitoso
+      }
+
+      // 3. Actualizar el estado local
+      setUserProfile(profile => profile ? { ...profile, full_name: fullName } : null);
+      
+      // 4. Actualizar sessionStorage con el nuevo nombre
+      try {
+        const userSession = sessionStorage.getItem('user_session');
+        if (userSession) {
+          const parsed = JSON.parse(userSession);
+          parsed.name = fullName;
+          sessionStorage.setItem('user_session', JSON.stringify(parsed));
+        }
+      } catch (e) {
+        console.warn('No se pudo actualizar sessionStorage:', e);
+      }
+      
+      // 5. Disparar evento personalizado para sincronizar otros componentes (navbar)
+      window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: { fullName } }));
+      
+      setSaveMessage({ type: 'success', text: '✅ Cambios guardados correctamente' });
+
+      // Limpiar mensaje después de 3 segundos
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("Error al guardar perfil:", message);
+      setSaveMessage({ type: 'error', text: `Error: ${message}` });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
   // Verificar si hay una pestaña específica solicitada
   const initialTab = sessionStorage.getItem('profileTab') || defaultTab;
   // Limpiar el valor después de leerlo
   useEffect(() => {
     sessionStorage.removeItem('profileTab');
   }, []);
+
+  // Sincronizar firstName y lastName solo cuando se carga un nuevo perfil (cambio de ID)
+  // Esto se ejecuta una sola vez por cada perfil
+  useEffect(() => {
+    if (userProfile?.full_name) {
+      const nameParts = (userProfile.full_name as string).split(" ");
+      setFirstName(nameParts[0] || "");
+      setLastName(nameParts.slice(1).join(" ") || "");
+    }
+  }, [userProfile?.id]); // Solo sincroniza cuando cambia el ID del perfil
 
   const loadCertificates = async (userId: string) => {
     try {
@@ -194,9 +293,16 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
     );
   }
 
-  const initials = userProfile.full_name
-    ? userProfile.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
-    : userProfile.email.split("@")[0].substring(0, 2).toUpperCase();
+  // Calcular iniciales dinámicamente basado en firstName y lastName editables
+  const getInitials = () => {
+    const first = firstName.trim()[0]?.toUpperCase() || '';
+    const last = lastName.trim()[0]?.toUpperCase() || '';
+    return (first + last) || userProfile?.email?.split("@")[0].substring(0, 2).toUpperCase() || '';
+  };
+
+  // Nombre completo que se muestra en el header (basado en los valores actuales)
+  const displayName = `${firstName.trim()} ${lastName.trim()}`.trim() || userProfile?.full_name || "Usuario";
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -206,10 +312,10 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
             <CardContent className="p-6">
               <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
                 <Avatar className="h-24 w-24">
-                  <AvatarFallback className="bg-[#0B5FFF] text-white text-2xl font-semibold">{initials}</AvatarFallback>
+                  <AvatarFallback className="bg-[#0B5FFF] text-white text-2xl font-semibold">{getInitials()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h1 className="mb-1 text-[#0F172A]">{userProfile.full_name || "Usuario"}</h1>
+                  <h1 className="mb-1 text-[#0F172A]">{displayName}</h1>
                   <div className="flex flex-wrap gap-4 text-[#64748B]">
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4" />
@@ -405,18 +511,18 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
                     <Label htmlFor="firstName">Nombre</Label>
                     <Input 
                       id="firstName" 
-                      defaultValue={userProfile?.full_name?.split(" ")[0] || ""}
-                      disabled
-                      className="bg-gray-100"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="Tu nombre"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Apellido</Label>
                     <Input 
                       id="lastName" 
-                      defaultValue={userProfile?.full_name?.split(" ").slice(1).join(" ") || ""}
-                      disabled
-                      className="bg-gray-100"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Tu apellido"
                     />
                   </div>
                 </div>
@@ -460,8 +566,22 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
                     </Select>
                   </div>
                 </div>
+                {saveMessage && (
+                  <div className={`p-3 rounded-md text-sm ${
+                    saveMessage.type === 'success' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {saveMessage.text}
+                  </div>
+                )}
                 <div className="pt-4">
-                  <Button>Guardar Cambios</Button>
+                  <Button 
+                    onClick={handleSaveProfile}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
