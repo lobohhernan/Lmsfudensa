@@ -1720,7 +1720,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             avatar_url: teacher.avatar_url,
             specialization: teacher.specialization,
             years_of_experience: teacher.years_of_experience,
-            rating: teacher.rating,
             total_students: teacher.total_students,
             total_courses: teacher.total_courses,
             hourly_rate: teacher.hourly_rate,
@@ -1747,7 +1746,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           avatar_url: teacher.avatar_url,
           specialization: teacher.specialization,
           years_of_experience: teacher.years_of_experience,
-          rating: teacher.rating,
           total_students: teacher.total_students,
           total_courses: teacher.total_courses,
           hourly_rate: teacher.hourly_rate,
@@ -2553,7 +2551,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       <TableHead>Nombre</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Especialización</TableHead>
-                      <TableHead>Valoración</TableHead>
                       <TableHead>Estudiantes</TableHead>
                       <TableHead>Cursos</TableHead>
                       <TableHead>Estado</TableHead>
@@ -2569,18 +2566,18 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       </TableRow>
                     ) : realtimeTeachers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
                           No hay profesores registrados aún
                         </TableCell>
                       </TableRow>
                     ) : filteredTeachers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-4 text-gray-500">
                           No se encontraron profesores para "{teacherQuery}"
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredTeachers.map((teacher) => (
+                      filteredTeachers.map((teacher, index) => (
                         <TableRow
                           key={teacher.id}
                           className={cn(
@@ -2595,12 +2592,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
                             </div>
                           )}
+                          <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
                           <TableCell className="text-[#0F172A] font-medium">{teacher.full_name}</TableCell>
                           <TableCell className="text-sm">{teacher.email}</TableCell>
                           <TableCell>{teacher.specialization || "-"}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{teacher.rating} ⭐</Badge>
-                          </TableCell>
                           <TableCell>{teacher.total_students.toLocaleString()}</TableCell>
                           <TableCell>
                             {(teacherCoursesMap[teacher.id] || []).length > 0 ? (
