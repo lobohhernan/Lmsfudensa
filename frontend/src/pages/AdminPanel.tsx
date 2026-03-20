@@ -2590,7 +2590,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       <TableHead>Nombre</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Especialización</TableHead>
-                      <TableHead>Estudiantes</TableHead>
+                      <TableHead>Valoración</TableHead>
                       <TableHead>Cursos</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
@@ -2599,7 +2599,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <TableBody>
                     {teachersLoading ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4">
+                        <TableCell colSpan={8} className="text-center py-4">
                           <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
@@ -2635,7 +2635,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           <TableCell className="text-[#0F172A] font-medium">{teacher.full_name}</TableCell>
                           <TableCell className="text-sm">{teacher.email}</TableCell>
                           <TableCell>{teacher.specialization || "-"}</TableCell>
-                          <TableCell>{teacher.total_students.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{teacher.rating} ⭐</Badge>
+                          </TableCell>
                           <TableCell>
                             {(teacherCoursesMap[teacher.id] || []).length > 0 ? (
                               <div className="flex flex-wrap gap-1 max-w-[200px]">
