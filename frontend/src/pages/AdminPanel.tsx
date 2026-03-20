@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo, useRef } from "react";
 import ExcelJS from "exceljs";
 import {
   LayoutDashboard,
@@ -58,6 +58,8 @@ import { CourseForm } from "../components/CourseForm";
 import { CourseCard } from "../components/CourseCard";
 import { type FullCourse } from "../lib/data";
 import { toast } from "sonner";
+import { CertificateTemplate, type CertificateData } from "../components/CertificateTemplate";
+import { generateCertificatePDF, formatCertificateDate } from "../utils/certificate";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
 import { supabaseAdmin, isAdminClientConfigured, logAdminOperation } from "../lib/supabaseAdmin";
@@ -114,6 +116,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [editingUser, setEditingUser] = useState<any>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
+  
+  const certificateRef = useRef<HTMLDivElement>(null);
+  const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
+  const [selectedCertData, setSelectedCertData] = useState<CertificateData | null>(null);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactUser, setContactUser] = useState<{ name: string; email: string } | null>(null);
   const [contactMessage, setContactMessage] = useState("");
@@ -156,6 +162,39 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   // Use realtime hook for certificates
   const { certificates: realtimeCertificates, loading: certificatesLoading, error: certificatesError } = useCertificatesRealtime();
+
+  const handleGeneratePDF = async (cert: any) => {
+    setGeneratingPdfId(cert.id);
+    setSelectedCertData({
+      studentName: cert.student_name,
+      dni: "", // Optional, leave blank if not available
+      courseName: cert.course_title,
+      courseHours: "40", // Default or fetch if available
+      issueDate: formatCertificateDate(new Date(cert.issue_date)),
+      certificateId: cert.hash.substring(0, 16).toUpperCase(),
+    });
+
+    // Wait for the hidden component to render
+    setTimeout(async () => {
+      if (certificateRef.current) {
+        try {
+          await generateCertificatePDF(certificateRef.current, {
+            studentName: cert.student_name,
+            dni: "",
+            courseName: cert.course_title,
+            courseHours: "40",
+            issueDate: formatCertificateDate(new Date(cert.issue_date)),
+            certificateId: cert.hash.substring(0, 16).toUpperCase(),
+          });
+          toast.success("Certificado generado y descargado exitosamente");
+        } catch (error) {
+          console.error("Error al generar el certificado:", error);
+          toast.error("Error al generar el PDF del certificado");
+        }
+      }
+      setGeneratingPdfId(null);
+    }, 800);
+  };
 
   // Search/filter state for teachers (memoized)
   const filteredTeachers = useMemo(() => {
@@ -3043,27 +3082,26 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       <TableHead>Estudiante</TableHead>
                       <TableHead>Curso</TableHead>
                       <TableHead>Hash</TableHead>
-                      <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {certificatesLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={6} className="text-center py-8">
                           <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#55a5c7]" />
                           <p className="text-sm text-[#64748B] mt-2">Cargando certificados...</p>
                         </TableCell>
                       </TableRow>
                     ) : certificatesError ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-[#EF4444]">
+                        <TableCell colSpan={6} className="text-center py-8 text-[#EF4444]">
                           Error: {certificatesError}
                         </TableCell>
                       </TableRow>
                     ) : realtimeCertificates.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-[#64748B]">
+                        <TableCell colSpan={6} className="text-center py-8 text-[#64748B]">
                           No hay certificados emitidos aún
                         </TableCell>
                       </TableRow>
@@ -3079,17 +3117,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           <TableCell className="font-mono text-xs">
                             {cert.hash.substring(0, 16)}...
                           </TableCell>
-                          <TableCell>
-                            <Badge 
-                              className={cn(
-                                cert.status === 'active' && "bg-[#55a5c7] text-white",
-                                cert.status === 'voided' && "bg-[#EF4444] text-white",
-                                cert.status === 'expired' && "bg-[#64748B] text-white"
-                              )}
-                            >
-                              {cert.status}
-                            </Badge>
-                          </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -3104,13 +3131,25 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  disabled={!cert.pdf_url}
                                   onClick={() => {
-                                    if (cert.pdf_url) window.open(cert.pdf_url, '_blank');
+                                    if (cert.pdf_url) {
+                                      window.open(cert.pdf_url, '_blank');
+                                    } else {
+                                      handleGeneratePDF(cert);
+                                    }
                                   }}
                                 >
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Descargar PDF
+                                  {generatingPdfId === cert.id ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Generando PDF...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Download className="mr-2 h-4 w-4" />
+                                      Descargar PDF
+                                    </>
+                                  )}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   data-variant="destructive"
@@ -3193,9 +3232,17 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Hidden Certificate Template for PDF Generation */}
+      {selectedCertData && (
+        <div className="fixed -left-[10000px] top-0 pointer-events-none">
+          <CertificateTemplate ref={certificateRef} data={selectedCertData} />
+        </div>
+      )}
     </div>
   );
 }
+
 async function generateHash() {
   const data = `${Date.now()}-${Math.random()}-${crypto.randomUUID()}`;
   const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
