@@ -35,7 +35,7 @@ export async function generateCertificatePreview(node: HTMLElement) {
 
     const canvas = await html2canvas(node, {
       backgroundColor: "#ffffff",
-      scale: 2,          // alta nitidez
+      scale: 1,          // 1 es suficiente porque la base ya es muy grande (3508x2480)
       useCORS: true,     // permitir imágenes externas
       logging: false,
       removeContainer: false,  // no remover para poder reutilizarlo
@@ -46,7 +46,7 @@ export async function generateCertificatePreview(node: HTMLElement) {
       imageTimeout: 5000, // esperar hasta 5s por imágenes
     });
     
-    return canvas.toDataURL("image/png");
+    return canvas.toDataURL("image/jpeg", 0.95); // Usar Jpeg reduce considerablemente la memoria
   } catch (error) {
     console.error("Error en generateCertificatePreview:", error);
     throw new Error("No se pudo generar la vista previa del certificado");
@@ -59,7 +59,7 @@ export async function generateCertificatePDF(
   data: CertificateData
 ) {
   try {
-    const pngUrl = await generateCertificatePreview(node);
+    const imgUrl = await generateCertificatePreview(node);
 
     const pdf = new jsPDF({
       orientation: "landscape",
@@ -79,7 +79,7 @@ export async function generateCertificatePDF(
     // Centrado vertical por si hay bordes de la impresora
     const y = (pageH - targetH) / 2;
 
-    pdf.addImage(pngUrl, "PNG", 0, y, targetW, targetH, "", "FAST");
+    pdf.addImage(imgUrl, "JPEG", 0, y, targetW, targetH, "", "FAST");
 
     // Sanitizar nombres para el archivo
     const safeStudentName = (data.studentName || "Certificado")
