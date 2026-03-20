@@ -49,37 +49,48 @@ export const CertificateCard = memo(function CertificateCard({
   };
 
   const handleViewCertificate = async () => {
-    if (!certificateRef.current) {
-      toast.error("No se pudo generar la vista previa");
-      return;
-    }
+    setIsGenerating(true); // Para que se monte el componente
+    
+    setTimeout(async () => {
+      if (!certificateRef.current) {
+        setIsGenerating(false);
+        toast.error("No se pudo generar la vista previa");
+        return;
+      }
 
-    try {
-      const url = await generateCertificatePreview(certificateRef.current);
-      setPreviewUrl(url);
-      setShowPreview(true);
-    } catch (error) {
-      toast.error("Error al generar la vista previa");
-      console.error("Error:", error);
-    }
+      try {
+        const url = await generateCertificatePreview(certificateRef.current);
+        setPreviewUrl(url);
+        setShowPreview(true);
+      } catch (error) {
+        toast.error("Error al generar la vista previa");
+        console.error("Error:", error);
+      } finally {
+        setIsGenerating(false);
+      }
+    }, 800); // Esperar a que se monte
   };
 
   const handleDownload = async () => {
-    if (!certificateRef.current) {
-      toast.error("No se pudo generar el certificado");
-      return;
-    }
+    setIsGenerating(true); // Para que se monte el componente
 
-    setIsGenerating(true);
-    try {
-      await generateCertificatePDF(certificateRef.current, certificateData);
-      toast.success("Certificado descargado exitosamente");
-    } catch (error) {
-      toast.error("Error al generar el certificado. Por favor, intente nuevamente.");
-      console.error("Error:", error);
-    } finally {
-      setIsGenerating(false);
-    }
+    setTimeout(async () => {
+      if (!certificateRef.current) {
+        setIsGenerating(false);
+        toast.error("No se pudo generar el certificado");
+        return;
+      }
+
+      try {
+        await generateCertificatePDF(certificateRef.current, certificateData);
+        toast.success("Certificado descargado exitosamente");
+      } catch (error) {
+        toast.error("Error al generar el certificado. Por favor, intente nuevamente.");
+        console.error("Error:", error);
+      } finally {
+        setIsGenerating(false);
+      }
+    }, 800); // Esperar a que se monte
   };
   return (
     <Card className="group relative overflow-hidden border-l-4 border-l-[#55a5c7] border border-[#55a5c7]/20 bg-gradient-to-br from-white to-[#55a5c7]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#55a5c7]/40 hover:shadow-[0_8px_32px_0_rgba(85,165,199,0.25),inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:scale-105 cursor-pointer flex flex-col h-full">
@@ -133,12 +144,10 @@ export const CertificateCard = memo(function CertificateCard({
         </Button>
       </CardFooter>
 
-      {/* Hidden Certificate Template — solo se monta cuando se necesita generar */}
-      {(showPreview || isGenerating) && (
-        <div className="fixed -left-[10000px] top-0">
-          <CertificateTemplate ref={certificateRef} data={certificateData} />
-        </div>
-      )}
+      {/* Hidden Certificate Template siempre montado para que el ref funcione al hacer clic */}
+      <div className="fixed -left-[10000px] top-0 pointer-events-none">
+        <CertificateTemplate ref={certificateRef} data={certificateData} />
+      </div>
 
       {/* Certificate Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
