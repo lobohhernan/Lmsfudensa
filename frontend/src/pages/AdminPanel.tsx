@@ -3037,16 +3037,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </Button>
                     <Button
                       onClick={handleExportAllPayments}
-                      variant="outline"
                       size="sm"
-                      className="h-10 px-3 text-white transition-colors border-none"
-                      style={{ backgroundColor: '#16a34a' }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#15803d';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#16a34a';
-                      }}
+                      className="h-10 px-3 bg-green-600 hover:bg-green-700 text-white border-0 transition-colors"
                     >
                       <Download className="mr-2 h-4 w-4" />
                       Exportar
