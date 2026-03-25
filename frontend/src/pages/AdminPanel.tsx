@@ -135,6 +135,12 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [togglingActiveId, setTogglingActiveId] = useState<string | null>(null);
   const [optimisticActiveState, setOptimisticActiveState] = useState<Record<string, boolean>>({});
   const [paymentsSearch, setPaymentsSearch] = useState("");
+  const [paymentsDateDraft, setPaymentsDateDraft] = useState({ day: "", month: "", year: "" });
+  const [paymentsDateFilter, setPaymentsDateFilter] = useState<{ day: number | null; month: number | null; year: number | null }>({
+    day: null,
+    month: null,
+    year: null,
+  });
   const [usersSearch, setUsersSearch] = useState("");
   const [usersRoleFilter, setUsersRoleFilter] = useState<string>("all");
   const [usersDateFilter, setUsersDateFilter] = useState<Date | undefined>(undefined);
@@ -288,15 +294,60 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   // Datos reales de pagos desde Supabase (payments + enrollments legacy)
   const { payments: allPayments, loading: paymentsLoading, error: paymentsError, refetch: refetchPayments } = usePayments();
 
+  const parseFilterPart = (value: string): number | null => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    return Number.isInteger(parsed) ? parsed : null;
+  };
+
+  const handleApplyPaymentsDateFilter = () => {
+    const day = parseFilterPart(paymentsDateDraft.day);
+    const month = parseFilterPart(paymentsDateDraft.month);
+    const year = parseFilterPart(paymentsDateDraft.year);
+
+    if (paymentsDateDraft.day.trim() && (day === null || day < 1 || day > 31)) {
+      toast.error("El día debe estar entre 1 y 31");
+      return;
+    }
+    if (paymentsDateDraft.month.trim() && (month === null || month < 1 || month > 12)) {
+      toast.error("El mes debe estar entre 1 y 12");
+      return;
+    }
+    if (paymentsDateDraft.year.trim() && (year === null || year < 1900 || year > 9999)) {
+      toast.error("El año debe tener un valor válido");
+      return;
+    }
+
+    setPaymentsDateFilter({ day, month, year });
+  };
+
+  const handleClearPaymentsDateFilter = () => {
+    setPaymentsDateDraft({ day: "", month: "", year: "" });
+    setPaymentsDateFilter({ day: null, month: null, year: null });
+  };
+
   const filteredPayments = useMemo(() => {
     const q = paymentsSearch.trim().toLowerCase();
-    if (!q) return allPayments;
-    return allPayments.filter(p =>
-      p.displayName.toLowerCase().includes(q) ||
-      p.displayEmail.toLowerCase().includes(q) ||
-      p.courseTitle.toLowerCase().includes(q)
-    );
-  }, [allPayments, paymentsSearch]);
+    return allPayments.filter((p) => {
+      const matchText =
+        !q ||
+        p.displayName.toLowerCase().includes(q) ||
+        p.displayEmail.toLowerCase().includes(q) ||
+        p.courseTitle.toLowerCase().includes(q);
+
+      if (!matchText) return false;
+
+      const created = new Date(p.created_at);
+      if (Number.isNaN(created.getTime())) return false;
+
+      const matchDay = paymentsDateFilter.day === null || created.getDate() === paymentsDateFilter.day;
+      const matchMonth = paymentsDateFilter.month === null || created.getMonth() + 1 === paymentsDateFilter.month;
+      const matchYear = paymentsDateFilter.year === null || created.getFullYear() === paymentsDateFilter.year;
+
+      return matchDay && matchMonth && matchYear;
+    });
+  }, [allPayments, paymentsSearch, paymentsDateFilter]);
 
   // Lookup: profiles.id → teacher.id (para cursos legacy)
   const profileToTeacherIdMap = useMemo(() => {
@@ -2940,14 +2991,48 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           {activeTab === "payments" && (
             <div className="space-y-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative flex-1 sm:max-w-md">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                  <Input
-                    placeholder="Buscar pagos..."
-                    className="pl-10"
-                    value={paymentsSearch}
-                    onChange={(e) => setPaymentsSearch(e.target.value)}
-                  />
+                <div className="flex flex-1 flex-col gap-3 sm:max-w-3xl">
+                  <div className="relative w-full sm:max-w-md">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+                    <Input
+                      placeholder="Buscar pagos..."
+                      className="pl-10"
+                      value={paymentsSearch}
+                      onChange={(e) => setPaymentsSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={31}
+                      placeholder="Día"
+                      value={paymentsDateDraft.day}
+                      onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, day: e.target.value }))}
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      max={12}
+                      placeholder="Mes"
+                      value={paymentsDateDraft.month}
+                      onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, month: e.target.value }))}
+                    />
+                    <Input
+                      type="number"
+                      min={1900}
+                      max={9999}
+                      placeholder="Año"
+                      value={paymentsDateDraft.year}
+                      onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, year: e.target.value }))}
+                    />
+                    <Button onClick={handleApplyPaymentsDateFilter}>
+                      Buscar
+                    </Button>
+                    <Button onClick={handleClearPaymentsDateFilter} variant="outline">
+                      Limpiar filtros
+                    </Button>
+                  </div>
                 </div>
                 <Button onClick={handleExportAllPayments} variant="outline">
                   <Download className="mr-2 h-4 w-4" />
