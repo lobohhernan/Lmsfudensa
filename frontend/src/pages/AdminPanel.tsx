@@ -3001,7 +3001,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       onChange={(e) => setPaymentsSearch(e.target.value)}
                     />
                   </div>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <Input
                       type="number"
                       min={1}
@@ -3009,6 +3009,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       placeholder="Día"
                       value={paymentsDateDraft.day}
                       onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, day: e.target.value }))}
+                      className="w-full sm:w-20 md:w-24 text-center"
                     />
                     <Input
                       type="number"
@@ -3017,6 +3018,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       placeholder="Mes"
                       value={paymentsDateDraft.month}
                       onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, month: e.target.value }))}
+                      className="w-full sm:w-20 md:w-24 text-center"
                     />
                     <Input
                       type="number"
@@ -3025,12 +3027,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       placeholder="Año"
                       value={paymentsDateDraft.year}
                       onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, year: e.target.value }))}
+                      className="w-full sm:w-24 md:w-28 text-center"
                     />
-                    <Button onClick={handleApplyPaymentsDateFilter}>
+                    <Button onClick={handleApplyPaymentsDateFilter} size="sm" className="h-8 px-3">
                       Buscar
                     </Button>
-                    <Button onClick={handleClearPaymentsDateFilter} variant="outline">
-                      Limpiar filtros
+                    <Button onClick={handleClearPaymentsDateFilter} variant="outline" size="sm" className="h-8 px-3">
+                      Limpiar
                     </Button>
                   </div>
                 </div>
