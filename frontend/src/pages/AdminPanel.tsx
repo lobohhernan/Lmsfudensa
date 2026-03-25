@@ -3037,7 +3037,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </Button>
                     <Button
                       onClick={handleExportAllPayments}
-                      variant="outline"
                       size="sm"
                       className="h-10 px-3 hover:bg-green-600 hover:border-green-600"
                     >
