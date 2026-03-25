@@ -3035,7 +3035,12 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     <Button onClick={handleClearPaymentsDateFilter} variant="outline" size="sm" className="h-10 px-3">
                       Limpiar
                     </Button>
-                    <Button onClick={handleExportAllPayments} variant="outline" size="sm" className="h-10 px-3">
+                    <Button
+                      onClick={handleExportAllPayments}
+                      variant="outline"
+                      size="sm"
+                      className="h-10 px-3 hover:bg-green-600 hover:text-white hover:border-green-600"
+                    >
                       <Download className="mr-2 h-4 w-4" />
                       Exportar
                     </Button>
