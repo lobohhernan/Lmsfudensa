@@ -3001,7 +3001,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       onChange={(e) => setPaymentsSearch(e.target.value)}
                     />
                   </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2">
+                  <div className="flex flex-wrap items-center justify-start gap-2">
                     <Input
                       type="number"
                       min={1}
@@ -3009,7 +3009,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       placeholder="Día"
                       value={paymentsDateDraft.day}
                       onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, day: e.target.value }))}
-                      className="w-20 sm:w-24 h-9 text-center"
+                      className="w-20 sm:w-24 h-10 text-center"
                     />
                     <Input
                       type="number"
@@ -3018,7 +3018,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       placeholder="Mes"
                       value={paymentsDateDraft.month}
                       onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, month: e.target.value }))}
-                      className="w-20 sm:w-24 h-9 text-center"
+                      className="w-20 sm:w-24 h-10 text-center"
                     />
                     <Input
                       type="number"
@@ -3027,15 +3027,15 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       placeholder="Año"
                       value={paymentsDateDraft.year}
                       onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, year: e.target.value }))}
-                      className="w-20 sm:w-24 h-9 text-center"
+                      className="w-20 sm:w-24 h-10 text-center"
                     />
-                    <Button onClick={handleApplyPaymentsDateFilter} size="sm" className="h-9 px-3">
+                    <Button onClick={handleApplyPaymentsDateFilter} size="sm" className="h-10 px-3">
                       Buscar
                     </Button>
-                    <Button onClick={handleClearPaymentsDateFilter} variant="outline" size="sm" className="h-9 px-3">
+                    <Button onClick={handleClearPaymentsDateFilter} variant="outline" size="sm" className="h-10 px-3">
                       Limpiar
                     </Button>
-                    <Button onClick={handleExportAllPayments} variant="outline" size="sm" className="h-9 px-3">
+                    <Button onClick={handleExportAllPayments} variant="outline" size="sm" className="h-10 px-3">
                       <Download className="mr-2 h-4 w-4" />
                       Exportar
                     </Button>
