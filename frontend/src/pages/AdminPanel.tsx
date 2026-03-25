@@ -3038,7 +3038,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     <Button
                       onClick={handleExportAllPayments}
                       size="sm"
-                      className="h-10 px-3 bg-green-600 hover:bg-green-700 text-white transition-colors"
+                      className="h-10 px-3 hover:bg-green-600 hover:border-green-600"
                     >
                       <Download className="mr-2 h-4 w-4" />
                       Exportar
