@@ -3039,7 +3039,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       onClick={handleExportAllPayments}
                       variant="outline"
                       size="sm"
-                      className="h-10 px-3 hover:bg-green-600 hover:text-white hover:border-green-600"
+                      className="h-10 px-3 !bg-green-600 hover:!bg-green-700 !text-white !border-green-600 transition-colors"
                     >
                       <Download className="mr-2 h-4 w-4" />
                       Exportar
