@@ -2009,6 +2009,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     return optimisticActiveState[teacherId] !== undefined ? optimisticActiveState[teacherId] : realState;
   };
 
+  // Helper: obtener el estado actual del usuario (real + optimistic)
+  const getUserActiveState = (userId: string, realState: boolean): boolean => {
+    return optimisticActiveState[userId] !== undefined ? optimisticActiveState[userId] : realState;
+  };
+
   const handleToggleActiveCourse = async (courseId: string, newIsActive: boolean) => {
     setTogglingActiveId(courseId);
     // Optimistic update: mostrar estado nuevo inmediatamente
@@ -2055,17 +2060,24 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   const handleToggleActiveUser = async (userId: string, newIsActive: boolean) => {
     setTogglingActiveId(userId);
+    // Optimistic update
+    setOptimisticActiveState((prev) => ({ ...prev, [userId]: newIsActive }));
+    
     try {
       await toggleActiveViaAdmin({ type: 'user', id: userId, is_active: newIsActive });
-      // Update local state optimistically since users have no realtime subscription
+      // Update local state optimistically since users have no realtime subscription 
       setUsersList((prev) =>
         prev.map((u) => u.id === userId ? { ...u, is_active: newIsActive } : u)
       );
       toast.success(newIsActive ? "✅ Usuario activado" : "❌ Usuario desactivado");
     } catch (err) {
       console.error("Error toggling user active state:", err);
-      toast.error("Error al cambiar el estado del usuario");
-    } finally {
+      // Revert optimistic state on error
+      setOptimisticActiveState((prev) => {
+        const updated = { ...prev };
+        delete updated[userId];
+        return updated;
+      });
       setTogglingActiveId(null);
     }
   };
@@ -2954,7 +2966,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       filteredUsers.map((user, index) => (
                         <TableRow key={user.id} className={cn(
                           "transition-all duration-300 relative",
-                          (user.is_active as boolean) === false && "opacity-40 bg-gray-100 grayscale"
+                          !getUserActiveState(user.id as string, (user.is_active as boolean) !== false) && "opacity-40 bg-gray-100 grayscale"
                         )}>
                           {togglingActiveId === (user.id as string) && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded z-20">
@@ -2970,7 +2982,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {(user.is_active as boolean) !== false ? (
+                            {getUserActiveState(user.id as string, (user.is_active as boolean) !== false) ? (
                               <Badge className="bg-green-100 text-green-800 text-xs">Activo</Badge>
                             ) : (
                               <Badge className="bg-gray-100 text-gray-600 text-xs">Inactivo</Badge>
@@ -2995,12 +3007,12 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                                 <DropdownMenuItem
                                   onClick={() => handleToggleActiveUser(
                                     user.id as string,
-                                    (user.is_active as boolean) === false
+                                    !getUserActiveState(user.id as string, (user.is_active as boolean) !== false)
                                   )}
                                   disabled={togglingActiveId === (user.id as string)}
-                                  className={(user.is_active as boolean) !== false ? "text-amber-600" : "text-green-600"}
+                                  className={getUserActiveState(user.id as string, (user.is_active as boolean) !== false) ? "text-amber-600" : "text-green-600"}
                                 >
-                                  {(user.is_active as boolean) !== false ? (
+                                  {getUserActiveState(user.id as string, (user.is_active as boolean) !== false) ? (
                                     <><EyeOff className="mr-2 h-4 w-4" />Desactivar</>
                                   ) : (
                                     <><Eye className="mr-2 h-4 w-4" />Activar</>
