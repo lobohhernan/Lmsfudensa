@@ -28,6 +28,7 @@ import { CourseLesson, EvaluationQuestion } from "../lib/data";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
+import { Checkbox } from "../components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -144,6 +145,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [usersSearch, setUsersSearch] = useState("");
   const [usersRoleFilter, setUsersRoleFilter] = useState<string>("all");
   const [usersDateFilter, setUsersDateFilter] = useState<Date | undefined>(undefined);
+  // Filtros de inactividad
+  const [showInactiveCourses, setShowInactiveCourses] = useState(false);
+  const [showInactiveTeachers, setShowInactiveTeachers] = useState(false);
+  const [showInactiveUsers, setShowInactiveUsers] = useState(false);
+
   // Filtros de cursos
   const [courseLevelFilter, setCourseLevelFilter] = useState<string>("all");
   const [courseSortBy, setCourseSortBy] = useState<string>("default");
@@ -204,20 +210,37 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   // Search/filter state for teachers (memoized)
   const filteredTeachers = useMemo(() => {
-    const q = teacherQuery.trim().toLowerCase();
-    if (!q) return realtimeTeachers;
-    return realtimeTeachers.filter((t) => {
-      return (
-        (t.full_name || "").toLowerCase().includes(q) ||
-        (t.email || "").toLowerCase().includes(q) ||
-        ((t.specialization || "").toLowerCase().includes(q))
-      );
-    });
-  }, [realtimeTeachers, teacherQuery]);
+    let result = realtimeTeachers;
 
-  // Filtro de usuarios (por texto, rol, fecha de registro)
+    if (!showInactiveTeachers) {
+      result = result.filter(t => t.is_active !== false);
+    }
+
+    const q = teacherQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter((t) => {
+        return (
+          (t.full_name || "").toLowerCase().includes(q) ||
+          (t.email || "").toLowerCase().includes(q) ||
+          ((t.specialization || "").toLowerCase().includes(q))
+        );
+      });
+    }
+
+    // Ordenar para que los inactivos (si se muestran) aparezcan al final
+    return [...result].sort((a, b) => {
+      const aActive = a.is_active !== false ? 1 : 0;
+      const bActive = b.is_active !== false ? 1 : 0;
+      return bActive - aActive;
+    });
+  }, [realtimeTeachers, teacherQuery, showInactiveTeachers]);
   const filteredUsers = useMemo(() => {
     let result = usersList;
+
+    // Filtro por inactivos
+    if (!showInactiveUsers) {
+      result = result.filter(u => u.is_active !== false);
+    }
 
     // Filtro por texto (busca en id, nombre, email)
     const q = usersSearch.trim().toLowerCase();
@@ -255,7 +278,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     });
 
     return result;
-  }, [usersList, usersSearch, usersRoleFilter, usersDateFilter]);
+  }, [usersList, usersSearch, usersRoleFilter, usersDateFilter, showInactiveUsers]);
 
   // Mapa dinámico: teacher.id → cursos que dicta
   // Soporta tanto instructor_id=teacher.id (cursos nuevos) como instructor_id=profile.id (cursos legacy)
@@ -405,6 +428,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const filteredCourseList = useMemo(() => {
     let filtered = [...courseList];
 
+    // Filtro por inactivos
+    if (!showInactiveCourses) {
+      filtered = filtered.filter(course => course.is_active !== false);
+    }
+
     // Filtro por búsqueda
     const q = coursesSearch.trim().toLowerCase();
     if (q) {
@@ -443,7 +471,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     });
 
     return filtered;
-  }, [courseList, coursesSearch, courseLevelFilter, courseSortBy, enrollmentCounts, salesByCourse]);
+  }, [courseList, coursesSearch, courseLevelFilter, courseSortBy, enrollmentCounts, salesByCourse, showInactiveCourses]);
 
   // Paginación de cursos
   const totalCoursesPages = Math.ceil(filteredCourseList.length / COURSES_PER_PAGE);
@@ -2415,7 +2443,20 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                {(courseLevelFilter !== "all" || courseSortBy !== "default" || coursesSearch) && (
+                <div className="flex items-center gap-2 px-2 border-l border-slate-200">
+                  <Checkbox 
+                    id="showInactiveCourses" 
+                    checked={showInactiveCourses} 
+                    onCheckedChange={(c) => setShowInactiveCourses(Boolean(c))} 
+                  />
+                  <label 
+                    htmlFor="showInactiveCourses" 
+                    className="text-sm text-[#64748B] cursor-pointer"
+                  >
+                    Mostrar inactivos
+                  </label>
+                </div>
+                {(courseLevelFilter !== "all" || courseSortBy !== "default" || coursesSearch || showInactiveCourses) && (
                   <Button 
                     variant="ghost" 
                     size="sm"
@@ -2423,6 +2464,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       setCourseLevelFilter("all");
                       setCourseSortBy("default");
                       setCoursesSearch("");
+                      setShowInactiveCourses(false);
                     }}
                     className="text-[#64748B] hover:text-[#1E293B]"
                   >
@@ -2618,14 +2660,29 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 </Card>
               )}
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative flex-1 sm:max-w-md">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                  <Input
-                    placeholder="Buscar profesores..."
-                    className="pl-10"
-                    value={teacherQuery}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTeacherQuery(e.target.value)}
-                  />
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="relative w-full sm:max-w-md">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+                    <Input
+                      placeholder="Buscar profesores..."
+                      className="pl-10"
+                      value={teacherQuery}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTeacherQuery(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox 
+                      id="showInactiveTeachers" 
+                      checked={showInactiveTeachers} 
+                      onCheckedChange={(c) => setShowInactiveTeachers(Boolean(c))} 
+                    />
+                    <label 
+                      htmlFor="showInactiveTeachers" 
+                      className="text-sm text-[#64748B] cursor-pointer whitespace-nowrap"
+                    >
+                      Mostrar inactivos
+                    </label>
+                  </div>
                 </div>
                 <Button onClick={() => setShowTeacherForm(true)}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -2821,8 +2878,23 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </PopoverContent>
                   </Popover>
 
+                  {/* Filtro Inactivos */}
+                  <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
+                    <Checkbox 
+                      id="showInactiveUsers" 
+                      checked={showInactiveUsers} 
+                      onCheckedChange={(c) => setShowInactiveUsers(Boolean(c))} 
+                    />
+                    <label 
+                      htmlFor="showInactiveUsers" 
+                      className="text-sm text-[#64748B] cursor-pointer whitespace-nowrap"
+                    >
+                      Mostrar inactivos
+                    </label>
+                  </div>
+
                   {/* Limpiar filtros */}
-                  {(usersSearch || usersRoleFilter !== "all" || usersDateFilter) && (
+                  {(usersSearch || usersRoleFilter !== "all" || usersDateFilter || showInactiveUsers) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -2830,6 +2902,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         setUsersSearch("");
                         setUsersRoleFilter("all");
                         setUsersDateFilter(undefined);
+                        setShowInactiveUsers(false);
                       }}
                     >
                       <X className="mr-1 h-4 w-4" />
