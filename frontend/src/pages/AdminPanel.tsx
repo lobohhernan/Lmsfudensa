@@ -235,7 +235,17 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     });
   }, [realtimeTeachers, teacherQuery, showInactiveTeachers]);
   const filteredUsers = useMemo(() => {
-    let result = usersList;
+    // Sincronizar el estado isActive de los usuarios profesores con su registro real de la tabla teachers
+    let result = usersList.map(user => {
+      let is_active = user.is_active;
+      if (user.role === 'instructor') {
+        const teacher = realtimeTeachers.find(t => t.user_id === user.id);
+        if (teacher && teacher.is_active !== undefined) {
+          is_active = teacher.is_active;
+        }
+      }
+      return { ...user, is_active };
+    });
 
     // Filtro por inactivos
     if (!showInactiveUsers) {
@@ -278,7 +288,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     });
 
     return result;
-  }, [usersList, usersSearch, usersRoleFilter, usersDateFilter, showInactiveUsers]);
+  }, [usersList, usersSearch, usersRoleFilter, usersDateFilter, showInactiveUsers, realtimeTeachers]);
 
   // Mapa dinámico: teacher.id → cursos que dicta
   // Soporta tanto instructor_id=teacher.id (cursos nuevos) como instructor_id=profile.id (cursos legacy)
@@ -2043,6 +2053,17 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
     try {
       await toggleActiveViaAdmin({ type: 'teacher', id: teacherId, is_active: newIsActive });
+      
+      const teacher = realtimeTeachers.find(t => t.id === teacherId);
+      if (teacher && teacher.user_id) {
+        // Also update the associate User Profile
+        await toggleActiveViaAdmin({ type: 'user', id: teacher.user_id, is_active: newIsActive });
+        // Update user state optimistically
+        setUsersList((prev) =>
+          prev.map((u) => u.id === teacher.user_id ? { ...u, is_active: newIsActive } : u)
+        );
+      }
+
       toast.success(newIsActive ? "✅ Profesor activado" : "❌ Profesor desactivado");
     } catch (err) {
       console.error("Error toggling teacher active state:", err);
@@ -2065,6 +2086,16 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     
     try {
       await toggleActiveViaAdmin({ type: 'user', id: userId, is_active: newIsActive });
+      
+      const user = usersList.find(u => u.id === userId);
+      if (user?.role === 'instructor') {
+        const teacher = realtimeTeachers.find(t => t.user_id === userId);
+        if (teacher) {
+          // If deactivated through the user table, also sync the teacher status
+          await toggleActiveViaAdmin({ type: 'teacher', id: teacher.id, is_active: newIsActive });
+        }
+      }
+
       // Update local state optimistically since users have no realtime subscription 
       setUsersList((prev) =>
         prev.map((u) => u.id === userId ? { ...u, is_active: newIsActive } : u)
