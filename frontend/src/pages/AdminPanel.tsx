@@ -107,6 +107,7 @@ interface AdminPanelProps {
 }
 
 export function AdminPanel({ onNavigate }: AdminPanelProps) {
+  const ADMIN_TABLE_ROWS_PER_PAGE = 15;
   const [activeTab, setActiveTab] = useState<"dashboard" | "courses" | "teachers" | "users" | "payments" | "certificates">("dashboard");
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<FullCourse | undefined>();
@@ -145,11 +146,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [usersSearch, setUsersSearch] = useState("");
   const [usersRoleFilter, setUsersRoleFilter] = useState<string>("all");
   const [usersDateFilter, setUsersDateFilter] = useState<Date | undefined>(undefined);
-  // Filtros de inactividad
-  const [showInactiveCourses, setShowInactiveCourses] = useState(false);
-  const [showInactiveTeachers, setShowInactiveTeachers] = useState(false);
-  const [showInactiveUsers, setShowInactiveUsers] = useState(false);
-
+  const [teachersPage, setTeachersPage] = useState(1);
+  const [usersPage, setUsersPage] = useState(1);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [certificatesPage, setCertificatesPage] = useState(1);
+  const [hasAdminAccess, setHasAdminAccess] = useState<boolean | null>(null);
   // Filtros de cursos
   const [courseLevelFilter, setCourseLevelFilter] = useState<string>("all");
   const [courseSortBy, setCourseSortBy] = useState<string>("default");
@@ -382,6 +383,30 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     });
   }, [allPayments, paymentsSearch, paymentsDateFilter]);
 
+  const totalTeachersPages = Math.max(1, Math.ceil(filteredTeachers.length / ADMIN_TABLE_ROWS_PER_PAGE));
+  const paginatedTeachers = useMemo(() => {
+    const start = (teachersPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE;
+    return filteredTeachers.slice(start, start + ADMIN_TABLE_ROWS_PER_PAGE);
+  }, [filteredTeachers, teachersPage, ADMIN_TABLE_ROWS_PER_PAGE]);
+
+  const totalUsersPages = Math.max(1, Math.ceil(filteredUsers.length / ADMIN_TABLE_ROWS_PER_PAGE));
+  const paginatedUsers = useMemo(() => {
+    const start = (usersPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE;
+    return filteredUsers.slice(start, start + ADMIN_TABLE_ROWS_PER_PAGE);
+  }, [filteredUsers, usersPage, ADMIN_TABLE_ROWS_PER_PAGE]);
+
+  const totalPaymentsPages = Math.max(1, Math.ceil(filteredPayments.length / ADMIN_TABLE_ROWS_PER_PAGE));
+  const paginatedPayments = useMemo(() => {
+    const start = (paymentsPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE;
+    return filteredPayments.slice(start, start + ADMIN_TABLE_ROWS_PER_PAGE);
+  }, [filteredPayments, paymentsPage, ADMIN_TABLE_ROWS_PER_PAGE]);
+
+  const totalCertificatesPages = Math.max(1, Math.ceil(realtimeCertificates.length / ADMIN_TABLE_ROWS_PER_PAGE));
+  const paginatedCertificates = useMemo(() => {
+    const start = (certificatesPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE;
+    return realtimeCertificates.slice(start, start + ADMIN_TABLE_ROWS_PER_PAGE);
+  }, [realtimeCertificates, certificatesPage, ADMIN_TABLE_ROWS_PER_PAGE]);
+
   // Lookup: profiles.id → teacher.id (para cursos legacy)
   const profileToTeacherIdMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -494,6 +519,48 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   useEffect(() => {
     setCoursesPage(1);
   }, [coursesSearch, courseLevelFilter, courseSortBy]);
+
+  useEffect(() => {
+    setTeachersPage(1);
+  }, [teacherQuery]);
+
+  useEffect(() => {
+    setUsersPage(1);
+  }, [usersSearch, usersRoleFilter, usersDateFilter]);
+
+  useEffect(() => {
+    setPaymentsPage(1);
+  }, [paymentsSearch, paymentsDateFilter]);
+
+  useEffect(() => {
+    setTeachersPage((current) => Math.min(current, totalTeachersPages));
+  }, [totalTeachersPages]);
+
+  useEffect(() => {
+    setUsersPage((current) => Math.min(current, totalUsersPages));
+  }, [totalUsersPages]);
+
+  useEffect(() => {
+    setPaymentsPage((current) => Math.min(current, totalPaymentsPages));
+  }, [totalPaymentsPages]);
+
+  useEffect(() => {
+    setCertificatesPage((current) => Math.min(current, totalCertificatesPages));
+  }, [totalCertificatesPages]);
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("user_session");
+      if (!stored) {
+        setHasAdminAccess(false);
+        return;
+      }
+      const parsed = JSON.parse(stored) as { role?: string };
+      setHasAdminAccess(parsed.role === "admin");
+    } catch {
+      setHasAdminAccess(false);
+    }
+  }, []);
 
   // Cargar usuarios desde Supabase (Stage 1: activos, Stage 2: inactivos diferido)
   const loadUsers = async () => {
@@ -2323,6 +2390,29 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     </>
   );
 
+  if (hasAdminAccess === null) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F8FAFC]">
+        <Loader2 className="h-6 w-6 animate-spin text-[#64748B]" />
+      </div>
+    );
+  }
+
+  if (!hasAdminAccess) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F8FAFC] p-6">
+        <Card className="max-w-lg w-full">
+          <CardHeader>
+            <CardTitle>Acceso denegado</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-[#64748B]">Solo los administradores pueden acceder al panel de administración.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
       {/* Desktop Sidebar */}
@@ -2766,7 +2856,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredTeachers.map((teacher, index) => (
+                      paginatedTeachers.map((teacher, index) => (
                         <TableRow
                           key={teacher.id}
                           className={cn(
@@ -2781,7 +2871,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
                             </div>
                           )}
-                          <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
+                          <TableCell className="text-[#64748B] font-medium">{(teachersPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE + index + 1}</TableCell>
                           <TableCell className="text-[#0F172A] font-medium">{teacher.full_name}</TableCell>
                           <TableCell className="text-sm">{teacher.email}</TableCell>
                           <TableCell>{teacher.specialization || "-"}</TableCell>
@@ -2836,6 +2926,33 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     )}
                   </TableBody>
                 </Table>
+                {!teachersLoading && filteredTeachers.length > 0 && (
+                  <div className="flex items-center justify-between border-t px-4 py-3">
+                    <p className="text-sm text-[#64748B]">
+                      Mostrando {(teachersPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE + 1}
+                      -{Math.min(teachersPage * ADMIN_TABLE_ROWS_PER_PAGE, filteredTeachers.length)} de {filteredTeachers.length} profesores
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTeachersPage((p) => Math.max(1, p - 1))}
+                        disabled={teachersPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm text-[#64748B]">Página {teachersPage} de {totalTeachersPages}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTeachersPage((p) => Math.min(totalTeachersPages, p + 1))}
+                        disabled={teachersPage === totalTeachersPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </Card>
             </div>
           )}
@@ -2994,7 +3111,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredUsers.map((user, index) => (
+                      paginatedUsers.map((user, index) => (
                         <TableRow key={user.id} className={cn(
                           "transition-all duration-300 relative",
                           !getUserActiveState(user.id as string, (user.is_active as boolean) !== false) && "opacity-40 bg-gray-100 grayscale"
@@ -3004,7 +3121,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                               <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
                             </div>
                           )}
-                          <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
+                          <TableCell className="text-[#64748B] font-medium">{(usersPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE + index + 1}</TableCell>
                           <TableCell className="text-[#0F172A] font-medium">{user.full_name || "Sin nombre"}</TableCell>
                           <TableCell className="text-sm">{user.email}</TableCell>
                           <TableCell>
@@ -3064,6 +3181,33 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     )}
                   </TableBody>
                 </Table>
+                {!usersLoading && !usersError && filteredUsers.length > 0 && (
+                  <div className="flex items-center justify-between border-t px-4 py-3">
+                    <p className="text-sm text-[#64748B]">
+                      Mostrando {(usersPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE + 1}
+                      -{Math.min(usersPage * ADMIN_TABLE_ROWS_PER_PAGE, filteredUsers.length)} de {filteredUsers.length} usuarios
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setUsersPage((p) => Math.max(1, p - 1))}
+                        disabled={usersPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm text-[#64748B]">Página {usersPage} de {totalUsersPages}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setUsersPage((p) => Math.min(totalUsersPages, p + 1))}
+                        disabled={usersPage === totalUsersPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </Card>
             </div>
           )}
@@ -3202,12 +3346,12 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         </TableCell>
                       </TableRow>
                     )}
-                    {!paymentsLoading && filteredPayments.map((payment, index) => (
+                    {!paymentsLoading && !paymentsError && paginatedPayments.map((payment, index) => (
                       <TableRow
                         key={payment.id}
                         className={deletingPaymentId === payment.id ? "opacity-50 transition-opacity" : ""}
                       >
-                        <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
+                        <TableCell className="text-[#64748B] font-medium">{(paymentsPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE + index + 1}</TableCell>
                         <TableCell>
                           <Badge
                             className={
@@ -3269,6 +3413,33 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     ))}
                   </TableBody>
                 </Table>
+                {!paymentsLoading && !paymentsError && filteredPayments.length > 0 && (
+                  <div className="flex items-center justify-between border-t px-4 py-3">
+                    <p className="text-sm text-[#64748B]">
+                      Mostrando {(paymentsPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE + 1}
+                      -{Math.min(paymentsPage * ADMIN_TABLE_ROWS_PER_PAGE, filteredPayments.length)} de {filteredPayments.length} pagos
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPaymentsPage((p) => Math.max(1, p - 1))}
+                        disabled={paymentsPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm text-[#64748B]">Página {paymentsPage} de {totalPaymentsPages}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPaymentsPage((p) => Math.min(totalPaymentsPages, p + 1))}
+                        disabled={paymentsPage === totalPaymentsPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </Card>
             </div>
           )}
@@ -3316,11 +3487,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      realtimeCertificates.map((cert, index) => (
+                      paginatedCertificates.map((cert, index) => (
                         <TableRow key={cert.id} className={cn(
                           deletingCertId === cert.id && "opacity-50 transition-opacity duration-500"
                         )}>
-                          <TableCell className="text-[#64748B] font-medium">{index + 1}</TableCell>
+                          <TableCell className="text-[#64748B] font-medium">{(certificatesPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE + index + 1}</TableCell>
                           <TableCell>{new Date(cert.issue_date).toLocaleDateString("es-AR")}</TableCell>
                           <TableCell className="text-[#0F172A]">{cert.student_name}</TableCell>
                           <TableCell>{cert.course_title}</TableCell>
@@ -3376,6 +3547,33 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     )}
                   </TableBody>
                 </Table>
+                {!certificatesLoading && !certificatesError && realtimeCertificates.length > 0 && (
+                  <div className="flex items-center justify-between border-t px-4 py-3">
+                    <p className="text-sm text-[#64748B]">
+                      Mostrando {(certificatesPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE + 1}
+                      -{Math.min(certificatesPage * ADMIN_TABLE_ROWS_PER_PAGE, realtimeCertificates.length)} de {realtimeCertificates.length} certificados
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCertificatesPage((p) => Math.max(1, p - 1))}
+                        disabled={certificatesPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm text-[#64748B]">Página {certificatesPage} de {totalCertificatesPages}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCertificatesPage((p) => Math.min(totalCertificatesPages, p + 1))}
+                        disabled={certificatesPage === totalCertificatesPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </Card>
             </div>
           )}
