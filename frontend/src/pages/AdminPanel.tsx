@@ -2624,7 +2624,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         deletingCourseId === course.id
                           ? "opacity-0 scale-95"
                           : !isActive
-                          ? "opacity-40 scale-100 grayscale"
+                          ? "opacity-70 scale-100 grayscale-[50%]"
                           : "opacity-100 scale-100"
                       )}
                     >
@@ -2640,7 +2640,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           </div>
                         </div>
                       )}
-                      <div className={cn(!isActive && "pointer-events-none")}>
+                      <div>
                         <CourseCard
                           id={course.id}
                           title={course.title}
