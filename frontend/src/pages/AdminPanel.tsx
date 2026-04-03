@@ -143,6 +143,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     month: null,
     year: null,
   });
+  const [showInactiveCourses, setShowInactiveCourses] = useState(false);
+  const [showInactiveTeachers, setShowInactiveTeachers] = useState(false);
+  const [showInactiveUsers, setShowInactiveUsers] = useState(false);
   const [usersSearch, setUsersSearch] = useState("");
   const [usersRoleFilter, setUsersRoleFilter] = useState<string>("all");
   const [usersDateFilter, setUsersDateFilter] = useState<Date | undefined>(undefined);
