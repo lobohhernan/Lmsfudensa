@@ -69,7 +69,7 @@ export function isAdminClientConfigured(): boolean {
 export function logAdminOperation(
   operation: string, 
   table: string, 
-  data?: any
+  data?: unknown
 ) {
   if (import.meta.env.DEV) {
     debug(`🔐 [ADMIN] ${operation} en ${table}`, data)

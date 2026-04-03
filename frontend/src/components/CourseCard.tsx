@@ -1,4 +1,5 @@
-import { Clock, BarChart3, Award } from "lucide-react";
+import { memo } from "react";
+import { Clock, BarChart3, Award, User } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
@@ -11,17 +12,21 @@ export interface CourseCardProps {
   level: "Básico" | "Intermedio" | "Avanzado";
   certified: boolean;
   students?: number;
+  enrollmentCount?: number;
   onClick?: () => void;
+  role?: string;
 }
 
-export function CourseCard({
+export const CourseCard = memo(function CourseCard({
   title,
   image,
   duration,
   level,
   certified,
   students,
+  enrollmentCount,
   onClick,
+  role,
 }: CourseCardProps) {
   const levelColors = {
     Básico: "bg-[#22C55E] text-white",
@@ -31,6 +36,7 @@ export function CourseCard({
 
   return (
     <Card
+      role={role}
       className="group cursor-pointer overflow-hidden border border-gray-200/50 bg-white transition-all duration-300 hover:border-white/20 hover:bg-gradient-to-b hover:from-white/90 hover:to-white/70 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] hover:backdrop-blur-xl hover:scale-105 flex flex-col h-full"
       onClick={onClick}
     >
@@ -67,17 +73,19 @@ export function CourseCard({
               {level}
             </Badge>
           </div>
+          {enrollmentCount !== undefined && (
+            <div className="flex items-center gap-1 text-[#64748B] ml-auto">
+              <User className="h-4 w-4" />
+              <span className="text-sm font-medium">{enrollmentCount}</span>
+            </div>
+          )}
         </div>
       </CardContent>
       {students !== undefined && students !== null ? (
         <CardFooter className="border-t p-4 shrink-0">
           <p className="text-sm text-[#64748B]">{students.toLocaleString()} estudiantes</p>
         </CardFooter>
-      ) : (
-        <CardFooter className="border-t p-4 shrink-0 bg-linear-to-r from-[#F8FAFC] to-[#F1F5F9]">
-          <p className="text-sm text-[#94A3B8] italic">Sin estudiantes aún</p>
-        </CardFooter>
-      )}
+      ) : null}
     </Card>
   );
-}
+});

@@ -1,117 +1,172 @@
-import { Clock, BarChart3, Award, Play, CheckCircle, Users } from "lucide-react";
+import { Clock, BarChart3, Award, Play, CheckCircle, Users, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
+import { Skeleton } from "../components/ui/skeleton";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
-import { resolveCourseSlugToId } from "../lib/courseResolver"
+import { resolveCourseSlugToId, resolveCourseIdToSlug } from "../lib/courseResolver"
 import { isUserEnrolled } from "../lib/enrollments"
 import { useState, useEffect } from "react";
 
 interface CourseDetailProps {
   courseId?: string;
   courseSlug?: string;
-  onNavigate?: (page: string, courseId?: string) => void;
+  onNavigate?: (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => void;
   isLoggedIn?: boolean;
   onAuthRequired?: (page: string, courseId?: string) => void;
 }
 
 export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate, isLoggedIn, onAuthRequired }: CourseDetailProps) {
-  const [courseData, setCourseData] = useState<any>(null);
-  const [lessons, setLessons] = useState<any[]>([]);
+  const [courseData, setCourseData] = useState<Record<string, unknown> | null>(null);
+  const [lessons, setLessons] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [courseId, setCourseId] = useState<string | undefined>(initialCourseId);
+  const [currentSlug, setCurrentSlug] = useState<string | undefined>(courseSlug);
+  const [userEnrolled, setUserEnrolled] = useState(false);
+  const [checkingEnrollment, setCheckingEnrollment] = useState(false);
 
-  // ✅ PASO 1: Resolver courseSlug a courseId si es necesario
+  // ✅ Efecto consolidado: resuelve IDs, carga datos y verifica inscripción en paralelo
   useEffect(() => {
-    const resolveSlug = async () => {
-      // Si ya tenemos courseId, no hacer nada
-      if (courseId) return;
-      
-      // Si no tenemos courseId pero sí slug, resolver
-      if (!courseId && courseSlug) {
-        debug(`🔄 [CourseDetail] Resolviendo slug: ${courseSlug}`);
-        const resolvedId = await resolveCourseSlugToId(courseSlug);
-        
-        if (resolvedId) {
-          debug(`✅ [CourseDetail] Slug resuelto: ${courseSlug} → ${resolvedId}`);
-          setCourseId(resolvedId);
-        } else {
-          setError(`No se encontró curso con slug: ${courseSlug}`);
-          setLoading(false);
-        }
-      } else if (!courseId && !courseSlug) {
-        // No hay ni courseId ni courseSlug
-        setError("No se proporcionó información del curso");
-        setLoading(false);
-      }
-    };
-    
-    resolveSlug();
-  }, [courseSlug, courseId]);
+    let cancelled = false;
 
-  // ✅ PASO 2: Cargar datos del curso cuando tengamos courseId
-  useEffect(() => {
-    // Esperar a tener courseId antes de cargar
-    if (!courseId) {
-      return;
-    }
-
-    const loadCourseData = async () => {
+    const loadCourse = async () => {
       try {
         setLoading(true);
-        debug("Cargando curso con ID:", courseId);
-        
-        // Cargar datos del curso
-        const { data: course, error: courseError } = await supabase
-          .from("courses")
-          .select("*")
-          .eq("id", courseId)
-          .single();
+        setCheckingEnrollment(true);
 
-        if (courseError) {
-          logError("Error al cargar curso:", courseError);
-          throw courseError;
+        // ── Paso 1: resolver courseId (si solo tenemos slug) ──
+        let resolvedId = initialCourseId;
+        let resolvedSlug = courseSlug;
+
+        if (!resolvedId && courseSlug) {
+          debug(`🔄 [CourseDetail] Resolviendo slug: ${courseSlug}`);
+          const id = await resolveCourseSlugToId(courseSlug);
+          if (!id) {
+            if (!cancelled) {
+              setError(`No se encontró curso con slug: ${courseSlug}`);
+              setLoading(false);
+            }
+            return;
+          }
+          resolvedId = id;
+          debug(`✅ [CourseDetail] Slug resuelto: ${courseSlug} → ${resolvedId}`);
+        } else if (!resolvedId) {
+          if (!cancelled) {
+            setError("No se proporcionó información del curso");
+            setLoading(false);
+          }
+          return;
         }
-        
-        debug("Curso cargado:", course);
-        setCourseData(course);
 
-        // Cargar lecciones del curso (ordenar por order_index, no 'order')
-        const { data: courseLessons, error: lessonsError } = await supabase
-          .from("lessons")
-          .select("*")
-          .eq("course_id", courseId)
+        // ── Paso 2: curso, lecciones, slug inverso e inscripción en paralelo ──
+        const coursePromise = supabase
+          .from("courses").select("*").eq("id", resolvedId).single();
+
+        const lessonsPromise = supabase
+          .from("lessons").select("*").eq("course_id", resolvedId)
           .order("order_index", { ascending: true });
 
-        if (lessonsError) {
-          logError("Error al cargar lecciones:", lessonsError);
-          // No bloquear si no hay lecciones
+        const slugPromise = resolvedSlug
+          ? Promise.resolve(resolvedSlug)
+          : resolveCourseIdToSlug(resolvedId);
+
+        const enrollPromise = isLoggedIn
+          ? supabase.auth.getUser()
+              .then(async ({ data: { user } }) => {
+                if (!user) return false;
+                debug(`🔍 [CourseDetail] Verificando inscripción: usuario ${user.id} en curso ${resolvedId}`);
+                return isUserEnrolled(user.id, resolvedId!);
+              })
+              .catch(() => false)
+          : Promise.resolve(false as boolean);
+
+        const [courseResult, lessonsResult, slug, enrolled] = await Promise.all([
+          coursePromise, lessonsPromise, slugPromise, enrollPromise,
+        ]);
+
+        if (cancelled) return;
+
+        // ── Procesar resultados ──
+        if (courseResult.error) {
+          logError("Error al cargar curso:", courseResult.error);
+          throw courseResult.error;
+        }
+
+        const course = courseResult.data;
+        if (course.instructor_id) {
+          try {
+            // Intentar buscar primero en la tabla teachers (pública)
+            const { data: teacherData, error: teacherError } = await supabase
+              .from("teachers")
+              .select("full_name")
+              .or(`id.eq.${course.instructor_id},user_id.eq.${course.instructor_id}`)
+              .maybeSingle();
+
+            if (teacherData && teacherData.full_name) {
+              course.instructor_name = teacherData.full_name;
+            } else {
+              // Fallback a profiles (podría fallar por RLS si no está autenticado o no es admin)
+              const { data: profileData } = await supabase
+                .from("profiles")
+                .select("full_name")
+                .eq("id", course.instructor_id)
+                .maybeSingle();
+                
+              if (profileData && profileData.full_name) {
+                course.instructor_name = profileData.full_name;
+              }
+            }
+          } catch (e) {
+            debug("Error fetching instructor:", e);
+          }
+        }
+
+        setCourseId(resolvedId);
+        setCourseData(course);
+        setCurrentSlug(slug ?? undefined);
+        setUserEnrolled(!!enrolled);
+
+        if (lessonsResult.error) {
+          logError("Error al cargar lecciones:", lessonsResult.error);
           setLessons([]);
         } else {
-          debug("Lecciones cargadas:", courseLessons?.length || 0);
-          setLessons(courseLessons || []);
+          debug("Lecciones cargadas:", lessonsResult.data?.length || 0);
+          setLessons(lessonsResult.data || []);
         }
-        
+
         setError(null);
-      } catch (err: any) {
-        console.error("Error cargando curso:", err);
-        setError(err.message || "Error al cargar los datos del curso");
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : String(err);
+          logError("Error cargando curso:", message);
+          setError(message || "Error al cargar los datos del curso");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setCheckingEnrollment(false);
+        }
       }
     };
 
-    loadCourseData();
-  }, [courseId]);
+    loadCourse();
+    return () => { cancelled = true; };
+  }, [initialCourseId, courseSlug, isLoggedIn]);
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Cargando curso...</div>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center py-8">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 text-[#0B5FFF] animate-spin" />
+          <div className="text-center">
+            <p className="text-[#0F172A] font-medium">Cargando curso</p>
+            <p className="text-[#64748B] text-sm mt-1">Un momento por favor...</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -128,9 +183,12 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
     if (!isLoggedIn) {
       // Usuario no autenticado, abrir modal de login
       onAuthRequired?.("checkout", courseId);
+    } else if (userEnrolled) {
+      // Usuario ya inscrito, ir a la primera lección
+      onNavigate?.("lesson", courseId, currentSlug, "1");
     } else {
-      // Usuario autenticado, ir directamente a checkout
-      onNavigate?.("checkout", courseId);
+      // Usuario autenticado pero no inscrito, ir directamente a checkout
+      onNavigate?.("checkout", courseId, currentSlug);
     }
   };
 
@@ -161,6 +219,14 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
               <h1 className="text-[#0F172A]">
                 {courseData.title}
               </h1>
+
+              <div className="text-sm font-medium text-[#64748B]">
+                {courseData.instructor_name ? (
+                  <span>Profesor: <span className="text-[#0F172A]">{String(courseData.instructor_name)}</span></span>
+                ) : (
+                  <span className="italic">Aún no se identificó el profesor de este curso</span>
+                )}
+              </div>
 
               <div className="flex flex-wrap items-center gap-4 text-[#64748B]">
                 <div className="flex items-center gap-1">
@@ -212,12 +278,13 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
 
                   <div className="space-y-2 border-t pt-4">
                     <Button
-                      className="w-full"
+                      className={`w-full ${userEnrolled ? 'bg-[#16A34A] hover:bg-[#15803d]' : ''}`}
                       size="lg"
                       onClick={handleEnrollClick}
+                      disabled={checkingEnrollment}
                     >
                       <Award className="mr-2 h-5 w-5" />
-                      Inscribirme Ahora
+                      {checkingEnrollment ? 'Verificando...' : userEnrolled ? 'Empezar Curso' : 'Inscribirme Ahora'}
                     </Button>
                   </div>
 
@@ -316,10 +383,11 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
                   </div>
                   
                   <Button
-                    className="w-full bg-[#0066FF] hover:bg-[#0052CC]"
+                    className={`w-full ${userEnrolled ? 'bg-[#16A34A] hover:bg-[#15803d]' : 'bg-[#0066FF] hover:bg-[#0052CC]'}`}
                     onClick={handleEnrollClick}
+                    disabled={checkingEnrollment}
                   >
-                    Inscribirme Ahora
+                    {checkingEnrollment ? 'Verificando...' : userEnrolled ? 'Empezar Curso' : 'Inscribirme Ahora'}
                   </Button>
                   
                   <p className="text-xs text-[#64748B] text-center">

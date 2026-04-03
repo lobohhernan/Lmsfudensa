@@ -7,8 +7,8 @@ export async function sendEmailViaSendGrid(
   fromName?: string,
   replyTo?: string
 ) {
-  // Use Resend API directly from frontend
-  const resendApiKey = "re_NzV8Kfr7SMVPVR4F9TgkpJe9Z3Nb2nKpm";
+  // Use Resend API directly from frontend (key stored in .env.local, never hardcoded)
+  const resendApiKey = import.meta.env.VITE_RESEND_API_KEY as string;
   
   if (!resendApiKey) {
     throw new Error("Resend API key not configured");

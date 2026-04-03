@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.5";
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+import { corsHeaders as CORS_HEADERS } from "../_shared/cors.ts";
 
 serve(async (req: Request) => {
   // Preflight
@@ -47,14 +42,31 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Buscar si hay un enrollment para este usuario y curso
-    // El webhook debería haber creado este registro cuando el pago se completó
+    // ── Paso 1: Resolver email → user_id desde profiles ──────────────────
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", userEmail)
+      .limit(1)
+      .single();
+
+    if (profileError || !profileData) {
+      console.warn("⚠️ [Check Payment] Usuario no encontrado por email:", userEmail);
+      // No es un error fatal — el usuario puede no haber completado su perfil todavía
+      return new Response(
+        JSON.stringify({ success: true, enrolled: false, message: "Usuario no encontrado" }),
+        { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+      );
+    }
+
+    const userId = profileData.id;
+
+    // ── Paso 2: Verificar enrollment por user_id + course_id ─────────────
     const { data: enrollmentData, error: queryError } = await supabase
       .from("enrollments")
-      .select("id, course_id, user_email, status, created_at")
+      .select("id, course_id, user_id, enrolled_at")
       .eq("course_id", courseId)
-      .eq("user_email", userEmail)
-      .order("created_at", { ascending: false })
+      .eq("user_id", userId)
       .limit(1);
 
     console.log("📋 [Check Payment] Resultado de búsqueda:", { enrollmentData, queryError });

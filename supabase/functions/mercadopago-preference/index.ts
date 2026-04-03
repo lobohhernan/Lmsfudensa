@@ -6,6 +6,8 @@ interface MercadoPagoRequest {
   price: number;
   userEmail: string;
   userName?: string;
+  userId?: string;
+  baseUrl?: string;
 }
 
 interface MercadoPagoResponse {
@@ -68,7 +70,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // Construir la preferencia de pago
-    const baseUrl = req.headers.get("origin") || "http://localhost:5173";
+    const baseUrl = requestData.baseUrl || req.headers.get("origin") || "http://localhost:5173";
     
     const preference = {
       items: [
@@ -91,8 +93,13 @@ serve(async (req: Request): Promise<Response> => {
         pending: `${baseUrl}/#/checkout/pending`,
       },
       auto_return: "approved",
-      external_reference: `FUDENSA-${requestData.courseId}-${Date.now()}`,
-      notification_url: `${baseUrl}/api/webhooks/mercadopago`, // Para webhook de notificaciones
+      external_reference: JSON.stringify({
+        courseId: requestData.courseId,
+        userId: requestData.userId,
+      }),
+      // Webhook URL es reemplazado por auto_return en producción
+      // pero se mantiene para compatibilidad
+      notification_url: `${baseUrl}/api/webhooks/mercadopago`,
     };
 
     console.log("📝 Creando preferencia de pago:", {
@@ -100,6 +107,7 @@ serve(async (req: Request): Promise<Response> => {
       courseTitle: requestData.courseTitle,
       price: requestData.price,
       email: requestData.userEmail,
+      baseUrl: baseUrl,
     });
 
     // Llamar a la API de Mercado Pago

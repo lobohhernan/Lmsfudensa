@@ -6,6 +6,8 @@ import { LessonList, Lesson } from "../components/LessonList";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { resolveCourseSlugToId } from "../lib/courseResolver"
 import { isUserEnrolled } from "../lib/enrollments"
+import { CourseLesson } from "../lib/data"
+import { useCertificates } from "../hooks/useCertificates"
 import { toast } from "sonner"
 
 interface LessonPlayerProps {
@@ -24,7 +26,7 @@ interface LessonWithYoutube extends Lesson {
 
 export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug, lessonId }: LessonPlayerProps) {
   const [lessons, setLessons] = useState<LessonWithYoutube[]>([]);
-  const [courseData, setCourseData] = useState<any>(null);
+  const [courseData, setCourseData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentLesson, setCurrentLesson] = useState(lessonId || "1");
@@ -32,6 +34,8 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
   const [courseId, setCourseId] = useState<string | undefined>(initialCourseId);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [savingProgress, setSavingProgress] = useState(false);
+  const [hasPassedEvaluation, setHasPassedEvaluation] = useState(false);
+  const { certificates } = useCertificates();
 
   // ✅ PASO 1: Resolver courseSlug a courseId si es necesario
   useEffect(() => {
@@ -75,6 +79,10 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
+          // Add a small delay to ensure enrollment is synced from payment simulation
+          // This handles the case where a payment was just simulated
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
           const enrolled = await isUserEnrolled(user.id, courseId);
           
           if (!enrolled) {
@@ -136,7 +144,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
           } else {
             // Crear Set de lecciones completadas para búsqueda O(1)
             completedIds = new Set(
-              (progressData || []).map((p: any) => p.lesson_id)
+              (progressData || []).map((p: Record<string, unknown>) => String(p.lesson_id))
             );
             console.log(`✅ [LessonPlayer] Progreso cargado: ${completedIds.size} lecciones completadas`);
           }
@@ -147,7 +155,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
         setCompletedLessons(completedIds);
 
         // Mapear a formato esperado y marcar completadas
-        const mappedLessons: LessonWithYoutube[] = (lessonsData || []).map((lesson: any) => ({
+        const mappedLessons: LessonWithYoutube[] = (lessonsData || []).map((lesson: CourseLesson) => ({
           id: lesson.id,
           title: lesson.title,
           duration: lesson.duration || "N/A",
@@ -159,9 +167,10 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
 
         setLessons(mappedLessons);
         setError(null);
-      } catch (err: any) {
-        console.error("Error cargando datos:", err);
-        setError(err.message || "Error al cargar el curso");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("Error cargando datos:", message);
+        setError(message || "Error al cargar el curso");
       } finally {
         setLoading(false);
       }
@@ -170,12 +179,40 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
     loadData();
   }, [courseId]);
 
+  // ✅ Si currentLesson es "1" (valor por defecto) pero tenemos lecciones cargadas,
+  // usar el ID de la primera lección real en lugar de la cadena "1"
+  useEffect(() => {
+    if (lessons.length > 0 && currentLesson === "1") {
+      const firstLessonId = lessons[0].id;
+      if (firstLessonId !== "1") {
+        setCurrentLesson(firstLessonId);
+        console.log(`✅ [LessonPlayer] Defaulting to first lesson: ${firstLessonId}`);
+      }
+    }
+  }, [lessons]);
+
+  // Verificar si ya aprobó la evaluación
+  useEffect(() => {
+    if (courseId && certificates && certificates.length > 0) {
+      const passedCert = certificates.find(
+        cert => String(cert.course_id) === String(courseId) && 
+                cert.status === "active" && 
+                cert.grade !== null &&
+                cert.grade >= 70
+      );
+      setHasPassedEvaluation(!!passedCert);
+    } else {
+      // Si no hay certificados o no se encuentra uno aprobado, es false
+      setHasPassedEvaluation(false);
+    }
+  }, [courseId, certificates]);
+
   const currentLessonData = lessons.find((l) => l.id === currentLesson);
   const currentIndex = lessons.findIndex((l) => l.id === currentLesson);
   const isCurrentLessonCompleted = currentLessonData?.completed || false;
 
-  // Función para marcar la lección actual como completada
-  const handleMarkComplete = async () => {
+  // Función para alternar el estado de completado (marcar/desmarcar)
+  const handleToggleComplete = async () => {
     try {
       setSavingProgress(true);
       
@@ -191,34 +228,69 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
         return;
       }
 
-      // ✅ Guardar en base de datos usando la función SQL
-      const { error: saveError } = await supabase.rpc('mark_lesson_complete', {
-        p_user_id: user.id,
-        p_course_id: courseId,
-        p_lesson_id: currentLesson
-      });
+      // Si la lección está completada, desmarcarla; si no, marcarla como completada
+      if (isCurrentLessonCompleted) {
+        // ✅ Desmarcar como completada (eliminar del progreso)
+        const { error: deleteError } = await supabase
+          .from('user_progress')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('course_id', courseId)
+          .eq('lesson_id', currentLesson);
 
-      if (saveError) {
-        console.error('❌ Error guardando progreso:', saveError);
-        toast.error("Error al guardar tu progreso");
-        return;
+        if (deleteError) {
+          console.error('❌ Error al desmarcar:', deleteError);
+          toast.error("Error al guardar tu progreso");
+          return;
+        }
+
+        // ✅ Actualizar estado local
+        setCompletedLessons(prev => {
+          const updated = new Set(prev);
+          updated.delete(currentLesson);
+          return updated;
+        });
+        setLessons(prevLessons => 
+          prevLessons.map(lesson => 
+            lesson.id === currentLesson 
+              ? { ...lesson, completed: false }
+              : lesson
+          )
+        );
+
+        console.log(`✅ [LessonPlayer] Progreso actualizado: Lección ${currentLesson} desmarcada como completada`);
+        toast.success("Lección desmarcada como completada");
+      } else {
+        // ✅ Marcar como completada
+        const { error: saveError } = await supabase.rpc('mark_lesson_complete', {
+          p_user_id: user.id,
+          p_course_id: courseId,
+          p_lesson_id: currentLesson
+        });
+
+        if (saveError) {
+          console.error('❌ Error guardando progreso:', saveError);
+          toast.error("Error al guardar tu progreso");
+          return;
+        }
+
+        // ✅ Actualizar estado local
+        setCompletedLessons(prev => new Set(prev).add(currentLesson));
+        setLessons(prevLessons => 
+          prevLessons.map(lesson => 
+            lesson.id === currentLesson 
+              ? { ...lesson, completed: true }
+              : lesson
+          )
+        );
+
+        console.log(`✅ [LessonPlayer] Progreso guardado: Lección ${currentLesson} completada`);
+        toast.success("¡Lección completada! Tu progreso ha sido guardado");
       }
 
-      // ✅ Actualizar estado local
-      setCompletedLessons(prev => new Set(prev).add(currentLesson));
-      setLessons(prevLessons => 
-        prevLessons.map(lesson => 
-          lesson.id === currentLesson 
-            ? { ...lesson, completed: true }
-            : lesson
-        )
-      );
-
-      console.log(`✅ [LessonPlayer] Progreso guardado: Lección ${currentLesson} completada`);
-      toast.success("¡Lección completada! Tu progreso ha sido guardado");
-
-    } catch (err: any) {
-      console.error('❌ Error al marcar como completada:', err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('❌ Error al actualizar progreso:', message);
       toast.error("Error al guardar tu progreso");
     } finally {
       setSavingProgress(false);
@@ -306,24 +378,13 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
             <div className="mb-6">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <h1 className="text-[#0F172A]">{currentLessonData?.title}</h1>
-                {currentLessonData?.youtubeId && (
-                  <a
-                    href={`https://www.youtube.com/watch?v=${currentLessonData.youtubeId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#0066FF] transition-colors"
-                  >
-                    <Youtube className="h-4 w-4" />
-                    Ver en YouTube
-                  </a>
-                )}
               </div>
               <div className="flex flex-wrap items-center gap-4">
-                <Button 
-                  onClick={handleMarkComplete}
+                <Button
+                  onClick={handleToggleComplete}
                   variant={isCurrentLessonCompleted ? "default" : "default"}
                   className={isCurrentLessonCompleted ? "bg-[#22C55E] hover:bg-[#16A34A]" : ""}
-                  disabled={savingProgress || isCurrentLessonCompleted}
+                  disabled={savingProgress}
                 >
                   {savingProgress ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -418,16 +479,20 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
             <div className="mt-6 space-y-3 rounded-lg border-2 border-[#1e467c] bg-[#F8FAFC] p-4">
               <div className="flex items-center gap-2 text-[#1e467c]">
                 <Award className="h-5 w-5" />
-                <h4 className="font-semibold">Evaluación Final</h4>
+                <h4 className="font-semibold">
+                  {hasPassedEvaluation ? "Evaluación Completada" : "Evaluación Final"}
+                </h4>
               </div>
               <p className="text-sm text-[#64748B]">
-                Completa la evaluación para obtener tu certificado
+                {hasPassedEvaluation 
+                  ? "¡Ya aprobaste este curso! Accede a tu certificado" 
+                  : "Completa la evaluación para obtener tu certificado"}
               </p>
               <Button 
                 onClick={() => onNavigate?.("evaluation", courseId, courseSlug)}
-                className="w-full"
+                className="w-full bg-[#1e467c] hover:bg-[#0d2d54] text-white"
               >
-                Iniciar Evaluación
+                {hasPassedEvaluation ? "Ver Certificado" : "Iniciar Evaluación"}
               </Button>
             </div>
           </div>

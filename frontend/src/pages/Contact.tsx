@@ -12,8 +12,9 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { ContactFormSchema, validateFormData } from "../lib/validation";
 
 export function Contact() {
   const [formData, setFormData] = useState({
@@ -23,13 +24,57 @@ export function Contact() {
     subject: "",
     message: "",
   });
+  const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Auto-fill email when user is logged in
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email) {
+        setIsLoggedIn(true);
+        setFormData((prev) => ({ ...prev, email: session.user.email! }));
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user?.email) {
+        setIsLoggedIn(true);
+        setFormData((prev) => ({ ...prev, email: session.user.email! }));
+      } else {
+        setIsLoggedIn(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleInputChange = (field: string, value: unknown) => {
+    setFormData({ ...formData, [field]: value });
+    // Limpiar error cuando el usuario empieza a escribir
+    if (errors[field]) {
+      const newErrors = { ...errors };
+      delete newErrors[field];
+      setErrors(newErrors);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrors({});
 
     try {
+      // Validar datos antes de enviar
+      const validationResult = await validateFormData(ContactFormSchema, formData);
+      
+      if (!validationResult.success) {
+        setErrors(validationResult.errors || {});
+        toast.error("Por favor corrige los errores en el formulario");
+        setIsLoading(false);
+        return;
+      }
+
       // Guardar mensaje en Supabase
       const { error } = await supabase
         .from("contact_messages")
@@ -46,20 +91,40 @@ export function Contact() {
 
       if (error) throw error;
 
-      toast.success("¡Mensaje enviado correctamente!", {
-        description: "Nos pondremos en contacto contigo a la brevedad.",
+      // Enviar email de notificación via Supabase Edge Function
+      const { error: fnError } = await supabase.functions.invoke("send_contact_email", {
+        body: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || "",
+          subject: formData.subject,
+          message: formData.message,
+        },
       });
 
-      // Resetear formulario
-      setFormData({
+      if (fnError) {
+        console.error("Error en la función de email:", fnError);
+        // Notificamos al usuario pero no bloqueamos (el mensaje ya quedó en Supabase)
+        toast.warning("Mensaje guardado, pero hubo un problema al enviar el email de notificación.", {
+          description: "Nos contactaremos contigo igualmente.",
+        });
+      } else {
+        toast.success("¡Mensaje enviado correctamente!", {
+          description: "Nos pondremos en contacto contigo a la brevedad.",
+        });
+      }
+
+      // Resetear formulario (mantener email si está logueado)
+      setFormData((prev) => ({
         name: "",
-        email: "",
+        email: isLoggedIn ? prev.email : "",
         phone: "",
         subject: "",
         message: "",
-      });
-    } catch (error: any) {
-      console.error("Error al enviar mensaje:", error);
+      }));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Error al enviar mensaje:", message);
       toast.error("Error al enviar el mensaje", {
         description: "Intenta de nuevo más tarde",
       });
@@ -169,43 +234,58 @@ export function Contact() {
                         id="name"
                         value={formData.name}
                         onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
+                          handleInputChange('name', e.target.value)
                         }
                         placeholder="Tu nombre"
-                        className="h-12"
+                        className={`h-12 ${errors.name ? 'border-red-500' : ''}`}
                         required
                       />
+                      {errors.name && (
+                        <p className="text-sm text-red-500">{errors.name[0]}</p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email *</Label>
+                      <Label htmlFor="email">
+                        Email *
+                        {isLoggedIn && (
+                          <span className="ml-2 text-xs text-[#64748B] font-normal">(asociado a tu cuenta)</span>
+                        )}
+                      </Label>
                       <Input
                         id="email"
                         type="email"
                         value={formData.email}
                         onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
+                          !isLoggedIn && handleInputChange('email', e.target.value)
                         }
                         placeholder="tu@email.com"
-                        className="h-12"
+                        className={`h-12 ${errors.email ? 'border-red-500' : ''} ${isLoggedIn ? 'bg-gray-100 cursor-not-allowed opacity-70' : ''}`}
+                        readOnly={isLoggedIn}
                         required
                       />
+                      {errors.email && (
+                        <p className="text-sm text-red-500">{errors.email[0]}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Teléfono</Label>
+                      <Label htmlFor="phone">Teléfono <span className="font-normal text-[#64748B]">(opcional)</span></Label>
                       <Input
                         id="phone"
                         type="tel"
                         value={formData.phone}
                         onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
+                          handleInputChange('phone', e.target.value)
                         }
                         placeholder="+54 9 11 1234-5678"
-                        className="h-12"
+                        className={`h-12 ${errors.phone ? 'border-red-500' : ''}`}
                       />
+                      {errors.phone && (
+                        <p className="text-sm text-red-500">{errors.phone[0]}</p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -213,11 +293,11 @@ export function Contact() {
                       <Select
                         value={formData.subject}
                         onValueChange={(value) =>
-                          setFormData({ ...formData, subject: value })
+                          handleInputChange('subject', value)
                         }
                         required
                       >
-                        <SelectTrigger id="subject" className="h-12">
+                        <SelectTrigger id="subject" className={`h-12 ${errors.subject ? 'border-red-500' : ''}`}>
                           <SelectValue placeholder="Selecciona un asunto" />
                         </SelectTrigger>
                         <SelectContent>
@@ -229,6 +309,9 @@ export function Contact() {
                           <SelectItem value="corporativo">Planes Corporativos</SelectItem>
                         </SelectContent>
                       </Select>
+                      {errors.subject && (
+                        <p className="text-sm text-red-500">{errors.subject[0]}</p>
+                      )}
                     </div>
                   </div>
 
@@ -238,13 +321,17 @@ export function Contact() {
                       id="message"
                       value={formData.message}
                       onChange={(e) =>
-                        setFormData({ ...formData, message: e.target.value })
+                        handleInputChange('message', e.target.value)
                       }
                       placeholder="Escribe tu mensaje aquí..."
                       rows={8}
-                      className="resize-none"
+                      className={`resize-none ${errors.message ? 'border-red-500' : ''}`}
                       required
                     />
+                    {errors.message && (
+                      <p className="text-sm text-red-500">{errors.message[0]}</p>
+                    )}
+                    <p className="text-xs text-[#64748B]">{formData.message.length} / 5000</p>
                   </div>
 
                   <div className="flex justify-center">

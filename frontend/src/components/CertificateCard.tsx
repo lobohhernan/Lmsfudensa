@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, memo } from "react";
 import { Award, Calendar, Shield, Download, Eye } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { Button } from "./ui/button";
@@ -25,7 +25,7 @@ export interface CertificateCardProps {
   certificateId?: string;
 }
 
-export function CertificateCard({
+export const CertificateCard = memo(function CertificateCard({
   courseName,
   issueDate,
   hash,
@@ -49,37 +49,48 @@ export function CertificateCard({
   };
 
   const handleViewCertificate = async () => {
-    if (!certificateRef.current) {
-      toast.error("No se pudo generar la vista previa");
-      return;
-    }
+    setIsGenerating(true); // Para que se monte el componente
+    
+    setTimeout(async () => {
+      if (!certificateRef.current) {
+        setIsGenerating(false);
+        toast.error("No se pudo generar la vista previa");
+        return;
+      }
 
-    try {
-      const url = await generateCertificatePreview(certificateRef.current);
-      setPreviewUrl(url);
-      setShowPreview(true);
-    } catch (error) {
-      toast.error("Error al generar la vista previa");
-      console.error("Error:", error);
-    }
+      try {
+        const url = await generateCertificatePreview(certificateRef.current);
+        setPreviewUrl(url);
+        setShowPreview(true);
+      } catch (error) {
+        toast.error("Error al generar la vista previa");
+        console.error("Error:", error);
+      } finally {
+        setIsGenerating(false);
+      }
+    }, 800); // Esperar a que se monte
   };
 
   const handleDownload = async () => {
-    if (!certificateRef.current) {
-      toast.error("No se pudo generar el certificado");
-      return;
-    }
+    setIsGenerating(true); // Para que se monte el componente
 
-    setIsGenerating(true);
-    try {
-      await generateCertificatePDF(certificateRef.current, certificateData);
-      toast.success("Certificado descargado exitosamente");
-    } catch (error) {
-      toast.error("Error al generar el certificado. Por favor, intente nuevamente.");
-      console.error("Error:", error);
-    } finally {
-      setIsGenerating(false);
-    }
+    setTimeout(async () => {
+      if (!certificateRef.current) {
+        setIsGenerating(false);
+        toast.error("No se pudo generar el certificado");
+        return;
+      }
+
+      try {
+        await generateCertificatePDF(certificateRef.current, certificateData);
+        toast.success("Certificado descargado exitosamente");
+      } catch (error) {
+        toast.error("Error al generar el certificado. Por favor, intente nuevamente.");
+        console.error("Error:", error);
+      } finally {
+        setIsGenerating(false);
+      }
+    }, 800); // Esperar a que se monte
   };
   return (
     <Card className="group relative overflow-hidden border-l-4 border-l-[#55a5c7] border border-[#55a5c7]/20 bg-gradient-to-br from-white to-[#55a5c7]/5 backdrop-blur-sm transition-all duration-300 hover:border-[#55a5c7]/40 hover:shadow-[0_8px_32px_0_rgba(85,165,199,0.25),inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:scale-105 cursor-pointer flex flex-col h-full">
@@ -133,8 +144,8 @@ export function CertificateCard({
         </Button>
       </CardFooter>
 
-      {/* Hidden Certificate Template for PDF Generation */}
-      <div className="fixed -left-[10000px] top-0">
+      {/* Hidden Certificate Template siempre montado para que el ref funcione al hacer clic */}
+      <div className="fixed -left-[10000px] top-0 pointer-events-none">
         <CertificateTemplate ref={certificateRef} data={certificateData} />
       </div>
 
@@ -178,4 +189,4 @@ export function CertificateCard({
       </Dialog>
     </Card>
   );
-}
+});

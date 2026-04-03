@@ -1,10 +1,13 @@
 # 🎓 FUDENSA - Plataforma de Educación en Línea
 
-[![Deploy Status](https://img.shields.io/badge/Deploy-Netlify-00C7B7?style=flat-square&logo=netlify)](https://fudensa.netlify.app)
+[![Deploy Status](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020?style=flat-square&logo=cloudflare)](https://fudensa.pages.dev)
 [![GitHub](https://img.shields.io/badge/GitHub-lobohhernan-181717?style=flat-square&logo=github)](https://github.com/lobohhernan/Lmsfudensa)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![Contributors](https://img.shields.io/badge/Contributors-3-blue?style=flat-square)](https://github.com/lobohhernan/Lmsfudensa/graphs/contributors)
 
 FUDENSA es una plataforma de educación en línea moderna, escalable y segura construida con las últimas tecnologías web. Ofrece un ecosistema completo para gestionar cursos, estudiantes, pagos y certificados digitales.
+
+**Desarrollado por:** [Hernán Lobo](https://github.com/lobohhernan) · [Santiago Martinez](https://github.com/SantiCampero) · [Maximiliano Massey](https://github.com/MaximilianoMassey)
 
 ---
 
@@ -24,6 +27,7 @@ FUDENSA es una plataforma de educación en línea moderna, escalable y segura co
 
 ### 👥 Sistema de Usuarios
 - Autenticación con **Supabase Auth**
+- **Login con Google OAuth 2.0** (nombre y apellido importados automáticamente)
 - Perfiles de usuario personalizables
 - Sistema de roles (Estudiante, Instructor, Admin)
 - Dashboard de usuario con progreso de cursos
@@ -66,15 +70,16 @@ FUDENSA es una plataforma de educación en línea moderna, escalable y segura co
 - **ORM**: PostgREST API
 
 ### DevOps
-- **Deployment Frontend**: Netlify
+- **Deployment Frontend**: Cloudflare Pages
 - **Deployment Backend**: Supabase Edge Functions
-- **CI/CD**: Git push automático
+- **CI/CD**: Git push automático desde main
 - **Versionamiento**: GitHub
 
 ### Servicios Externos
 - **Mercado Pago API** - Procesamiento de pagos
 - **Supabase** - Backend as a Service
-- **Netlify** - Hosting frontend
+- **Cloudflare Pages** - Hosting frontend
+- **Google OAuth 2.0** - Autenticación con cuenta Google
 
 ---
 
@@ -109,7 +114,23 @@ SUPABASE_SERVICE_ROLE_KEY=tu_clave_service
 MERCADOPAGO_ACCESS_TOKEN=tu_token_mp
 ```
 
-### 3. Instalar Dependencias
+### 3. Configurar Google OAuth (para login con Google)
+
+1. Ir a [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → **Create OAuth 2.0 Client ID**
+2. Tipo de aplicación: **Aplicación web**
+3. En **Orígenes autorizados de JavaScript** agregar:
+   ```
+   http://localhost:5173
+   https://lmsfudensa.pages.dev
+   ```
+4. En **URIs de redireccionamiento autorizados** agregar:
+   ```
+   https://hztkspqunxeauawqcikw.supabase.co/auth/v1/callback
+   ```
+5. Click en **Crear** — copiar el **Client ID** y **Client Secret**
+6. En [Supabase Dashboard](https://supabase.com/dashboard) → Authentication → Providers → Google → habilitar y pegar las credenciales → **Save**
+
+### 4. Instalar Dependencias
 
 ```bash
 # Frontend
@@ -121,7 +142,7 @@ cd ../backend
 npm install
 ```
 
-### 4. Inicializar Base de Datos
+### 5. Inicializar Base de Datos
 
 ```bash
 cd backend
@@ -129,7 +150,7 @@ npx supabase start
 npx supabase db push
 ```
 
-### 5. Ejecutar en Desarrollo
+### 6. Ejecutar en Desarrollo
 
 ```bash
 # Terminal 1 - Frontend
@@ -145,7 +166,28 @@ La aplicación estará disponible en `http://localhost:5173`
 
 ---
 
-## 📋 Estructura del Proyecto
+## � Deployment & CI/CD
+
+### Deployment
+
+El proyecto se despliega automáticamente en Cloudflare Pages al hacer push a la rama main.
+
+```bash
+# Deploy automático
+git push origin main
+```
+
+### Configuration
+
+Ver [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) para instrucciones completas de configuración.
+
+### Deployment URLs
+
+- **Production**: https://lmsfudensa.pages.dev
+
+---
+
+## �📋 Estructura del Proyecto
 
 ```
 Lmsfudensa/
@@ -180,6 +222,9 @@ Lmsfudensa/
 ### Supabase
 - `VITE_SUPABASE_URL` - URL del proyecto Supabase
 - `VITE_SUPABASE_ANON_KEY` - Clave pública de Supabase
+
+### Google OAuth
+- Configurado directamente en el Dashboard de Supabase (no requiere variables de entorno adicionales)
 
 ### Mercado Pago
 - `VITE_MERCADO_PAGO_PUBLIC_KEY` - Clave pública (solo lectura)
@@ -231,18 +276,52 @@ Lmsfudensa/
 
 ## 🚢 Deploy
 
-### Frontend (Netlify)
+### Frontend (Cloudflare Pages)
 ```bash
-# El deploy es automático al hacer push a la rama Deploy
-git push origin Deploy
+# El deploy es automático al hacer push a la rama main
+git push origin main
 ```
+
+**URL en Producción**: [https://fudensa.pages.dev](https://fudensa.pages.dev)
 
 ### Backend (Edge Functions)
 ```bash
 # Deploy de funciones
 cd backend
+npx supabase functions deploy admin-operations
+npx supabase functions deploy bright-action
 npx supabase functions deploy mercadopago-preference --no-verify-jwt
 npx supabase functions deploy mercadopago-webhook --no-verify-jwt
+```
+
+---
+
+## 🎓 Sistema de Certificados
+
+**Estado**: ✅ Implementado y Funcional
+
+El sistema de certificados está completamente funcional con generación automática de PDFs:
+
+### Características
+- ✅ Generación automática al completar cursos (score ≥ 60%)
+- ✅ Diseño profesional acorde a marca FUDENSA
+- ✅ Datos dinámicos: Nombre estudiante, Curso, Fecha
+- ✅ PDF en alta calidad (300 DPI, A4 apaisado)
+- ✅ Vista previa antes de descargar
+- ✅ Hash único de verificación
+- ✅ Almacenamiento en base de datos
+
+### Archivos Relacionados
+- [CERTIFICATE_IMPLEMENTATION.md](./CERTIFICATE_IMPLEMENTATION.md) - Documentación técnica completa
+- [CERTIFICATE_QUICK_TEST.md](./CERTIFICATE_QUICK_TEST.md) - Guía de pruebas
+
+### Cómo Probar
+```bash
+cd frontend
+npm run dev
+# 1. Completa un examen con score ≥ 60%
+# 2. Haz clic en "Ver" para ver preview
+# 3. Haz clic en "Descargar" para obtener PDF
 ```
 
 ---
@@ -250,28 +329,17 @@ npx supabase functions deploy mercadopago-webhook --no-verify-jwt
 ## 📞 Soporte y Contacto
 
 - **GitHub Issues**: [Reportar un problema](https://github.com/lobohhernan/Lmsfudensa/issues)
-- **Documentación**: Ver `SETUP_REMOTE_SUPABASE.md` para guías detalladas
 - **Email**: [contacto@fudensa.edu]
 
 ---
 
 ## 📄 Documentación Adicional
 
-- [Guía de Configuración Remota](./SETUP_REMOTE_SUPABASE.md) - Configuración de Supabase remoto
+- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) - Guía de despliegue
+- [CERTIFICATE_IMPLEMENTATION.md](./CERTIFICATE_IMPLEMENTATION.md) - Documentación de certificados
+- [CERTIFICATE_QUICK_TEST.md](./CERTIFICATE_QUICK_TEST.md) - Guía de pruebas de certificados
 - [README Frontend](./frontend/README.md) - Instrucciones específicas del frontend
 - [README Backend](./backend/README.md) - Instrucciones del backend
-
----
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Para cambios importantes:
-
-1. Fork el repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
 
 ---
 
@@ -281,24 +349,45 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ---
 
-## 👨‍💻 Autor
+## 👨‍💻 Contribuidores
 
-**Hernán Lobo**
-- GitHub: [@lobohhernan](https://github.com/lobohhernan)
-- Proyecto Final: UTN - Trabajo Final Profesional
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/lobohhernan">
+        <img src="https://github.com/lobohhernan.png" width="100px;" alt="Hernán Lobo"/><br />
+        <sub><b>Hernán Ignacio Lobo Campero</b></sub>
+      </a><br />
+      <a href="https://github.com/lobohhernan/Lmsfudensa/commits?author=lobohhernan" title="Code">💻</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/SantiCampero">
+        <img src="https://github.com/SantiCampero.png" width="100px;" alt="Santiago Martinez"/><br />
+        <sub><b>Santiago Martinez Campero</b></sub>
+      </a><br />
+      <a href="https://github.com/lobohhernan/Lmsfudensa/commits?author=SantiCampero" title="Code">💻</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/MaximilianoMassey">
+        <img src="https://github.com/MaximilianoMassey.png" width="100px;" alt="Maximiliano Massey"/><br />
+        <sub><b>Massey Maximiliano</b></sub>
+      </a><br />
+      <a href="https://github.com/lobohhernan/Lmsfudensa/commits?author=MaximilianoMassey" title="Code">💻</a>
+    </td>
+  </tr>
+</table>
+
+**Proyecto Final:** UTN - Trabajo Final Profesional
 
 ---
 
-## 🙏 Agradecimientos
+## Agradecimientos
 
-- [Supabase](https://supabase.com) - Backend as a Service
-- [Netlify](https://netlify.com) - Hosting y CI/CD
-- [Tailwind CSS](https://tailwindcss.com) - Utilidades CSS
-- [Shadcn UI](https://ui.shadcn.com) - Componentes React
+- [Cloudflare Pages](https://pages.cloudflare.com) - Hosting y CI/CD
 - [Mercado Pago](https://mercadopago.com) - Procesamiento de pagos
+- [Shadcn UI](https://ui.shadcn.com) - Componentes React
+- [Supabase](https://supabase.com) - Backend as a Service
+- [Tailwind CSS](https://tailwindcss.com) - Utilidades CSS
 
 ---
 
-<p align="center">
-  Hecho con ❤️ para la educación en línea
-</p>

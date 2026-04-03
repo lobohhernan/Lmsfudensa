@@ -26,6 +26,7 @@ import { debug, error as logError } from '../lib/logger'
 import { isUserEnrolled, enrollUser } from "../lib/enrollments";
 import { resolveCourseSlugToId } from "../lib/courseResolver"
 import { createMercadoPagoPreference, redirectToMercadoPago } from "../lib/mercadopago";
+import { PaymentTestButtons } from "../components/PaymentTestButtons";
 
 interface CheckoutProps {
   onNavigate?: (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => void;
@@ -38,14 +39,25 @@ interface CheckoutProps {
 export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, userData, isInitializing = false }: CheckoutProps) {
   const [step, setStep] = useState(1);
   const [country, setCountry] = useState("AR");
-  const [couponCode, setCouponCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [courseData, setCourseData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [courseId, setCourseId] = useState<string | undefined>(initialCourseId);
+  const [userId, setUserId] = useState<string | null>(null);
 
   console.log('🛒 [Checkout] Props:', { courseId, courseSlug, hasUserData: !!userData, isInitializing });
+
+  // Get authenticated user ID for testing features
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    getUser();
+  }, []);
 
   // ✅ PASO 1: Resolver courseSlug a courseId si es necesario
   useEffect(() => {
@@ -112,9 +124,10 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
         debug("Curso cargado en checkout:", course);
         setCourseData(course);
         setError(null);
-      } catch (err: any) {
-        console.error("Error cargando curso:", err);
-        setError(err.message || "Error al cargar los datos del curso");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("Error cargando curso:", message);
+        setError(message || "Error al cargar los datos del curso");
       } finally {
         setLoading(false);
       }
@@ -230,17 +243,12 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
       }
 
       // Guardar datos de pago pendiente para procesamiento vía webhook
-      // Mercado Pago NO usa auto_return con localhost
-      // El webhook notificará cuando el pago sea completado
+      // El webhook de Mercado Pago notificará cuando el pago sea completado
       sessionStorage.setItem("mp_pending_course", courseId);
       sessionStorage.setItem("mp_pending_email", userData.email);
       
-      console.log("🔄 Redirigiendo a Mercado Pago...");
       console.log("✅ Preferencia creada, redirigiendo a Mercado Pago...");
-      
-      // Redirigir a Mercado Pago
-      redirectToMercadoPago(initPoint);
-      console.log("URL de redirección:", initPoint);
+      console.log("🔗 URL de redirección:", initPoint);
       
       // Redirigir directamente a Mercado Pago (CHECKOUT PRO)
       redirectToMercadoPago(initPoint);
@@ -397,22 +405,6 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                     </Select>
                   </CardContent>
                 </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cupón de Descuento</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Ingresa tu código"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                      />
-                      <Button variant="outline">Aplicar</Button>
-                    </div>
-                  </CardContent>
-                </Card>
               </>
             )}
 
@@ -474,10 +466,6 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                       $ {price.toLocaleString('es-AR')}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#64748B]">Descuento</span>
-                    <span className="text-[#22C55E]">-$ 0</span>
-                  </div>
                   <Separator className="bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
                   <div className="flex justify-between">
                     <span className="font-semibold text-[#0F172A]">Total ({currency})</span>
@@ -537,6 +525,38 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                         </>
                       )}
                     </Button>
+
+                    {/* Testing Payment Buttons - Development Only */}
+                    {userId && courseId && userData && (
+                      <PaymentTestButtons
+                        userId={userId}
+                        courseId={courseId}
+                        userEmail={userData.email}
+                        onPaymentSimulated={async (status) => {
+                          if (status === "approved") {
+                            toast.success("Pago simulado y procesado exitosamente");
+                            // Wait longer to ensure enrollment is saved and synced
+                            setTimeout(() => {
+                              // Use courseData slug (from loaded course) or courseSlug prop
+                              const slug = courseData?.slug || courseSlug;
+                              console.log("🎓 [Checkout] Redirigiendo con slug:", slug, "courseId:", courseId);
+                              
+                              if (slug) {
+                                onNavigate?.("lesson", courseId, slug, "1");
+                              } else {
+                                console.error("❌ No slug available for navigation", { courseData, courseSlug });
+                                toast.error("Error al redirigir al curso. Por favor, intenta nuevamente.");
+                              }
+                            }, 2500);
+                          } else if (status === "pending") {
+                            toast.info("Pago pendiente - aguardando confirmación");
+                          } else {
+                            toast.error("Pago rechazado - intenta nuevamente");
+                          }
+                        }}
+                      />
+                    )}
+
                     <Button
                       variant="ghost"
                       className="w-full"

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { debug, error as logError } from '../lib/logger'
+import { debug, error as logError, getErrorMessage } from '../lib/logger'
 
 export interface Certificate {
   id: string;
@@ -28,44 +28,87 @@ export function useCertificates() {
     try {
       setLoading(true);
       setError(null);
+      
+      // Obtener usuario autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setCertificates([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Filtrar SOLO certificados del usuario actual
       const { data, error: fetchError } = await supabase
         .from("certificates")
         .select("*")
+        .eq("student_id", user.id)
         .order("created_at", { ascending: false });
 
       if (fetchError) throw fetchError;
       setCertificates(data || []);
-    } catch (err: any) {
-      logError("Error fetching certificates:", err);
-      setError(err.message || "Error al cargar certificados");
+    } catch (err: unknown) {
+      const message = getErrorMessage(err)
+      logError("Error fetching certificates:", message);
+      setError(message || "Error al cargar certificados");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCertificates();
+    let userId: string | null = null;
 
-    // Suscripción realtime
-    const channel = supabase
-      .channel("certificates-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "certificates",
-        },
-        (payload) => {
-          debug("Certificates realtime event:", payload);
-          fetchCertificates(); // Refetch on any change
-        }
-      )
-      .subscribe();
+    const initializeAndSubscribe = async () => {
+      // Obtener usuario autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id || null;
 
-    return () => {
-      supabase.removeChannel(channel);
+      if (!userId) return;
+
+      // Fetch inicial
+      await fetchCertificates();
+
+      // Suscripción realtime — updates quirúrgicos sin refetch completo
+      const channel = supabase
+        .channel("certificates-changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "certificates",
+          },
+          (payload) => {
+            debug("Certificates realtime event:", payload.eventType);
+
+            // Solo procesar si es del usuario actual
+            const certificate = payload.new as Certificate | undefined;
+            if (certificate && certificate.student_id !== userId) {
+              return; // Ignorar certificados de otros usuarios
+            }
+
+            if (payload.eventType === "INSERT") {
+              setCertificates((prev) => [payload.new as Certificate, ...prev]);
+            } else if (payload.eventType === "UPDATE") {
+              const updated = payload.new as Certificate;
+              setCertificates((prev) =>
+                prev.map((c) => (c.id === updated.id ? updated : c))
+              );
+            } else if (payload.eventType === "DELETE") {
+              const deleted = payload.old as Certificate;
+              setCertificates((prev) => prev.filter((c) => c.id !== deleted.id));
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     };
+
+    initializeAndSubscribe();
   }, []);
 
   return { certificates, loading, error, refetch: fetchCertificates };

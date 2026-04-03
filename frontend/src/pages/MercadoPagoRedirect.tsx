@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
+import { NavigationParams } from "../lib/types";
 
 interface Props {
-  onNavigate: (page: string, params?: any) => void;
+  onNavigate: (page: string, params?: Partial<NavigationParams>) => void;
 }
 
 export default function MercadoPagoRedirect({ onNavigate }: Props) {

@@ -18,9 +18,23 @@ export function error(...args: unknown[]) {
   console.error(...args)
 }
 
+/**
+ * Extrae mensaje de error de manera segura
+ * Maneja Error, string, y otros tipos desconocidos
+ */
+export function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (typeof err === 'string') return err
+  if (err && typeof err === 'object' && 'message' in err) {
+    return String((err as Record<string, unknown>).message)
+  }
+  return 'Error desconocido'
+}
+
 export default {
   debug,
   info,
   warn,
   error,
+  getErrorMessage,
 }

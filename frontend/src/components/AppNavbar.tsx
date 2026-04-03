@@ -1,8 +1,8 @@
-import { Search, Menu, X, User, LogOut, UserCircle } from "lucide-react";
+import { Search, Menu, X, User, LogOut, UserCircle, LayoutDashboard, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Dialog,
@@ -28,13 +28,13 @@ interface AppNavbarProps {
   onNavigate?: (page: string) => void;
   isLoggedIn?: boolean;
   onLogout?: () => void;
-  onLogin?: (userData: { email: string; name: string }) => void;
+  onLogin?: (userData: { email: string; name: string; role: 'student' | 'instructor' | 'admin' }) => void;
   currentPage?: string;
   openLoginModal?: boolean;
   openRegisterModal?: boolean;
   onLoginModalChange?: (open: boolean) => void;
   onRegisterModalChange?: (open: boolean) => void;
-  currentUser?: { email: string; name: string } | null;
+  currentUser?: { email: string; name: string; role: 'student' | 'instructor' | 'admin' } | null;
 }
 
 export function AppNavbar({ 
@@ -56,6 +56,7 @@ export function AppNavbar({
   const [isRegistering, setIsRegistering] = useState(false);
   // Used for loading state during login (setter only)
   const [, setIsLoggingIn] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   
   // Use controlled state if provided, otherwise use internal state
   const loginOpen = openLoginModal !== undefined ? openLoginModal : internalLoginOpen;
@@ -77,6 +78,51 @@ export function AppNavbar({
     }
   };
 
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleNavigate = useCallback((page: string) => {
+    onNavigate?.(page);
+  }, [onNavigate]);
+
+  const handleMobileMenuToggle = useCallback(() => {
+    setMobileMenuOpen((prev) => !prev);
+  }, []);
+
+  const handleProfileNav = useCallback(() => {
+    handleNavigate("profile");
+    setMobileMenuOpen(false);
+  }, [handleNavigate]);
+
+  const handleLogout = useCallback(async () => {
+    debug("🔽 Click en Cerrar Sesión");
+    setMobileMenuOpen(false);
+    onLogout?.();
+  }, [onLogout]);
+
+  const handleLoginOpen = useCallback(() => {
+    setIsRegistering(false);
+    setLoginOpen(true);
+  }, []);
+
+  const handleCatalogNav = useCallback(() => {
+    handleNavigate("catalog");
+    setMobileMenuOpen(false);
+  }, [handleNavigate]);
+
+  const handleAboutNav = useCallback(() => {
+    handleNavigate("about");
+    setMobileMenuOpen(false);
+  }, [handleNavigate]);
+
+  const handleContactNav = useCallback(() => {
+    handleNavigate("contact");
+    setMobileMenuOpen(false);
+  }, [handleNavigate]);
+
+  const handleAdminNav = useCallback(() => {
+    handleNavigate("admin");
+    setMobileMenuOpen(false);
+  }, [handleNavigate]);
+
   // Calcular iniciales del usuario
   const getUserInitials = () => {
     if (!currentUser?.name) return "US";
@@ -93,16 +139,29 @@ export function AppNavbar({
   const needsSolidNavbar = solidNavbarPages.includes(currentPage);
 
   useEffect(() => {
+    const scrolledRef = { current: scrolled };
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+      const isScrolled = window.scrollY > 20;
+      if (isScrolled !== scrolledRef.current) {
+        scrolledRef.current = isScrolled;
+        setScrolled(isScrolled);
+      }
     };
     
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <>
+      {/* Skip Links - Keyboard navigation accessibility */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-0 focus:left-0 focus:z-50 focus:bg-[#1e467c] focus:text-white focus:px-4 focus:py-2">
+        Ir al contenido principal
+      </a>
+      <a href="#footer" className="sr-only focus:not-sr-only focus:fixed focus:top-8 focus:left-0 focus:z-50 focus:bg-[#1e467c] focus:text-white focus:px-4 focus:py-2">
+        Ir al pie de página
+      </a>
+      
       <nav className={`sticky top-0 z-50 w-full transition-all duration-300 ${
         mobileMenuOpen
           ? 'bg-[#1e467c]/95 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.5)]'
@@ -117,7 +176,7 @@ export function AppNavbar({
             {/* Logo */}
             <div className="flex items-center gap-8">
               <button
-                onClick={() => onNavigate?.("home")}
+                onClick={handleNavigate.bind(null, "home")}
                 className="flex items-center transition-all duration-200 hover:scale-[1.02] hover:opacity-80"
               >
                 <img 
@@ -130,19 +189,19 @@ export function AppNavbar({
               {/* Desktop Navigation */}
               <div className="hidden items-center gap-2 md:flex">
                 <button
-                  onClick={() => onNavigate?.("catalog")}
+                  onClick={() => handleNavigate("catalog")}
                   className="rounded-lg px-4 py-2 text-white/90 transition-all duration-200 hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
                 >
                   Cursos
                 </button>
                 <button
-                  onClick={() => onNavigate?.("about")}
+                  onClick={() => handleNavigate("about")}
                   className="rounded-lg px-4 py-2 text-white/90 transition-all duration-200 hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
                 >
                   Sobre Nosotros
                 </button>
                 <button
-                  onClick={() => onNavigate?.("contact")}
+                  onClick={() => handleNavigate("contact")}
                   className="rounded-lg px-4 py-2 text-white/90 transition-all duration-200 hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
                 >
                   Contacto
@@ -155,7 +214,11 @@ export function AppNavbar({
               {isLoggedIn ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center gap-2 rounded-lg text-white transition-all hover:bg-white/10 hover:text-white hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]">
+                    <Button 
+                      variant="ghost" 
+                      className="flex items-center gap-2 rounded-full p-1 text-white transition-all hover:bg-transparent hover:text-white focus-visible:ring-0 focus-visible:ring-offset-0 lg:pr-3"
+                      aria-label={`Menú de usuario: ${currentUser?.name || "Usuario"}`}
+                    >
                       <Avatar className="h-8 w-8 ring-2 ring-white/20">
                         <AvatarFallback className="bg-[#0B5FFF] text-white">
                           {getUserInitials()}
@@ -166,34 +229,26 @@ export function AppNavbar({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 border-white/10 bg-[#1e467c]/95 backdrop-blur-xl">
                     <DropdownMenuItem
-                      onClick={() => {
-                        onNavigate?.("profile");
-                        toast.success("Navegando a tu perfil");
-                      }}
+                      onClick={handleProfileNav}
                       className="cursor-pointer text-white hover:bg-white/10"
                     >
                       <UserCircle className="mr-2 h-4 w-4" />
                       Mi Perfil
                     </DropdownMenuItem>
+                    {currentUser?.role === 'admin' && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={handleAdminNav}
+                          className="cursor-pointer text-white hover:bg-white/10"
+                        >
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          Panel Admin
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem
-                      onClick={async () => {
-                        debug("🔽 Click en Cerrar Sesión (Desktop)");
-                        try {
-                          // Cerrar sesión en Supabase
-                          debug("Ejecutando supabase.auth.signOut()...");
-                          await supabase.auth.signOut();
-                          debug("✅ signOut completado");
-
-                          // Llamar al callback de logout del padre
-                          debug("Llamando a onLogout()...");
-                          onLogout?.();
-                          debug("✅ onLogout() ejecutado");
-                        } catch (error) {
-                          logError("❌ Error en logout:", error);
-                          toast.error("Error al cerrar sesión");
-                        }
-                      }}
+                      onClick={handleLogout}
                       className="cursor-pointer text-red-300 hover:bg-red-500/20 hover:text-red-200"
                     >
                       <LogOut className="mr-2 h-4 w-4" />
@@ -204,10 +259,7 @@ export function AppNavbar({
               ) : (
                 <Button
                   variant="ghost"
-                  onClick={() => {
-                    setIsRegistering(false);
-                    setLoginOpen(true);
-                  }}
+                  onClick={handleLoginOpen}
                   className="rounded-lg border border-white/15 bg-white/5 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] transition-all hover:bg-white/15 hover:text-white"
                 >
                   Iniciar Sesión
@@ -218,7 +270,8 @@ export function AppNavbar({
             {/* Mobile Menu Button */}
             <button
               className="flex h-10 w-10 items-center justify-center rounded-lg text-white transition-all duration-200 hover:bg-white/10 active:scale-95 md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={handleMobileMenuToggle}
+              aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
@@ -244,31 +297,25 @@ export function AppNavbar({
                 animate={{ y: 0 }}
                 exit={{ y: -20 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
+                id="mobile-menu"
+                role="navigation"
+                aria-label="Navegación móvil"
                 className="relative z-10 space-y-1 px-4 py-4 max-h-[calc(100vh-4rem)] overflow-y-auto"
               >
                 <button
-                  onClick={() => {
-                    onNavigate?.("catalog");
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={handleCatalogNav}
                   className="block w-full rounded-xl px-4 py-3.5 text-left text-white/95 transition-all duration-200 hover:bg-white/20 hover:text-white hover:shadow-[inset_0_2px_4px_0_rgba(255,255,255,0.1)] active:scale-[0.98]"
                 >
                   Cursos
                 </button>
                 <button
-                  onClick={() => {
-                    onNavigate?.("about");
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={handleAboutNav}
                   className="block w-full rounded-xl px-4 py-3.5 text-left text-white/95 transition-all duration-200 hover:bg-white/20 hover:text-white hover:shadow-[inset_0_2px_4px_0_rgba(255,255,255,0.1)] active:scale-[0.98]"
                 >
                   Sobre Nosotros
                 </button>
                 <button
-                  onClick={() => {
-                    onNavigate?.("contact");
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={handleContactNav}
                   className="block w-full rounded-xl px-4 py-3.5 text-left text-white/95 transition-all duration-200 hover:bg-white/20 hover:text-white hover:shadow-[inset_0_2px_4px_0_rgba(255,255,255,0.1)] active:scale-[0.98]"
                 >
                   Contacto
@@ -289,38 +336,25 @@ export function AppNavbar({
                       </div>
                       <Button
                         variant="ghost"
-                        onClick={() => {
-                          onNavigate?.("profile");
-                          setMobileMenuOpen(false);
-                          toast.success("Navegando a tu perfil");
-                        }}
+                        onClick={handleProfileNav}
                         className="h-auto rounded-xl border border-white/20 bg-white/8 py-3.5 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_2px_8px_0_rgba(0,0,0,0.1)] transition-all hover:border-white/30 hover:bg-white/15 hover:text-white active:scale-[0.98] w-full justify-start"
                       >
                         <UserCircle className="mr-2 h-5 w-5" />
                         Mi Perfil
                       </Button>
+                      {currentUser?.role === 'admin' && (
+                        <Button
+                          variant="ghost"
+                          onClick={handleAdminNav}
+                          className="h-auto rounded-xl border border-white/20 bg-white/8 py-3.5 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_2px_8px_0_rgba(0,0,0,0.1)] transition-all hover:border-white/30 hover:bg-white/15 hover:text-white active:scale-[0.98] w-full justify-start"
+                        >
+                          <LayoutDashboard className="mr-2 h-5 w-5" />
+                          Panel Admin
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
-                        onClick={async () => {
-                          debug("🔽 Click en Cerrar Sesión (Mobile)");
-                          try {
-                            // Cerrar sesión en Supabase
-                            debug("Ejecutando supabase.auth.signOut()...");
-                            await supabase.auth.signOut();
-                            debug("✅ signOut completado");
-
-                            // Llamar al callback de logout
-                            debug("Llamando a onLogout()...");
-                            onLogout?.();
-                            debug("✅ onLogout() ejecutado");
-
-                            // Cerrar menú móvil
-                            setMobileMenuOpen(false);
-                          } catch (error) {
-                            logError("❌ Error en logout:", error);
-                            toast.error("Error al cerrar sesión");
-                          }
-                        }}
+                        onClick={handleLogout}
                         className="h-auto rounded-lg py-3 text-red-200 transition-all hover:bg-red-500/20 hover:text-red-100 active:scale-[0.98] w-full justify-start"
                       >
                         <LogOut className="mr-2 h-5 w-5" />
@@ -350,7 +384,10 @@ export function AppNavbar({
       {/* Auth Modal - Login/Register */}
       <Dialog open={loginOpen} onOpenChange={(open) => {
         setLoginOpen(open);
-        if (!open) setIsRegistering(false);
+        if (!open) {
+          setIsRegistering(false);
+          setIsGoogleLoading(false);
+        }
       }}>
         <DialogContent className="sm:max-w-[425px] relative overflow-hidden border-white/20 bg-gradient-to-br from-[#1e467c]/95 via-[#2c5a9e]/95 to-[#1e467c]/95 backdrop-blur-2xl shadow-[0_24px_64px_0_rgba(31,38,135,0.5),inset_0_1px_0_0_rgba(255,255,255,0.15)]">
           {/* Glass shine effect */}
@@ -400,16 +437,17 @@ export function AppNavbar({
                       return;
                     }
 
-                    // Obtener perfil para conseguir nombre completo
+                    // Obtener perfil para conseguir nombre completo y role
                     const { data: profile, error: profileError } = await supabase
                       .from("profiles")
-                      .select("full_name, email")
+                      .select("full_name, email, role")
                       .eq("id", authData.user.id)
                       .single();
 
                     const userName = profile?.full_name || email.split('@')[0];
+                    const userRole = profile?.role || 'student';
 
-                    onLogin?.({ email, name: userName });
+                    onLogin?.({ email, name: userName, role: userRole });
                     setLoginOpen(false);
                     setIsRegistering(false);
                     toast.success("Sesión iniciada correctamente. ¡Bienvenido!");
@@ -471,31 +509,50 @@ export function AppNavbar({
                   <Button
                   type="button"
                   variant="outline"
-                  className="w-full border-white/20 bg-white/10 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] transition-all hover:bg-white/15 hover:border-white/30 hover:text-white"
-                  onClick={() => {
-                    // Google login logic here
-                    debug('Login with Google');
+                  disabled={isGoogleLoading}
+                  className="w-full border-white/20 bg-white/10 text-white backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] transition-all hover:bg-white/15 hover:border-white/30 hover:text-white disabled:opacity-70 disabled:cursor-not-allowed"
+                  onClick={async () => {
+                    setIsGoogleLoading(true);
+                    const { error } = await supabase.auth.signInWithOAuth({
+                      provider: 'google',
+                      options: {
+                        redirectTo: window.location.origin,
+                      }
+                    });
+                    if (error) {
+                      toast.error("Error al iniciar sesión con Google: " + error.message);
+                      setIsGoogleLoading(false);
+                    }
                   }}
                 >
-                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                    <path
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      fill="#4285F4"
-                    />
-                    <path
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      fill="#34A853"
-                    />
-                    <path
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      fill="#FBBC05"
-                    />
-                    <path
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      fill="#EA4335"
-                    />
-                  </svg>
-                  Continuar con Google
+                  {isGoogleLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Continuar con Google
+                    </>
+                  ) : (
+                    <>
+                      <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                        <path
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                          fill="#4285F4"
+                        />
+                        <path
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                          fill="#34A853"
+                        />
+                        <path
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                          fill="#FBBC05"
+                        />
+                        <path
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                          fill="#EA4335"
+                        />
+                      </svg>
+                      Continuar con Google
+                    </>
+                  )}
                 </Button>
                 
                 <p className="text-center text-sm text-white/70">
@@ -593,7 +650,7 @@ export function AppNavbar({
                     });
 
                     // Llamar onLogin para actualizar el estado en App
-                    onLogin?.({ email, name });
+                    onLogin?.({ email, name, role: 'student' });
                     
                     // Cerrar modal y resetear estado
                     setLoginOpen(false);
@@ -674,3 +731,5 @@ export function AppNavbar({
     </>
   );
 }
+
+export const AppNavbarMemoized = memo(AppNavbar);

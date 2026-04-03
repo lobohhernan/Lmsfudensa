@@ -1,40 +1,32 @@
-import { useState, useEffect, Suspense } from "react";
-import { Palette, LayoutDashboard, Menu, Award, User, LogIn, LogOut } from "lucide-react";
+﻿import { useState, useEffect, useCallback, useRef, lazy, Suspense, startTransition } from "react";
 import { AppNavbar } from "./components/AppNavbar";
 import { AppFooter } from "./components/AppFooter";
 import { PageLoader } from "./components/PageLoader";
 import { Home } from "./pages/Home";
 import { CourseCatalog } from "./pages/CourseCatalog";
-import { CourseDetail } from "./pages/CourseDetail";
-import { LessonPlayer } from "./pages/LessonPlayer";
-import { Checkout } from "./pages/Checkout";
-import { PaymentCallback } from "./pages/PaymentCallback";
-import MercadoPagoSuccess from "./pages/MercadoPagoSuccess";
-import MercadoPagoRedirect from "./pages/MercadoPagoRedirect";
-import CheckoutSuccess from "./pages/CheckoutSuccess";
-import CheckoutFailure from "./pages/CheckoutFailure";
-import { UserProfile } from "./pages/UserProfile";
-import { AdminPanel } from "./pages/AdminPanel";
-import { DesignSystem } from "./pages/DesignSystem";
-import { Evaluation } from "./pages/Evaluation";
-import { AboutUs } from "./pages/AboutUs";
-import { Contact } from "./pages/Contact";
+
+// ✅ Code-splitting: lazy load de páginas no críticas para reducir bundle inicial
+const CourseDetail = lazy(() => import("./pages/CourseDetail").then(m => ({ default: m.CourseDetail })));
+const LessonPlayer = lazy(() => import("./pages/LessonPlayer").then(m => ({ default: m.LessonPlayer })));
+const Checkout = lazy(() => import("./pages/Checkout").then(m => ({ default: m.Checkout })));
+const PaymentCallback = lazy(() => import("./pages/PaymentCallback").then(m => ({ default: m.PaymentCallback })));
+const MercadoPagoSuccess = lazy(() => import("./pages/MercadoPagoSuccess"));
+const MercadoPagoRedirect = lazy(() => import("./pages/MercadoPagoRedirect"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
+const CheckoutFailure = lazy(() => import("./pages/CheckoutFailure"));
+const UserProfile = lazy(() => import("./pages/UserProfile").then(m => ({ default: m.UserProfile })));
+const AdminPanel = lazy(() => import("./pages/AdminPanel").then(m => ({ default: m.AdminPanel })));
+const DesignSystem = lazy(() => import("./pages/DesignSystem").then(m => ({ default: m.DesignSystem })));
+const Evaluation = lazy(() => import("./pages/Evaluation").then(m => ({ default: m.Evaluation })));
+const AboutUs = lazy(() => import("./pages/AboutUs").then(m => ({ default: m.AboutUs })));
+const Contact = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
-import { Button } from "./components/ui/button";
 import { supabase } from "./lib/supabase";
 import { initCacheManager } from "./lib/cacheManager";
-import { debugSupabaseSession, clearSupabaseSession } from "./utils/debugSupabase";
 import { debug, error as logError } from './lib/logger'
 import { useStorageCleanup } from "./hooks/useStorageCleanup"
 import { resolveCourseSlugToId } from "./lib/courseResolver"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "./components/ui/dropdown-menu";
 
 type Page =
   | "home"
@@ -182,15 +174,21 @@ export default function App() {
   const [currentCourseId, setCurrentCourseId] = useState<string | undefined>(initialRoute.courseId);
   const [currentCourseSlug, setCurrentCourseSlug] = useState<string | undefined>(initialRoute.courseSlug);
   const [currentLessonId, setCurrentLessonId] = useState<string | undefined>(initialRoute.lessonId);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  // ✅ Solo inicializar si hay tokens guardados
-  const [isInitializing, setIsInitializing] = useState(() => {
-    return !!localStorage.getItem('sb-lgqzmqfnjcnquwkqkgpy-auth-token');
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    try { return !!sessionStorage.getItem('user_session'); } catch { return false; }
   });
-  const [userData, setUserData] = useState<{ email: string; name: string } | null>(null);
-  const [pendingNavigation, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
+  const [userData, setUserData] = useState<{ email: string; name: string; role: 'student' | 'instructor' | 'admin' } | null>(() => {
+    // Inicializar desde sessionStorage para evitar flash del botón admin en recargas
+    try {
+      const cached = sessionStorage.getItem('user_session');
+      if (cached) return JSON.parse(cached);
+    } catch { /* ignorar */ }
+    return null;
+  });
+  const [, setPendingNavigation] = useState<{ page: string; courseId?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isResolvingRoute, setIsResolvingRoute] = useState(false);
+  const [authBootstrapped, setAuthBootstrapped] = useState(false);
 
   // ✅ Resolver courseSlug a courseId cuando navegamos por URL (F5)
   useEffect(() => {
@@ -220,7 +218,9 @@ export default function App() {
   }, [currentCourseSlug, currentCourseId]);
 
   // Actualizar URL según la página activa
+  // ⚠️ NO ejecutar pushState mientras haya parámetros OAuth pendientes
   useEffect(() => {
+    if (!authBootstrapped) return; // Esperar a que auth termine bootstrap
     if (currentPage === "profile" && userData) {
       // Perfil: /perfil/username
       const userId = userData.email.split('@')[0];
@@ -277,6 +277,11 @@ export default function App() {
         course: "Detalle del Curso",
         lesson: "Lección",
         checkout: "Checkout",
+        "payment-callback": "Procesando Pago",
+        "mp-success": "Confirmando Pago",
+        "mp-redirect": "Redirigiendo Pago",
+        "checkout-success": "Pago Exitoso",
+        "checkout-failure": "Pago Fallido",
         profile: "Perfil",
         admin: "Panel de Administración",
         design: "Sistema de Diseño",
@@ -286,165 +291,334 @@ export default function App() {
       };
       document.title = `${pageNames[currentPage]} | FUDENSA`;
     }
-  }, [currentPage, userData, currentCourseSlug, currentLessonId]);
+  }, [currentPage, userData, currentCourseSlug, currentLessonId, authBootstrapped]);
+
+  // Proteger acceso al panel admin por URL directa
+  // ⚠️ Esperar a authBootstrapped antes de evaluar: si no, redirige mientras
+  // Supabase aún está restaurando la sesión desde localStorage (ej: F5 en /admin)
+  useEffect(() => {
+    if (!authBootstrapped) return;
+    if (currentPage === 'admin') {
+      if (!isLoggedIn || !userData || userData.role !== 'admin') {
+        toast.error('Acceso denegado. Solo administradores pueden acceder al panel admin.');
+        startTransition(() => {
+          setCurrentPage('home');
+          window.history.pushState(null, "", "/");
+        });
+      }
+    }
+  }, [currentPage, isLoggedIn, userData, authBootstrapped]);
 
   // ✅ Listener para botón atrás/adelante del navegador
   useEffect(() => {
     const handlePopState = () => {
       const route = parseRouteFromPath();
-      setCurrentPage(route.page);
-      setCurrentCourseId(route.courseId);
-      setCurrentCourseSlug(route.courseSlug);
-      setCurrentLessonId(route.lessonId);
+      startTransition(() => {
+        setCurrentPage(route.page);
+        setCurrentCourseId(route.courseId);
+        setCurrentCourseSlug(route.courseSlug);
+        setCurrentLessonId(route.lessonId);
+      });
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Cargar sesión de Supabase al iniciar
+  // ── Ref para almacenar datos crudos del usuario autenticado (sin REST calls) ──
+  const authUserRef = useRef<{ id: string; email: string; name: string } | null>(null)
+
+  // ══════════════════════════════════════════════════════════════════════
+  // EFECTO 1: Auth listener — CERO REST calls dentro del callback
+  // ══════════════════════════════════════════════════════════════════════
+  // En @supabase/supabase-js v2.95, cada REST call hace:
+  //   fetchWithAuth → _getAccessToken → auth.getSession → await initializePromise
+  // Si initializePromise no ha resuelto aún (auth lock), el REST call queda
+  // colgado SILENCIOSAMENTE (sin error, sin network request).
+  // onAuthStateChange se dispara DENTRO de _initialize (con el lock tomado),
+  // así que hacer REST calls ahí produce un deadlock circular.
+  //
+  // Solución: onAuthStateChange SOLO lee datos del objeto session (ya en memoria)
+  // y setea estado React. Las REST calls (ensureProfile, fetchRole) se hacen
+  // en un useEffect separado que corre DESPUÉS, cuando el lock ya se liberó.
+  // ══════════════════════════════════════════════════════════════════════
   useEffect(() => {
-    // ✨ Inicializar Cache Manager (detección automática de versión)
     initCacheManager()
 
-    const authTimeoutRef: { current: number | null } = { current: null }
-
-    const clearAuthTimeout = () => {
-      if (authTimeoutRef.current) {
-        clearTimeout(authTimeoutRef.current)
-        authTimeoutRef.current = null
-      }
+    // Helper: extraer userData SIN REST calls, usando solo metadata del token
+    // ⚠️ IMPORTANTE: No usar full_name del metadata, ya que tarda en sincronizarse con Auth
+    // El nombre correcto vendrá del useEffect de syncProfile que obtiene de DB
+    const extractUserDataFromMeta = (user: {
+      id: string;
+      email?: string | null;
+      user_metadata?: Record<string, unknown>;
+      app_metadata?: Record<string, unknown>;
+    }) => {
+      const userMeta = user.user_metadata ?? {}
+      const appMeta = user.app_metadata ?? {}
+      // 🔑 No usar full_name de metadata - usar email como placeholder
+      // El nombre real se sincronizará desde la DB en el siguiente useEffect
+      const fullName = (user.email?.split('@')[0] || 'Usuario') as string
+      const role: 'student' | 'instructor' | 'admin' =
+        (appMeta.role || userMeta.role || 'student') as 'student' | 'instructor' | 'admin'
+      return { email: user.email || '', name: fullName, role }
     }
 
-    const loadSession = async () => {
-      try {
-        debug('🔐 [App] Cargando sesión...')
+    // ── Escuchar cambios de autenticación ──
+    // onAuthStateChange emite INITIAL_SESSION automáticamente al registrarse,
+    // así NO necesitamos llamar getSession() manualmente (que también toma el lock).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      debug('🔄 [App] Auth state change:', _event, { hasSession: !!session })
+
+      if (session?.user) {
+        const userData_ = extractUserDataFromMeta(session.user)
+        debug('✅ [App] Auth state:', _event, userData_.email, 'role (metadata):', userData_.role)
+
+        // Guardar ref para el efecto de sincronización de profile
+        authUserRef.current = { id: session.user.id, email: userData_.email, name: userData_.name }
+
+        setIsLoggedIn(true)
         
-        // ✅ SOLO MOSTRAR "Verificando sesión..." SI HAY TOKENS GUARDADOS
-        const hasStoredSession = localStorage.getItem('sb-lgqzmqfnjcnquwkqkgpy-auth-token')
-        
-        if (!hasStoredSession) {
-          // No hay sesión guardada, terminar inmediatamente SIN mostrar loader
-          debug('⚠️ [App] No hay tokens en localStorage, saltando verificación')
-          setIsLoggedIn(false)
-          setUserData(null)
-          sessionStorage.removeItem('user_session')
-          setIsInitializing(false) // Finalizar inmediatamente
-          return
+        // 🔑 Usar userData existente de sessionStorage si:
+        // 1. Ya tenemos userData en sessionStorage
+        // 2. El email coincide (misma persona)
+        // 3. Algún dato (nombre o rol) en sessionStorage es diferente (fue actualizado recientemente)
+        // Esto evita parpadeos y asegura que datos recientes se mantengan
+        const currentData = sessionStorage.getItem('user_session');
+        if (currentData) {
+          try {
+            const cached = JSON.parse(currentData);
+            if (cached.email === userData_.email) {
+              // Si el nombre O el rol en sessionStorage son diferentes al metadata, usarlos
+              // (significa que fueron actualizados recientemente en la DB)
+              const nameNewer = cached.name !== userData_.name;
+              const roleNewer = cached.role !== userData_.role;
+              
+              if (nameNewer || roleNewer) {
+                debug('✅ [App] Usando datos frescos de sessionStorage')
+                const updated = { ...userData_ };
+                if (nameNewer) updated.name = cached.name;
+                if (roleNewer) updated.role = cached.role;
+                setUserData(updated);
+                sessionStorage.setItem('user_session', JSON.stringify(updated))
+                return
+              }
+            }
+          } catch { /* ignorar */ }
         }
         
-        // ✅ SI HAY TOKENS, AHORA SÍ VERIFICAMOS (aquí se muestra el loader)
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        debug('🔐 [App] Sesión obtenida:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
-        
-        if (session?.user) {
-          debug('🔐 [App] Usuario autenticado')
-          
-          // ✅ NO consultar profiles en el path crítico
-          // Usar datos del auth directamente (rápido)
-          const userData_: { email: string; name: string } = {
-            email: session.user.email || "",
-            name: session.user.email?.split('@')[0] || "Usuario",
-          };
-          
-          debug('✅ [App] Login exitoso:', userData_.email)
-          setIsLoggedIn(true);
-          setUserData(userData_);
-          sessionStorage.setItem('user_session', JSON.stringify(userData_));
-          setIsInitializing(false); // Marcar inicialización completa
-          clearAuthTimeout()
-        } else {
-          // No hay sesión válida — terminar rápido
-          debug('⚠️ [App] No hay sesión válida, finalizando...')
-          setIsLoggedIn(false)
-          setUserData(null)
-          sessionStorage.removeItem('user_session')
-          setIsInitializing(false)
-          clearAuthTimeout()
-        }
-      } catch (error) {
-        logError("Error cargando sesión:", error);
-        // En caso de error, marcar como no autenticado inmediatamente
+        setUserData(userData_)
+        sessionStorage.setItem('user_session', JSON.stringify(userData_))
+      } else {
+        debug('⚠️ [App] Sin sesión activa, evento:', _event)
+        authUserRef.current = null
         setIsLoggedIn(false)
         setUserData(null)
         sessionStorage.removeItem('user_session')
-        setIsInitializing(false)
-        clearAuthTimeout()
       }
-    };
 
-    loadSession();
+      // Siempre marcar bootstrap como completado (con o sin sesión)
+      setAuthBootstrapped(true)
+    })
 
-    // Escuchar cambios de autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      debug('🔄 [App] Auth state change:', _event, { hasSession: !!session })
-      // Si llegó alguna actualización de auth, cancelar el timeout de no-auth
-      if (authTimeoutRef.current) {
-        clearTimeout(authTimeoutRef.current)
-        authTimeoutRef.current = null
-      }
-      if (session?.user) {
-        // ✅ NO consultar profiles en onAuthStateChange
-        // Usar datos del auth directamente (rápido)
-        const userData_ = {
-          email: session.user.email || "",
-          name: session.user.email?.split('@')[0] || "Usuario",
-        };
-        
-        setIsLoggedIn(true);
-        setUserData(userData_);
-        sessionStorage.setItem('user_session', JSON.stringify(userData_));
-      } else {
-        setIsLoggedIn(false);
-        setUserData(null);
-        sessionStorage.removeItem('user_session');
-      }
-    });
+    // Detectar callback OAuth y limpiar URL
+    const urlSearch = new URLSearchParams(window.location.search)
+    const hashStr = window.location.hash
+    const isOAuthCallback =
+      urlSearch.has('code') ||
+      hashStr.includes('access_token=') ||
+      hashStr.includes('refresh_token=')
+
+    let urlCleanTimer: ReturnType<typeof setTimeout> | null = null
+    let oauthFallbackTimer: ReturnType<typeof setTimeout> | null = null
+
+    if (isOAuthCallback) {
+      console.warn('🔐 [App] Callback OAuth detectado en URL')
+      // Limpiar URL después de 500ms (Supabase ya procesó el código/token antes)
+      urlCleanTimer = setTimeout(() => {
+        if (window.location.search || window.location.hash) {
+          window.history.replaceState(null, '', window.location.pathname)
+        }
+      }, 500)
+
+      // Fallback: si onAuthStateChange no disparó la sesión en 3 segundos,
+      // llamar getSession() explícitamente (el auth lock ya estará libre)
+      oauthFallbackTimer = setTimeout(async () => {
+        if (authUserRef.current) return // ya hay sesión, no hace falta
+        console.warn('🔐 [App] OAuth fallback: llamando getSession()...')
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.user && !authUserRef.current) {
+            console.warn('🔐 [App] OAuth fallback: sesión encontrada para', session.user.email)
+            const userData_ = extractUserDataFromMeta(session.user)
+            authUserRef.current = { id: session.user.id, email: userData_.email, name: userData_.name }
+            setIsLoggedIn(true)
+            setUserData(userData_)
+            sessionStorage.setItem('user_session', JSON.stringify(userData_))
+            setAuthBootstrapped(true)
+          } else {
+            console.warn('🔐 [App] OAuth fallback: sin sesión, posible error en intercambio PKCE')
+          }
+        } catch (err) {
+          logError('🔐 [App] OAuth fallback error:', err)
+        }
+      }, 3000)
+    }
 
     return () => {
-      subscription?.unsubscribe();
-      if (authTimeoutRef.current) {
-        clearTimeout(authTimeoutRef.current)
-        authTimeoutRef.current = null
+      if (urlCleanTimer) clearTimeout(urlCleanTimer)
+      if (oauthFallbackTimer) clearTimeout(oauthFallbackTimer)
+      subscription?.unsubscribe()
+    }
+  }, [])
+
+  // ══════════════════════════════════════════════════════════════════════
+  // EFECTO 2: Sincronizar profile y rol real desde DB
+  // ══════════════════════════════════════════════════════════════════════
+  // Corre DESPUÉS de que auth bootstrap termina y el auth lock se libera.
+  // Aquí SÍ podemos hacer REST calls sin riesgo de deadlock.
+  // ══════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!authBootstrapped || !isLoggedIn) return
+
+    const authUser = authUserRef.current
+    if (!authUser) return
+
+    const syncProfile = async () => {
+      try {
+        // 1. Obtener el perfil completo desde DB (incluyendo nombre actualizado)
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, role')
+          .eq('id', authUser.id)
+          .single()
+        
+        if (profileError) {
+          logError('⚠️ [App] Error obteniendo profile desde DB:', profileError.message, profileError)
+          // Si no existe, crear uno básico
+          const { error: insertError } = await supabase.from('profiles').insert({
+            id: authUser.id,
+            email: authUser.email,
+            full_name: authUser.name,
+            role: 'student',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          if (insertError) {
+            logError('⚠️ [App] Error creando profile:', insertError.message, insertError)
+          }
+          return
+        }
+
+        // 2. Actualizar userData con datos frescos de DB (nombre y rol)
+        const dbRole = (profile?.role || 'student') as 'student' | 'instructor' | 'admin'
+        const dbFullName = profile?.full_name || authUser.name
+        
+        console.warn('🔑 [App] Perfil desde DB:', { name: dbFullName, role: dbRole }, '| user:', authUser.email)
+        
+        // 🔑 IMPORTANTE: Asegurar que siempre actualizamos userData, incluso si prev es null
+        setUserData(prev => {
+          if (!prev) {
+            // Si userData está null, crear uno nuevo con datos de DB
+            debug(`📍 [App] userData era null, creando con rol: ${dbRole}`);
+            return { email: authUser.email, name: dbFullName, role: dbRole };
+          }
+          // Si ya existe, actualizar con datos de DB
+          if (prev.role !== dbRole || prev.name !== dbFullName) {
+            debug(`📍 [App] Actualizando userData - rol: ${prev.role} → ${dbRole}, nombre: ${prev.name} → ${dbFullName}`);
+          }
+          return { ...prev, role: dbRole, name: dbFullName };
+        })
+        
+        // 3. Actualizar sessionStorage con datos frescos
+        const cached = sessionStorage.getItem('user_session')
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached)
+            parsed.role = dbRole
+            parsed.name = dbFullName
+            sessionStorage.setItem('user_session', JSON.stringify(parsed))
+          } catch { /* ignorar */ }
+        }
+        debug('✅ [App] Profile sincronizado para', authUser.email)
+      } catch (err) {
+        logError('⚠️ [App] Error sincronizando profile (exception):', err)
       }
-    };
-  }, []);
+    }
+
+    syncProfile()
+  }, [authBootstrapped, isLoggedIn])
 
   // Scroll to top when page changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentPage]);
 
-  const handleNavigate = (page: string, courseId?: string, courseSlug?: string, lessonId?: string) => {
-    setCurrentPage(page as Page);
-    if (courseId) {
-      setCurrentCourseId(courseId);
-    }
-    if (courseSlug) {
-      setCurrentCourseSlug(courseSlug);
-    }
-    if (lessonId) {
-      setCurrentLessonId(lessonId);
-    }
-  };
+  // Escuchar eventos de actualización de perfil desde UserProfile
+  // Sincronizar sessionStorage además de userData
+  useEffect(() => {
+    const handleUserProfileUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { fullName } = customEvent.detail;
+      
+      // 1. Actualizar userData con el nuevo nombre
+      setUserData(prev => prev ? { ...prev, name: fullName } : prev);
+      
+      // 2. Sincronizar sessionStorage para evitar flash en F5
+      try {
+        const userSession = sessionStorage.getItem('user_session');
+        if (userSession) {
+          const parsed = JSON.parse(userSession);
+          parsed.name = fullName;
+          sessionStorage.setItem('user_session', JSON.stringify(parsed));
+        }
+      } catch { /* ignorar */ }
+    };
 
-  const handleLogin = (user: { email: string; name: string }) => {
+    window.addEventListener('userProfileUpdated', handleUserProfileUpdate);
+    return () => window.removeEventListener('userProfileUpdated', handleUserProfileUpdate);
+  }, []);
+
+  const handleNavigate = useCallback((page: string, courseId?: string, courseSlug?: string, lessonId?: string) => {
+    // Proteger acceso al panel admin - solo usuarios con rol admin
+    if (page === 'admin') {
+      if (!isLoggedIn || !userData || userData.role !== 'admin') {
+        toast.error('Acceso denegado. Solo administradores pueden acceder al panel admin.');
+        return;
+      }
+    }
+    
+    // startTransition evita que React.lazy suspenda sincrónicamente durante un clic,
+    // lo que causaría "A component suspended while responding to synchronous input".
+    startTransition(() => {
+      setCurrentPage(page as Page);
+      // ✅ Siempre sobrescribir (incluso con undefined) para limpiar el estado
+      // previo del curso/lección. Sin esto, navegar del Curso A→Catálogo→Curso B
+      // (sin pasar courseId) mantiene el courseId del Curso A y carga el curso equivocado.
+      setCurrentCourseId(courseId);
+      setCurrentCourseSlug(courseSlug);
+      setCurrentLessonId(lessonId);
+    });
+  }, [isLoggedIn, userData]);
+
+  const handleLogin = useCallback((user: { email: string; name: string; role: 'student' | 'instructor' | 'admin' }) => {
     setIsLoggedIn(true);
     setUserData(user);
     
     // Si había una navegación pendiente, ejecutarla
-    if (pendingNavigation) {
-      handleNavigate(pendingNavigation.page, pendingNavigation.courseId);
-      setPendingNavigation(null);
-    }
-  };
+    setPendingNavigation((prev) => {
+      if (prev) {
+        handleNavigate(prev.page, prev.courseId);
+      }
+      return null;
+    });
+  }, [handleNavigate]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       debug("🚪 Iniciando cierre de sesión...");
       
-      // Cerrar sesión en Supabase primero
+      // Cerrar sesión en Supabase
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -454,16 +628,12 @@ export default function App() {
       
       debug("✅ Sesión cerrada en Supabase");
       
-      // Limpiar estados locales
-      setIsLoggedIn(false);
-      setUserData(null);
-      setCurrentPage("home");
-      
-      // Limpiar sessionStorage
-      sessionStorage.removeItem('user_session');
-      
-      debug("✅ Estados y sessionStorage limpiados");
-      debug("✅ Sesión cerrada completamente");
+      // El listener onAuthStateChange se encargará de limpiar los estados
+      // pero forzamos la navegación a home
+      startTransition(() => {
+        setCurrentPage("home");
+        window.history.pushState(null, "", "/");
+      });
       
       toast.success("Sesión cerrada correctamente");
     } catch (error) {
@@ -474,19 +644,20 @@ export default function App() {
       setIsLoggedIn(false);
       setUserData(null);
       sessionStorage.removeItem('user_session');
-      setCurrentPage("home");
+      startTransition(() => {
+        setCurrentPage("home");
+        window.history.pushState(null, "", "/");
+      });
     }
-  };
+  }, []);
 
-  // Mostrar loader mientras se inicializa la sesión O mientras resolvemos la ruta
-  if (isInitializing || isResolvingRoute) {
+  // Mostrar loader mientras resolvemos la ruta del curso
+  if (isResolvingRoute) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-white border-t-transparent mb-4"></div>
-          <p className="text-white text-lg font-medium">
-            {isInitializing ? "Verificando sesión..." : "Cargando curso..."}
-          </p>
+          <p className="text-white text-lg font-medium">Cargando curso...</p>
         </div>
       </div>
     );
@@ -515,7 +686,7 @@ export default function App() {
           onLoginModalChange={setShowAuthModal}
         />
 
-        <main className="flex-1">
+        <main id="main-content" className="flex-1" role="main">
           <LessonPlayer 
             onNavigate={handleNavigate} 
             courseId={currentCourseId}
@@ -544,8 +715,8 @@ export default function App() {
           onLoginModalChange={setShowAuthModal}
         />
 
-        <main className="flex-1">
-          <Evaluation onNavigate={handleNavigate} courseId={currentCourseId} />
+        <main id="main-content" className="flex-1" role="main">
+          <Evaluation onNavigate={handleNavigate} courseId={currentCourseId} courseSlug={currentCourseSlug} />
         </main>
 
         <AppFooter onNavigate={handleNavigate} />
@@ -568,7 +739,7 @@ export default function App() {
         onLoginModalChange={setShowAuthModal}
       />
       
-      <main className="flex-1">
+      <main id="main-content" className="flex-1" role="main">
         <Suspense fallback={<PageLoader />}>
           {currentPage === "home" && <Home onNavigate={handleNavigate} isLoggedIn={isLoggedIn} />}
           {currentPage === "catalog" && <CourseCatalog onNavigate={handleNavigate} />}
@@ -590,7 +761,6 @@ export default function App() {
               courseId={currentCourseId}
               courseSlug={currentCourseSlug}
               userData={userData}
-              isInitializing={isInitializing}
             />
           )}
           {currentPage === "payment-callback" && <PaymentCallback />}
@@ -606,131 +776,6 @@ export default function App() {
       </main>
 
       <AppFooter onNavigate={handleNavigate} />
-      
-      {/* Quick Access Menu - Demo purposes */}
-      <div className="fixed bottom-6 right-6 z-100">
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              className="h-14 w-14 rounded-full shadow-lg hover:scale-105 transition-transform"
-              aria-label="Menú de acceso rápido"
-            >
-              <Menu className="h-6 w-6" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            align="end" 
-            className="w-56"
-            sideOffset={5}
-          >
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                setIsLoggedIn(!isLoggedIn);
-                toast.success(
-                  isLoggedIn 
-                    ? "Vista de visitante activada" 
-                    : "Vista de usuario autenticado activada"
-                );
-                if (!isLoggedIn) {
-                  handleNavigate("home");
-                }
-              }}
-              className="cursor-pointer"
-            >
-              {isLoggedIn ? (
-                <>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Ver como Visitante
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Ver como Usuario Autenticado
-                </>
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                handleNavigate("profile");
-              }}
-              className="cursor-pointer"
-            >
-              <User className="mr-2 h-4 w-4" />
-              Perfil de Usuario
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                handleNavigate("design");
-              }}
-              className="cursor-pointer"
-            >
-              <Palette className="mr-2 h-4 w-4" />
-              Design System
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                handleNavigate("admin");
-              }}
-              className="cursor-pointer"
-            >
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Panel Admin
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={async (e: React.MouseEvent) => {
-                e.preventDefault();
-                        try {
-                          // Ejecutar debug de Supabase en la pestaña normal
-                          // Muestra resultados en consola del navegador
-                          await debugSupabaseSession();
-                          toast.success("Debug Supabase ejecutado (ver consola)");
-                        } catch (err) {
-                          logError("Error ejecutando debugSupabaseSession:", err);
-                          toast.error("Error ejecutando debug");
-                        }
-              }}
-              className="cursor-pointer"
-            >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-              Debug Supabase
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async (e: React.MouseEvent) => {
-                e.preventDefault();
-                try {
-                  await clearSupabaseSession();
-                  toast.success("Sesión local limpiada");
-                } catch (err) {
-                  logError("Error clearSupabaseSession:", err);
-                  toast.error("Error limpiando sesión");
-                }
-              }}
-              className="cursor-pointer"
-            >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M9 6v12M15 6v12"/></svg>
-              Limpiar Sesión Supabase
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                handleNavigate("evaluation");
-              }}
-              className="cursor-pointer"
-            >
-              <Award className="mr-2 h-4 w-4" />
-              Evaluación
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
       
       <Toaster />
     </div>

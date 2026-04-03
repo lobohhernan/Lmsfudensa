@@ -2,15 +2,17 @@ import { useEffect, useState } from "react";
 import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { supabase } from "../lib/supabase";
+import { resolveCourseIdToSlug } from "../lib/courseResolver";
 
 interface CheckoutSuccessProps {
-  onNavigate?: (page: string, courseId?: string) => void;
+  onNavigate?: (page: string, courseId?: string, courseSlug?: string) => void;
 }
 
 export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
   const [isVerifying, setIsVerifying] = useState(true);
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
   const [enrolledCourseId, setEnrolledCourseId] = useState<string | null>(null);
+  const [enrolledCourseSlug, setEnrolledCourseSlug] = useState<string | null>(null);
   const [redirectCountdown, setRedirectCountdown] = useState(2);
 
   useEffect(() => {
@@ -34,8 +36,8 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
       const redirectTimer = setTimeout(() => {
         console.log("🔄 Ejecutando redirección (antes de Mercado Pago)...");
         if (onNavigate) {
-          console.log("✅ Usando onNavigate");
-          onNavigate("course", enrolledCourseId);
+          console.log("✅ Usando onNavigate con courseId y courseSlug");
+          onNavigate("course", enrolledCourseId, enrolledCourseSlug || undefined);
         } else {
           console.log("⚠️ onNavigate no disponible, usando window.location.hash");
           window.location.hash = `/#/curso/${enrolledCourseId}`;
@@ -47,7 +49,7 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
         clearInterval(countdownInterval);
       };
     }
-  }, [enrolledCourseId, isVerifying, enrollmentError, onNavigate]);
+  }, [enrolledCourseId, enrolledCourseSlug, isVerifying, enrollmentError, onNavigate]);
 
   useEffect(() => {
     const verifyEnrollment = async () => {
@@ -111,6 +113,16 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
             console.log("✅ Inscripción confirmada");
             enrolled = true;
             setEnrolledCourseId(courseId);
+            
+            // Resolver courseId a slug para navegación completa
+            const slug = await resolveCourseIdToSlug(courseId);
+            if (slug) {
+              console.log(`✅ Slug resuelto: ${courseId} → ${slug}`);
+              setEnrolledCourseSlug(slug);
+            } else {
+              console.warn(`⚠️ No se pudo resolver slug para courseId: ${courseId}`);
+            }
+            
             setIsVerifying(false); // ← IMPORTANTE: Establecer false para activar el useEffect de redirección
           } else {
             retries++;

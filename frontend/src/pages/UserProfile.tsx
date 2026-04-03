@@ -2,10 +2,12 @@ import { Award, Mail, Globe, Settings as SettingsIcon, BookOpen, Loader2, Refres
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { Progress } from "../components/ui/progress";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { Skeleton } from "../components/ui/skeleton";
+import { FullCourse } from "../lib/data";
 import {
   Select,
   SelectContent,
@@ -18,6 +20,7 @@ import { supabase } from "../lib/supabase";
 import { debug } from '../lib/logger'
 import { CertificateCard } from "../components/CertificateCard";
 import type { Certificate } from "../hooks/useCertificates";
+import { useEnrollmentProgress } from "../hooks/useEnrollmentProgress";
 
 interface UserProfileProps {
   onNavigate?: (page: string, courseId?: string) => void;
@@ -25,11 +28,101 @@ interface UserProfileProps {
 }
 
 export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileProps) {
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [userCourses, setUserCourses] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<Record<string, unknown> | null>(null);
   const [userCertificates, setUserCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [certificatesLoading, setCertificatesLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const { courses: userCourses, loading: coursesLoading } = useEnrollmentProgress(isLoggedIn);
+  
+  // Estados para edición de perfil
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  
+  // Función para guardar cambios del perfil
+  const handleSaveProfile = async () => {
+    // Validación
+    if (!firstName.trim()) {
+      setSaveMessage({ type: 'error', text: 'El nombre es requerido' });
+      return;
+    }
+
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+
+    if (fullName.length < 2) {
+      setSaveMessage({ type: 'error', text: 'El nombre debe tener al menos 2 caracteres' });
+      return;
+    }
+
+    if (fullName.length > 100) {
+      setSaveMessage({ type: 'error', text: 'El nombre no puede exceder 100 caracteres' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error('No hay usuario autenticado');
+      }
+
+      // 1. Actualizar perfil en tabla profiles
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: fullName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // 2. Actualizar metadata de Auth para evitar parpadeos en F5
+      // Esto sincroniza el nombre entre Auth metadata y la tabla profiles
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: { full_name: fullName }
+      });
+
+      if (metadataError) {
+        console.warn('⚠️ Advancia: No se pudo actualizar metadata de Auth:', metadataError);
+        // No relanzar error, ya que el cambio en DB fue exitoso
+      }
+
+      // 3. Actualizar el estado local
+      setUserProfile(profile => profile ? { ...profile, full_name: fullName } : null);
+      
+      // 4. Actualizar sessionStorage con el nuevo nombre
+      try {
+        const userSession = sessionStorage.getItem('user_session');
+        if (userSession) {
+          const parsed = JSON.parse(userSession);
+          parsed.name = fullName;
+          sessionStorage.setItem('user_session', JSON.stringify(parsed));
+        }
+      } catch (e) {
+        console.warn('No se pudo actualizar sessionStorage:', e);
+      }
+      
+      // 5. Disparar evento personalizado para sincronizar otros componentes (navbar)
+      window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: { fullName } }));
+      
+      setSaveMessage({ type: 'success', text: '✅ Cambios guardados correctamente' });
+
+      // Limpiar mensaje después de 3 segundos
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("Error al guardar perfil:", message);
+      setSaveMessage({ type: 'error', text: `Error: ${message}` });
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   // Verificar si hay una pestaña específica solicitada
   const initialTab = sessionStorage.getItem('profileTab') || defaultTab;
@@ -37,6 +130,16 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
   useEffect(() => {
     sessionStorage.removeItem('profileTab');
   }, []);
+
+  // Sincronizar firstName y lastName solo cuando se carga un nuevo perfil (cambio de ID)
+  // Esto se ejecuta una sola vez por cada perfil
+  useEffect(() => {
+    if (userProfile?.full_name) {
+      const nameParts = (userProfile.full_name as string).split(" ");
+      setFirstName(nameParts[0] || "");
+      setLastName(nameParts.slice(1).join(" ") || "");
+    }
+  }, [userProfile?.id]); // Solo sincroniza cuando cambia el ID del perfil
 
   const loadCertificates = async (userId: string) => {
     try {
@@ -58,8 +161,9 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
         console.log("✅ [UserProfile] Certificados cargados:", certs?.length || 0);
         setUserCertificates(certs || []);
       }
-    } catch (err) {
-      console.error("❌ [UserProfile] Error en loadCertificates:", err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("❌ [UserProfile] Error en loadCertificates:", message);
       setUserCertificates([]);
     } finally {
       setCertificatesLoading(false);
@@ -112,89 +216,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
         setUserProfile(profile);
       }
 
-      // Cargar cursos del usuario desde ENROLLMENTS reales
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from("enrollments")
-        .select(`
-          id,
-          course_id,
-          enrolled_at,
-          last_accessed_at,
-          completed,
-          courses (
-            id,
-            title,
-            slug,
-            image,
-            description
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('last_accessed_at', { ascending: false });
-
-      if (!enrollmentsError && enrollments) {
-        // ✅ Calcular progreso real para cada curso (igual que en Home.tsx)
-        const mappedCourses = await Promise.all(enrollments.map(async (enrollment: any) => {
-          const courseId = enrollment.course_id;
-          
-          // Contar lecciones totales del curso
-          const { count: totalLessons } = await supabase
-            .from('lessons')
-            .select('*', { count: 'exact', head: true })
-            .eq('course_id', courseId);
-          
-          // Contar lecciones completadas por el usuario
-          let completedLessons = 0;
-          try {
-            const { count } = await supabase
-              .from('user_progress')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-              .eq('course_id', courseId)
-              .eq('completed', true);
-            completedLessons = count || 0;
-          } catch (progressErr) {
-            console.warn('⚠️ Error cargando progreso, continuando sin él:', progressErr);
-            completedLessons = 0;
-          }
-          
-          const total = totalLessons || 0;
-          const completed = completedLessons;
-          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-          
-          // Obtener última lección accedida
-          let currentLesson = 'Lección 1';
-          try {
-            const { data: lastProgress } = await supabase
-              .from('user_progress')
-              .select('lesson_id, lessons(title, order_index)')
-              .eq('user_id', user.id)
-              .eq('course_id', courseId)
-              .order('last_accessed_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            
-            currentLesson = (lastProgress?.lessons as any)?.title || 'Lección 1';
-          } catch (lastProgressErr) {
-            console.warn('⚠️ Error obteniendo última lección:', lastProgressErr);
-          }
-
-          return {
-            id: courseId,
-            title: enrollment.courses?.title || 'Curso sin título',
-            slug: enrollment.courses?.slug || '',
-            progress,
-            currentLesson,
-            totalLessons: total,
-            completedLessons: completed,
-            image: enrollment.courses?.image || "https://images.unsplash.com/photo-1759872138841-c342bd6410ae?w=400",
-          };
-        }));
-        setUserCourses(mappedCourses);
-      } else {
-        console.error('❌ Error cargando enrollments:', enrollmentsError);
-        setUserCourses([]); // No cursos si no hay enrollments
-      }
+      // Enrollments ahora se cargan via useEnrollmentProgress hook
 
       // ✅ Cargar certificados del usuario
       await loadCertificates(user.id);
@@ -246,10 +268,13 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0B5FFF]" />
-          <p className="text-[#64748B]">Cargando tu perfil...</p>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center py-8">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 text-[#0B5FFF] animate-spin" />
+          <div className="text-center">
+            <p className="text-[#0F172A] font-medium">Cargando tu perfil</p>
+            <p className="text-[#64748B] text-sm mt-1">Un momento por favor...</p>
+          </div>
         </div>
       </div>
     );
@@ -268,9 +293,16 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
     );
   }
 
-  const initials = userProfile.full_name
-    ? userProfile.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
-    : userProfile.email.split("@")[0].substring(0, 2).toUpperCase();
+  // Calcular iniciales dinámicamente basado en firstName y lastName editables
+  const getInitials = () => {
+    const first = firstName.trim()[0]?.toUpperCase() || '';
+    const last = lastName.trim()[0]?.toUpperCase() || '';
+    return (first + last) || userProfile?.email?.split("@")[0].substring(0, 2).toUpperCase() || '';
+  };
+
+  // Nombre completo que se muestra en el header (basado en los valores actuales)
+  const displayName = `${firstName.trim()} ${lastName.trim()}`.trim() || userProfile?.full_name || "Usuario";
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -280,14 +312,10 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
             <CardContent className="p-6">
               <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile.email}`}
-                    alt="Usuario"
-                  />
-                  <AvatarFallback>{initials}</AvatarFallback>
+                  <AvatarFallback className="bg-[#0B5FFF] text-white text-2xl font-semibold">{getInitials()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h1 className="mb-1 text-[#0F172A]">{userProfile.full_name || "Usuario"}</h1>
+                  <h1 className="mb-1 text-[#0F172A]">{displayName}</h1>
                   <div className="flex flex-wrap gap-4 text-[#64748B]">
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4" />
@@ -336,7 +364,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
           {/* My Courses */}
           <TabsContent value="courses" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {userCourses.map((course: any) => (
+              {userCourses.map((course: FullCourse) => (
                 <Card key={course.id} className="overflow-hidden flex flex-col transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
                   <CardHeader className="p-0 shrink-0">
                     <div className="relative aspect-video overflow-hidden">
@@ -395,14 +423,23 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
           {/* My Certificates */}
           <TabsContent value="certificates" className="space-y-6">
             {certificatesLoading ? (
-              <Card>
-                <CardContent className="flex min-h-[300px] items-center justify-center p-12">
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#0B5FFF]" />
-                    <p className="text-[#64748B]">Cargando certificados...</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="border border-[#0B5FFF]/20 bg-gradient-to-br from-white to-[#0B5FFF]/5 overflow-hidden">
+                    {/* Skeleton de imagen - h-48 para tarjeta vertical */}
+                    <Skeleton className="h-48 w-full" />
+                    <div className="p-4 space-y-3">
+                      {/* Skeleton de título */}
+                      <Skeleton className="h-5 w-3/4" />
+                      {/* Skeleton de descripción */}
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-4/5" />
+                      {/* Skeleton de nivel */}
+                      <Skeleton className="h-4 w-1/3 mt-2" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
             ) : userCertificates.length === 0 ? (
               <Card>
                 <CardContent className="flex min-h-[300px] flex-col items-center justify-center p-12 text-center">
@@ -474,18 +511,18 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
                     <Label htmlFor="firstName">Nombre</Label>
                     <Input 
                       id="firstName" 
-                      defaultValue={userProfile?.full_name?.split(" ")[0] || ""}
-                      disabled
-                      className="bg-gray-100"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="Tu nombre"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Apellido</Label>
                     <Input 
                       id="lastName" 
-                      defaultValue={userProfile?.full_name?.split(" ").slice(1).join(" ") || ""}
-                      disabled
-                      className="bg-gray-100"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Tu apellido"
                     />
                   </div>
                 </div>
@@ -529,8 +566,22 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
                     </Select>
                   </div>
                 </div>
+                {saveMessage && (
+                  <div className={`p-3 rounded-md text-sm ${
+                    saveMessage.type === 'success' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {saveMessage.text}
+                  </div>
+                )}
                 <div className="pt-4">
-                  <Button>Guardar Cambios</Button>
+                  <Button 
+                    onClick={handleSaveProfile}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

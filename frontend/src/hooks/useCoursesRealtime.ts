@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+
+const MAX_RETRIES = 2
+const RETRY_DELAY = 2500
 
 interface Course {
   id: string
@@ -19,40 +22,56 @@ interface Course {
   reviews: number
   created_at: string
   updated_at: string
+  is_active: boolean
+}
+
+/**
+ * Sorts a course array: active courses first (ordered by created_at DESC),
+ * then inactive courses (ordered by created_at DESC) at the end.
+ */
+function sortCourses(list: Course[]): Course[] {
+  const active = list.filter(c => c.is_active !== false).sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+  const inactive = list.filter(c => c.is_active === false).sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+  return [...active, ...inactive]
 }
 
 export function useCoursesRealtime() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
+  const [inactiveLoading, setInactiveLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
-    // Initial fetch
-    fetchCourses()
+    mountedRef.current = true
 
-    // Subscribe to realtime changes
+    // Stage 1: load active courses immediately
+    fetchActiveCourses()
+
+    // Subscribe to realtime changes for all courses
     const channel = supabase
       .channel('courses-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'courses' },
         (payload) => {
-          // Realtime event handling (logs removidos para performance)
+          if (!mountedRef.current) return
 
           if (payload.eventType === 'INSERT') {
-            // Add new course
-            const newCourse = payload.new as Course
-            setCourses((prev) => [newCourse, ...prev])
+            const newCourse = { ...payload.new as Course, is_active: (payload.new as any).is_active !== false }
+            setCourses((prev) => sortCourses([newCourse, ...prev]))
           } else if (payload.eventType === 'UPDATE') {
-            // Update existing course
             const updatedCourse = payload.new as Course
             setCourses((prev) =>
-              prev.map((course) =>
+              sortCourses(prev.map((course) =>
                 course.id === updatedCourse.id ? updatedCourse : course
-              )
+              ))
             )
           } else if (payload.eventType === 'DELETE') {
-            // Remove deleted course
             const deletedCourse = payload.old as Course
             setCourses((prev) =>
               prev.filter((course) => course.id !== deletedCourse.id)
@@ -63,75 +82,100 @@ export function useCoursesRealtime() {
       .subscribe()
 
     return () => {
-      // Cleanup subscription
+      mountedRef.current = false
       supabase.removeChannel(channel)
     }
   }, [])
 
-  const fetchCourses = async () => {
+  /** Stage 1: fetch only active courses, render immediately */
+  const fetchActiveCourses = async (retryCount = 0) => {
     try {
       setLoading(true)
-      
-      // ✅ Intentar con timeout de 10 segundos
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout al cargar cursos')), 10000)
-      );
-      
-      const fetchPromise = supabase
+      console.log('📡 [useCoursesRealtime] Fetching active courses...')
+
+      const { data, error: queryError } = await supabase
         .from('courses')
         .select('*')
-        .order('created_at', { ascending: false });
-      
-      const { data, error: queryError } = await Promise.race([
-        fetchPromise,
-        timeoutPromise
-      ]) as any;
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
 
-      if (queryError) {
-        console.error('❌ Error en query de cursos:', queryError);
-        throw queryError;
-      }
+      if (!mountedRef.current) return
+      if (queryError) throw queryError
 
-      // Convert students: 0 to undefined
-      const processedData = (data || []).map((course) => ({
+      const processed = (data || []).map((course) => ({
         ...course,
-        students:
-          course.students && course.students > 0
-            ? course.students
-            : undefined,
+        is_active: true,
+        students: course.students && course.students > 0 ? course.students : undefined,
       }))
-      
-      setCourses(processedData)
+
+      setCourses(processed)
       setError(null)
-      console.log(`✅ [useCoursesRealtime] ${processedData.length} cursos cargados`);
+      console.log(`✅ [useCoursesRealtime] ${processed.length} active courses loaded`)
+
+      // Stage 2: defer loading inactive courses after active ones are rendered
+      fetchInactiveCourses()
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Error fetching courses'
-      console.error('❌ [useCoursesRealtime] Error fetching courses:', err)
-      setError(message)
-      
-      // ✅ Si hay error, intentar limpiar cache corrupto
-      if (message.includes('Timeout') || message.includes('406')) {
-        console.warn('⚠️ Posible cache corrupto, limpiando...');
-        try {
-          // Limpiar localStorage relacionado con supabase
-          const keysToRemove: string[] = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.includes('supabase')) {
-              keysToRemove.push(key);
-            }
-          }
-          keysToRemove.forEach(key => localStorage.removeItem(key));
-          console.log(`🗑️ Cache limpiado: ${keysToRemove.length} elementos`);
-        } catch (cleanErr) {
-          console.error('Error limpiando cache:', cleanErr);
-        }
+      if (!mountedRef.current) return
+
+      const isAbortError = err instanceof DOMException && err.name === 'AbortError'
+      const isTransient = isAbortError || (err instanceof Error && err.message.includes('Failed to fetch'))
+
+      if (isTransient && retryCount < MAX_RETRIES) {
+        console.warn(`⚠️ [useCoursesRealtime] Transient error (${retryCount + 1}/${MAX_RETRIES}), retrying in ${RETRY_DELAY}ms...`)
+        setTimeout(() => {
+          if (mountedRef.current) fetchActiveCourses(retryCount + 1)
+        }, RETRY_DELAY)
+        return
       }
+
+      const message = err instanceof Error ? err.message : 'Error fetching courses'
+      console.error('❌ [useCoursesRealtime] Error fetching active courses:', err)
+      setError(message)
     } finally {
-      setLoading(false)
+      if (mountedRef.current) setLoading(false)
     }
   }
 
-  return { courses, loading, error, refetch: fetchCourses }
+  /** Stage 2: fetch inactive courses and append to end of list */
+  const fetchInactiveCourses = async () => {
+    if (!mountedRef.current) return
+    try {
+      setInactiveLoading(true)
+
+      const { data, error: queryError } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('is_active', false)
+        .order('created_at', { ascending: false })
+
+      if (!mountedRef.current) return
+      if (queryError) {
+        console.warn('⚠️ [useCoursesRealtime] Could not load inactive courses:', queryError.message)
+        return
+      }
+
+      const inactive = (data || []).map((course) => ({
+        ...course,
+        is_active: false,
+        students: course.students && course.students > 0 ? course.students : undefined,
+      }))
+
+      if (inactive.length > 0) {
+        setCourses((prev) => {
+          // Remove any inactive courses that might have come via realtime, then append
+          const activeOnly = prev.filter(c => c.is_active !== false)
+          return [...activeOnly, ...inactive]
+        })
+        console.log(`✅ [useCoursesRealtime] ${inactive.length} inactive courses appended`)
+      }
+    } catch (err) {
+      console.warn('⚠️ [useCoursesRealtime] Error loading inactive courses:', err)
+    } finally {
+      if (mountedRef.current) setInactiveLoading(false)
+    }
+  }
+
+  const refetch = () => fetchActiveCourses()
+
+  return { courses, loading, inactiveLoading, error, refetch }
 }
