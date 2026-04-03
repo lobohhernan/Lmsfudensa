@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import ExcelJS from "exceljs";
 import {
   LayoutDashboard,
@@ -501,11 +501,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       });
     }
 
-    // Inactive courses always go to the bottom, regardless of other sorts
+    // Inactive courses always go to the top, regardless of other sorts
     filtered.sort((a, b) => {
       const aActive = a.is_active !== false ? 1 : 0;
       const bActive = b.is_active !== false ? 1 : 0;
-      return bActive - aActive;
+      return aActive - bActive;
     });
 
     return filtered;
