@@ -189,6 +189,10 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isResolvingRoute, setIsResolvingRoute] = useState(false);
   const [authBootstrapped, setAuthBootstrapped] = useState(false);
+  
+  // 🔧 Ref para evitar duplicar pushState: cuando handleNavigate actualiza la URL,
+  // marcamos que lo hizo para que el useEffect no lo repita
+  const lastUrlUpdateRef = useRef<{ page: Page; timestamp: number } | null>(null);
 
   // ✅ Resolver courseSlug a courseId cuando navegamos por URL (F5)
   useEffect(() => {
@@ -221,6 +225,19 @@ export default function App() {
   // ⚠️ NO ejecutar pushState mientras haya parámetros OAuth pendientes
   useEffect(() => {
     if (!authBootstrapped) return; // Esperar a que auth termine bootstrap
+    
+    // 🔧 Si la URL fue actualizada recientemente por handleNavigate (menos de 100ms),
+    // NO duplicar el pushState. Permite al useEffect manejar cambios de URL desde otras fuentes
+    // (como popstate, F5, cambios de URL directos, etc.)
+    const timeSinceLastUpdate = lastUrlUpdateRef.current 
+      ? Date.now() - lastUrlUpdateRef.current.timestamp 
+      : Infinity;
+    
+    // Si handleNavigate acaba de actualizar la URL para esta página, saltar
+    if (lastUrlUpdateRef.current?.page === currentPage && timeSinceLastUpdate < 100) {
+      return;
+    }
+    
     if (currentPage === "profile" && userData) {
       // Perfil: /perfil/username
       const userId = userData.email.split('@')[0];
@@ -586,6 +603,48 @@ export default function App() {
         toast.error('Acceso denegado. Solo administradores pueden acceder al panel admin.');
         return;
       }
+    }
+    
+    // 🔧 Actualizar URL inmediatamente ANTES de cambiar el estado
+    // Esto previene que la URL antigua permanezca mientras React se actualiza
+    if (page === 'home') {
+      window.history.pushState(null, "", "/");
+      lastUrlUpdateRef.current = { page: 'home' as Page, timestamp: Date.now() };
+    } else if (page === 'admin') {
+      window.history.pushState(null, "", "/admin/panel");
+      lastUrlUpdateRef.current = { page: 'admin' as Page, timestamp: Date.now() };
+    } else if (page === 'catalog') {
+      window.history.pushState(null, "", "/cursos");
+      lastUrlUpdateRef.current = { page: 'catalog' as Page, timestamp: Date.now() };
+    } else if (page === 'profile' && userData) {
+      // Perfil: /perfil/username
+      const userId = userData.email.split('@')[0];
+      window.history.pushState(null, "", `/perfil/${userId}`);
+      lastUrlUpdateRef.current = { page: 'profile' as Page, timestamp: Date.now() };
+    } else if (page === 'course' && courseSlug) {
+      // Curso: /curso/nombre-del-curso
+      window.history.pushState(null, "", `/curso/${courseSlug}`);
+      lastUrlUpdateRef.current = { page: 'course' as Page, timestamp: Date.now() };
+    } else if (page === 'lesson' && courseSlug && lessonId) {
+      // Lección: /curso/nombre-del-curso/leccion/1
+      window.history.pushState(null, "", `/curso/${courseSlug}/leccion/${lessonId}`);
+      lastUrlUpdateRef.current = { page: 'lesson' as Page, timestamp: Date.now() };
+    } else if (page === 'evaluation' && courseSlug) {
+      // Evaluación: /curso/nombre-del-curso/evaluacion
+      window.history.pushState(null, "", `/curso/${courseSlug}/evaluacion`);
+      lastUrlUpdateRef.current = { page: 'evaluation' as Page, timestamp: Date.now() };
+    } else if (page === 'checkout' && courseSlug) {
+      // Checkout: /checkout/nombre-del-curso
+      window.history.pushState(null, "", `/checkout/${courseSlug}`);
+      lastUrlUpdateRef.current = { page: 'checkout' as Page, timestamp: Date.now() };
+    } else if (page === 'about') {
+      // Sobre Nosotros: /sobre-nosotros
+      window.history.pushState(null, "", "/sobre-nosotros");
+      lastUrlUpdateRef.current = { page: 'about' as Page, timestamp: Date.now() };
+    } else if (page === 'contact') {
+      // Contacto: /contacto
+      window.history.pushState(null, "", "/contacto");
+      lastUrlUpdateRef.current = { page: 'contact' as Page, timestamp: Date.now() };
     }
     
     // startTransition evita que React.lazy suspenda sincrónicamente durante un clic,
