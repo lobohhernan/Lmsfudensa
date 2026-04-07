@@ -137,22 +137,22 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [togglingActiveId, setTogglingActiveId] = useState<string | null>(null);
   const [optimisticActiveState, setOptimisticActiveState] = useState<Record<string, boolean>>({});
   const [paymentsSearch, setPaymentsSearch] = useState("");
-  const [paymentsDateDraft, setPaymentsDateDraft] = useState({ day: "", month: "", year: "" });
-  const [paymentsDateFilter, setPaymentsDateFilter] = useState<{ day: number | null; month: number | null; year: number | null }>({
-    day: null,
-    month: null,
-    year: null,
-  });
+  const [paymentsDateRangeFilter, setPaymentsDateRangeFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
+  const [paymentsStatusFilter, setPaymentsStatusFilter] = useState<string>("all");
+  const [paymentsAmountRangeFilter, setPaymentsAmountRangeFilter] = useState<{ from: string; to: string }>({ from: "", to: "" });
   const [showInactiveCourses, setShowInactiveCourses] = useState(false);
   const [showInactiveTeachers, setShowInactiveTeachers] = useState(false);
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
   const [usersSearch, setUsersSearch] = useState("");
   const [usersRoleFilter, setUsersRoleFilter] = useState<string>("all");
-  const [usersDateFilter, setUsersDateFilter] = useState<Date | undefined>(undefined);
+  const [usersDateRangeFilter, setUsersDateRangeFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [teachersPage, setTeachersPage] = useState(1);
   const [usersPage, setUsersPage] = useState(1);
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [certificatesPage, setCertificatesPage] = useState(1);
+  const [certificatesSearch, setCertificatesSearch] = useState("");
+  const [certificatesCourseFilter, setCertificatesCourseFilter] = useState<string>("all");
+  const [certificatesDateRangeFilter, setCertificatesDateRangeFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [hasAdminAccess, setHasAdminAccess] = useState<boolean | null>(null);
   // Filtros de cursos
   const [courseLevelFilter, setCourseLevelFilter] = useState<string>("all");
@@ -272,15 +272,17 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       result = result.filter((u) => u.role === usersRoleFilter);
     }
 
-    // Filtro por fecha de registro (mismo día)
-    if (usersDateFilter) {
+    // Filtro por rango de fecha de registro
+    if (usersDateRangeFilter.from || usersDateRangeFilter.to) {
       result = result.filter((u) => {
         const created = new Date(u.created_at as string);
-        return (
-          created.getFullYear() === usersDateFilter.getFullYear() &&
-          created.getMonth() === usersDateFilter.getMonth() &&
-          created.getDate() === usersDateFilter.getDate()
-        );
+        if (usersDateRangeFilter.from && created < usersDateRangeFilter.from) return false;
+        if (usersDateRangeFilter.to) {
+          const nextDay = new Date(usersDateRangeFilter.to);
+          nextDay.setDate(nextDay.getDate() + 1);
+          if (created >= nextDay) return false;
+        }
+        return true;
       });
     }
 
@@ -292,7 +294,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     });
 
     return result;
-  }, [usersList, usersSearch, usersRoleFilter, usersDateFilter, showInactiveUsers, realtimeTeachers]);
+  }, [usersList, usersSearch, usersRoleFilter, usersDateRangeFilter, showInactiveUsers, realtimeTeachers]);
 
   // Mapa dinámico: teacher.id → cursos que dicta
   // Soporta tanto instructor_id=teacher.id (cursos nuevos) como instructor_id=profile.id (cursos legacy)
@@ -338,34 +340,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     return Number.isInteger(parsed) ? parsed : null;
   };
 
-  const handleApplyPaymentsDateFilter = () => {
-    const day = parseFilterPart(paymentsDateDraft.day);
-    const month = parseFilterPart(paymentsDateDraft.month);
-    const year = parseFilterPart(paymentsDateDraft.year);
-
-    if (paymentsDateDraft.day.trim() && (day === null || day < 1 || day > 31)) {
-      toast.error("El día debe estar entre 1 y 31");
-      return;
-    }
-    if (paymentsDateDraft.month.trim() && (month === null || month < 1 || month > 12)) {
-      toast.error("El mes debe estar entre 1 y 12");
-      return;
-    }
-    if (paymentsDateDraft.year.trim() && (year === null || year < 1900 || year > 9999)) {
-      toast.error("El año debe tener un valor válido");
-      return;
-    }
-
-    setPaymentsDateFilter({ day, month, year });
-  };
-
-  const handleClearPaymentsDateFilter = () => {
-    setPaymentsDateDraft({ day: "", month: "", year: "" });
-    setPaymentsDateFilter({ day: null, month: null, year: null });
-  };
-
   const filteredPayments = useMemo(() => {
     const q = paymentsSearch.trim().toLowerCase();
+    const minAmount = paymentsAmountRangeFilter.from ? parseFloat(paymentsAmountRangeFilter.from) : null;
+    const maxAmount = paymentsAmountRangeFilter.to ? parseFloat(paymentsAmountRangeFilter.to) : null;
+    
     return allPayments.filter((p) => {
       const matchText =
         !q ||
@@ -375,16 +354,28 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
       if (!matchText) return false;
 
+      // Filtro de estado
+      if (paymentsStatusFilter !== "all" && p.status !== paymentsStatusFilter) return false;
+
+      // Filtro de rango de monto
+      if (minAmount !== null && (p.amount || 0) < minAmount) return false;
+      if (maxAmount !== null && (p.amount || 0) > maxAmount) return false;
+
       const created = new Date(p.created_at);
       if (Number.isNaN(created.getTime())) return false;
 
-      const matchDay = paymentsDateFilter.day === null || created.getDate() === paymentsDateFilter.day;
-      const matchMonth = paymentsDateFilter.month === null || created.getMonth() + 1 === paymentsDateFilter.month;
-      const matchYear = paymentsDateFilter.year === null || created.getFullYear() === paymentsDateFilter.year;
+      if (paymentsDateRangeFilter.from || paymentsDateRangeFilter.to) {
+        if (paymentsDateRangeFilter.from && created < paymentsDateRangeFilter.from) return false;
+        if (paymentsDateRangeFilter.to) {
+          const nextDay = new Date(paymentsDateRangeFilter.to);
+          nextDay.setDate(nextDay.getDate() + 1);
+          if (created >= nextDay) return false;
+        }
+      }
 
-      return matchDay && matchMonth && matchYear;
+      return true;
     });
-  }, [allPayments, paymentsSearch, paymentsDateFilter]);
+  }, [allPayments, paymentsSearch, paymentsDateRangeFilter, paymentsStatusFilter, paymentsAmountRangeFilter]);
 
   const totalTeachersPages = Math.max(1, Math.ceil(filteredTeachers.length / ADMIN_TABLE_ROWS_PER_PAGE));
   const paginatedTeachers = useMemo(() => {
@@ -404,11 +395,42 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     return filteredPayments.slice(start, start + ADMIN_TABLE_ROWS_PER_PAGE);
   }, [filteredPayments, paymentsPage, ADMIN_TABLE_ROWS_PER_PAGE]);
 
-  const totalCertificatesPages = Math.max(1, Math.ceil(realtimeCertificates.length / ADMIN_TABLE_ROWS_PER_PAGE));
+  const filteredCertificates = useMemo(() => {
+    let result = realtimeCertificates;
+
+    // Filtro por búsqueda de estudiante
+    if (certificatesSearch) {
+      const q = certificatesSearch.trim().toLowerCase();
+      result = result.filter((c) => (c.student_name || "").toLowerCase().includes(q));
+    }
+
+    // Filtro por curso
+    if (certificatesCourseFilter !== "all") {
+      result = result.filter((c) => c.course_title === certificatesCourseFilter);
+    }
+
+    // Filtro por rango de fecha
+    if (certificatesDateRangeFilter.from || certificatesDateRangeFilter.to) {
+      result = result.filter((c) => {
+        const issueDate = new Date(c.issue_date);
+        if (certificatesDateRangeFilter.from && issueDate < certificatesDateRangeFilter.from) return false;
+        if (certificatesDateRangeFilter.to) {
+          const nextDay = new Date(certificatesDateRangeFilter.to);
+          nextDay.setDate(nextDay.getDate() + 1);
+          if (issueDate >= nextDay) return false;
+        }
+        return true;
+      });
+    }
+
+    return result;
+  }, [realtimeCertificates, certificatesSearch, certificatesCourseFilter, certificatesDateRangeFilter]);
+
+  const totalCertificatesPages = Math.max(1, Math.ceil(filteredCertificates.length / ADMIN_TABLE_ROWS_PER_PAGE));
   const paginatedCertificates = useMemo(() => {
     const start = (certificatesPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE;
-    return realtimeCertificates.slice(start, start + ADMIN_TABLE_ROWS_PER_PAGE);
-  }, [realtimeCertificates, certificatesPage, ADMIN_TABLE_ROWS_PER_PAGE]);
+    return filteredCertificates.slice(start, start + ADMIN_TABLE_ROWS_PER_PAGE);
+  }, [filteredCertificates, certificatesPage, ADMIN_TABLE_ROWS_PER_PAGE]);
 
   // Lookup: profiles.id → teacher.id (para cursos legacy)
   const profileToTeacherIdMap = useMemo(() => {
@@ -529,11 +551,15 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   useEffect(() => {
     setUsersPage(1);
-  }, [usersSearch, usersRoleFilter, usersDateFilter]);
+  }, [usersSearch, usersRoleFilter, usersDateRangeFilter]);
 
   useEffect(() => {
     setPaymentsPage(1);
-  }, [paymentsSearch, paymentsDateFilter]);
+  }, [paymentsSearch, paymentsDateRangeFilter, paymentsStatusFilter, paymentsAmountRangeFilter]);
+
+  useEffect(() => {
+    setCertificatesPage(1);
+  }, [certificatesSearch, certificatesCourseFilter, certificatesDateRangeFilter]);
 
   useEffect(() => {
     setTeachersPage((current) => Math.min(current, totalTeachersPages));
@@ -546,6 +572,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   useEffect(() => {
     setPaymentsPage((current) => Math.min(current, totalPaymentsPages));
   }, [totalPaymentsPages]);
+
+  useEffect(() => {
+    setCertificatesPage((current) => Math.min(current, totalCertificatesPages));
+  }, [totalCertificatesPages]);
 
   useEffect(() => {
     setCertificatesPage((current) => Math.min(current, totalCertificatesPages));
@@ -1901,6 +1931,181 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     }
   };
 
+  const handleExportAllCertificates = async () => {
+    if (filteredCertificates.length === 0) {
+      toast.error("No hay certificados para exportar");
+      return;
+    }
+
+    try {
+      const exportDate = getExportDateLabel();
+      const workbook = createStyledWorkbook("Reporte de Certificados", "Registro de certificaciones emitidas");
+      const assets = await prepareWorkbookBrandAssets(workbook);
+      const certificatesKpis: ExportKpi[] = [
+        { label: "Total certificados", value: filteredCertificates.length, tone: "primary" },
+      ];
+
+      createCoverSheet(
+        workbook,
+        assets,
+        "Reporte de Certificados",
+        "Registro de certificaciones emitidas",
+        certificatesKpis,
+        exportDate,
+      );
+
+      // Hoja 1: Resumen
+      createSummarySheet(
+        workbook,
+        assets,
+        "Reporte de Certificados",
+        `LMS FUDENSA | Generado el ${exportDate}`,
+        [
+          {
+            title: "Resumen de certificados",
+            rows: [
+              ["Total certificados", filteredCertificates.length],
+            ],
+          },
+          {
+            title: "Trazabilidad del reporte",
+            rows: [["Fecha de exportacion", exportDate]],
+          },
+        ],
+        certificatesKpis,
+        exportDate,
+      );
+
+      // Hoja 2: Detalle de todos los certificados
+      const certificatesHeader = ["N", "Fecha de Emisión", "Estudiante", "Curso", "Hash"];
+      const certificatesRows = filteredCertificates.map((c, idx) => [
+        idx + 1,
+        c.issue_date ? new Date(c.issue_date).toLocaleDateString("es-AR") : "-",
+        c.student_name || "Desconocido",
+        c.course_title || "-",
+        c.hash?.substring(0, 16).toUpperCase() || "-",
+      ]);
+
+      createDetailSheet(
+        workbook,
+        assets,
+        "Detalle de certificados",
+        `LMS FUDENSA | Registros: ${filteredCertificates.length} | Exportado: ${exportDate}`,
+        certificatesHeader,
+        certificatesRows,
+        [8, 18, 25, 30, 20],
+        exportDate,
+        5,
+        1,
+      );
+
+      // Descargar archivo
+      const fileName = `reporte_certificados_${getExportFileTimestamp()}.xlsx`;
+      await downloadWorkbook(workbook, fileName);
+
+      toast.success(`${filteredCertificates.length} certificados exportados: ${fileName}`);
+    } catch (error) {
+      console.error("Error exportando certificados:", error);
+      toast.error("No se pudo exportar el reporte de certificados");
+    }
+  };
+
+  const handleExportAllUsers = async () => {
+    if (filteredUsers.length === 0) {
+      toast.error("No hay usuarios para exportar");
+      return;
+    }
+
+    try {
+      const exportDate = getExportDateLabel();
+      const workbook = createStyledWorkbook("Reporte de Usuarios", "Registro de usuarios del sistema");
+      const assets = await prepareWorkbookBrandAssets(workbook);
+      const usersKpis: ExportKpi[] = [
+        { label: "Total usuarios", value: filteredUsers.length, tone: "primary" },
+        { label: "Activos", value: filteredUsers.filter(u => u.is_active !== false).length, tone: "success" },
+        { label: "Inactivos", value: filteredUsers.filter(u => u.is_active === false).length, tone: "warning" },
+      ];
+
+      createCoverSheet(
+        workbook,
+        assets,
+        "Reporte de Usuarios",
+        "Registro de usuarios del sistema",
+        usersKpis,
+        exportDate,
+      );
+
+      // Hoja 1: Resumen
+      const administratorCount = filteredUsers.filter(u => u.role === 'admin').length;
+      const instructorCount = filteredUsers.filter(u => u.role === 'instructor').length;
+      const studentCount = filteredUsers.filter(u => u.role === 'student').length;
+
+      createSummarySheet(
+        workbook,
+        assets,
+        "Reporte de Usuarios",
+        `LMS FUDENSA | Generado el ${exportDate}`,
+        [
+          {
+            title: "Resumen de usuarios",
+            rows: [
+              ["Total usuarios", filteredUsers.length],
+              ["Activos", filteredUsers.filter(u => u.is_active !== false).length],
+              ["Inactivos", filteredUsers.filter(u => u.is_active === false).length],
+            ],
+          },
+          {
+            title: "Usuarios por rol",
+            rows: [
+              ["Administradores", administratorCount],
+              ["Profesores", instructorCount],
+              ["Estudiantes", studentCount],
+            ],
+          },
+          {
+            title: "Trazabilidad del reporte",
+            rows: [["Fecha de exportacion", exportDate]],
+          },
+        ],
+        usersKpis,
+        exportDate,
+      );
+
+      // Hoja 2: Detalle de todos los usuarios
+      const usersHeader = ["N", "Nombre", "Email", "Rol", "Estado", "Registrado"];
+      const usersRows = filteredUsers.map((u, idx) => [
+        idx + 1,
+        u.full_name || "Desconocido",
+        u.email || "-",
+        u.role === 'admin' ? 'Administrador' : u.role === 'instructor' ? 'Profesor' : 'Estudiante',
+        u.is_active !== false ? 'Activo' : 'Inactivo',
+        u.created_at ? new Date(u.created_at).toLocaleDateString("es-AR") : "-",
+      ]);
+
+      createDetailSheet(
+        workbook,
+        assets,
+        "Detalle de usuarios",
+        `LMS FUDENSA | Registros: ${filteredUsers.length} | Exportado: ${exportDate}`,
+        usersHeader,
+        usersRows,
+        [8, 25, 34, 15, 12, 14],
+        exportDate,
+        6,
+        1,
+      );
+
+      // Descargar archivo
+      const fileName = `reporte_usuarios_${getExportFileTimestamp()}.xlsx`;
+      await downloadWorkbook(workbook, fileName);
+
+      toast.success(`${filteredUsers.length} usuarios exportados: ${fileName}`);
+    } catch (error) {
+      console.error("Error exportando usuarios:", error);
+      toast.error("No se pudo exportar el reporte de usuarios");
+    }
+  };
+
   const handleSaveTeacher = async (teacher: Partial<Teacher>) => {
     try {
       const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
@@ -2533,29 +2738,22 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* Courses */}
           {activeTab === "courses" && !showCourseForm && (
             <div className="space-y-6">
-              {/* Barra de búsqueda y botón nuevo curso */}
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative flex-1 sm:max-w-md">
+              {/* Barra de búsqueda, filtros y botones - TODO EN UNA FILA */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[200px] max-w-xs">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
                   <Input 
                     placeholder="Buscar cursos..." 
-                    className="pl-10"
+                    className="pl-10 h-9 text-sm w-full"
                     value={coursesSearch}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCoursesSearch(e.target.value)}
                   />
                 </div>
-                <Button onClick={() => setShowCourseForm(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nuevo Curso
-                </Button>
-              </div>
 
-              {/* Filtros */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#64748B] whitespace-nowrap">Nivel:</span>
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Nivel:</span>
                   <Select value={courseLevelFilter} onValueChange={setCourseLevelFilter}>
-                    <SelectTrigger className="w-[140px]">
+                    <SelectTrigger className="w-[130px] h-9 text-sm">
                       <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2566,10 +2764,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#64748B] whitespace-nowrap">Ordenar por:</span>
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Ordenar:</span>
                   <Select value={courseSortBy} onValueChange={setCourseSortBy}>
-                    <SelectTrigger className="w-[160px]">
+                    <SelectTrigger className="w-[145px] h-9 text-sm">
                       <SelectValue placeholder="Por defecto" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2579,7 +2777,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center gap-2 px-2 border-l border-slate-200">
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
                   <Checkbox 
                     id="showInactiveCourses" 
                     checked={showInactiveCourses} 
@@ -2587,27 +2785,31 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   />
                   <label 
                     htmlFor="showInactiveCourses" 
-                    className="text-sm text-[#64748B] cursor-pointer"
+                    className="text-sm text-[#64748B] cursor-pointer whitespace-nowrap"
                   >
-                    Mostrar inactivos
+                    Inactivos
                   </label>
                 </div>
                 {(courseLevelFilter !== "all" || courseSortBy !== "default" || coursesSearch || showInactiveCourses) && (
                   <Button 
-                    variant="ghost" 
+                    variant="outline" 
                     size="sm"
+                    className="h-9 text-xs"
                     onClick={() => {
                       setCourseLevelFilter("all");
                       setCourseSortBy("default");
                       setCoursesSearch("");
                       setShowInactiveCourses(false);
                     }}
-                    className="text-[#64748B] hover:text-[#1E293B]"
                   >
                     <X className="mr-1 h-3 w-3" />
-                    Limpiar filtros
+                    Limpiar
                   </Button>
                 )}
+                <Button onClick={() => setShowCourseForm(true)} className="h-9 text-sm ml-auto">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nuevo Curso
+                </Button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -2795,32 +2997,30 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   </CardContent>
                 </Card>
               )}
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="relative w-full sm:max-w-md">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                    <Input
-                      placeholder="Buscar profesores..."
-                      className="pl-10"
-                      value={teacherQuery}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTeacherQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox 
-                      id="showInactiveTeachers" 
-                      checked={showInactiveTeachers} 
-                      onCheckedChange={(c) => setShowInactiveTeachers(Boolean(c))} 
-                    />
-                    <label 
-                      htmlFor="showInactiveTeachers" 
-                      className="text-sm text-[#64748B] cursor-pointer whitespace-nowrap"
-                    >
-                      Mostrar inactivos
-                    </label>
-                  </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[200px] max-w-xs">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+                  <Input
+                    placeholder="Buscar profesores..."
+                    className="pl-10 h-9 text-sm w-full"
+                    value={teacherQuery}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTeacherQuery(e.target.value)}
+                  />
                 </div>
-                <Button onClick={() => setShowTeacherForm(true)}>
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <Checkbox 
+                    id="showInactiveTeachers" 
+                    checked={showInactiveTeachers} 
+                    onCheckedChange={(c) => setShowInactiveTeachers(Boolean(c))} 
+                  />
+                  <label 
+                    htmlFor="showInactiveTeachers" 
+                    className="text-sm text-[#64748B] cursor-pointer whitespace-nowrap"
+                  >
+                    Inactivos
+                  </label>
+                </div>
+                <Button onClick={() => setShowTeacherForm(true)} className="h-9 text-sm ml-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Nuevo Profesor
                 </Button>
@@ -2988,24 +3188,23 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* Users */}
           {activeTab === "users" && !showUserForm && (
             <div className="space-y-6">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <div className="relative sm:max-w-md flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                    <Input
-                      placeholder="Buscar por ID, nombre o correo..."
-                      className="pl-10"
-                      value={usersSearch}
-                      onChange={(e) => setUsersSearch(e.target.value)}
-                    />
-                  </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[200px] max-w-xs">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+                  <Input
+                    placeholder="Buscar por ID, nombre o correo..."
+                    className="pl-10 w-full h-9 text-sm"
+                    value={usersSearch}
+                    onChange={(e) => setUsersSearch(e.target.value)}
+                  />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Filtro por Rol */}
+                {/* Filtro por Rol */}
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Rol:</span>
                   <Select value={usersRoleFilter} onValueChange={setUsersRoleFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filtrar por rol" />
+                    <SelectTrigger className="w-[130px] h-9 text-sm">
+                      <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos los roles</SelectItem>
@@ -3014,64 +3213,111 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                       <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
 
-                  {/* Filtro por Fecha de registro */}
+                {/* Filtro por Rango de Fecha de registro */}
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Registro:</span>
+                  {/* Fecha desde */}
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-[220px] justify-start text-left font-normal",
-                          !usersDateFilter && "text-muted-foreground"
+                          "w-[110px] justify-start text-left font-normal text-xs h-9",
+                          !usersDateRangeFilter.from && "text-muted-foreground"
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {usersDateFilter
-                          ? usersDateFilter.toLocaleDateString("es-AR")
-                          : "Fecha de registro"}
+                        <CalendarIcon className="mr-1 h-3 w-3" />
+                        {usersDateRangeFilter.from
+                          ? usersDateRangeFilter.from.toLocaleDateString("es-AR")
+                          : "Desde"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={usersDateFilter}
-                        onSelect={setUsersDateFilter}
+                        selected={usersDateRangeFilter.from}
+                        onSelect={(date) => {
+                          setUsersDateRangeFilter((prev) => ({ ...prev, from: date }));
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
 
-                  {/* Filtro Inactivos */}
-                  <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
-                    <Checkbox 
-                      id="showInactiveUsers" 
-                      checked={showInactiveUsers} 
-                      onCheckedChange={(c) => setShowInactiveUsers(Boolean(c))} 
-                    />
-                    <label 
-                      htmlFor="showInactiveUsers" 
-                      className="text-sm text-[#64748B] cursor-pointer whitespace-nowrap"
-                    >
-                      Mostrar inactivos
-                    </label>
-                  </div>
+                  {/* Separador */}
+                  <span className="text-[#64748B] text-xs">-</span>
 
-                  {/* Limpiar filtros */}
-                  {(usersSearch || usersRoleFilter !== "all" || usersDateFilter || showInactiveUsers) && (
+                  {/* Fecha hasta */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[110px] justify-start text-left font-normal text-xs h-9",
+                          !usersDateRangeFilter.to && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-1 h-3 w-3" />
+                        {usersDateRangeFilter.to
+                          ? usersDateRangeFilter.to.toLocaleDateString("es-AR")
+                          : "Hasta"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={usersDateRangeFilter.to}
+                        onSelect={(date) => {
+                          setUsersDateRangeFilter((prev) => ({ ...prev, to: date }));
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Filtro Inactivos */}
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <Checkbox 
+                    id="showInactiveUsers" 
+                    checked={showInactiveUsers} 
+                    onCheckedChange={(c) => setShowInactiveUsers(Boolean(c))} 
+                  />
+                  <label 
+                    htmlFor="showInactiveUsers" 
+                    className="text-sm text-[#64748B] cursor-pointer whitespace-nowrap"
+                  >
+                    Inactivos
+                  </label>
+                </div>
+
+                {/* Limpiar filtros + Exportar */}
+                <div className="flex items-center gap-2 ml-auto">
+                  {(usersSearch || usersRoleFilter !== "all" || usersDateRangeFilter.from || usersDateRangeFilter.to || showInactiveUsers) && (
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
+                      className="h-9 text-xs"
                       onClick={() => {
                         setUsersSearch("");
                         setUsersRoleFilter("all");
-                        setUsersDateFilter(undefined);
+                        setUsersDateRangeFilter({ from: undefined, to: undefined });
                         setShowInactiveUsers(false);
                       }}
                     >
-                      <X className="mr-1 h-4 w-4" />
-                      Limpiar filtros
+                      <X className="mr-1 h-3 w-3" />
+                      Limpiar
                     </Button>
                   )}
+                  <Button
+                    onClick={handleExportAllUsers}
+                    className="h-9 text-xs"
+                  >
+                    <Download className="mr-1 h-3 w-3" />
+                    Exportar
+                  </Button>
                 </div>
               </div>
 
@@ -3253,65 +3499,139 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* Payments */}
           {activeTab === "payments" && (
             <div className="space-y-6">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-1 flex-col gap-3 sm:max-w-3xl">
-                  <div className="relative w-full sm:max-w-md">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                    <Input
-                      placeholder="Buscar pagos..."
-                      className="pl-10"
-                      value={paymentsSearch}
-                      onChange={(e) => setPaymentsSearch(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-wrap items-center justify-start gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={31}
-                      placeholder="Día"
-                      value={paymentsDateDraft.day}
-                      onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, day: e.target.value }))}
-                      className="w-20 sm:w-24 h-10 text-center"
-                    />
-                    <Input
-                      type="number"
-                      min={1}
-                      max={12}
-                      placeholder="Mes"
-                      value={paymentsDateDraft.month}
-                      onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, month: e.target.value }))}
-                      className="w-20 sm:w-24 h-10 text-center"
-                    />
-                    <Input
-                      type="number"
-                      min={1900}
-                      max={9999}
-                      placeholder="Año"
-                      value={paymentsDateDraft.year}
-                      onChange={(e) => setPaymentsDateDraft((prev) => ({ ...prev, year: e.target.value }))}
-                      className="w-20 sm:w-24 h-10 text-center"
-                    />
-                    <Button onClick={handleApplyPaymentsDateFilter} size="sm" className="h-10 px-3">
-                      Buscar
-                    </Button>
-                    <Button onClick={handleClearPaymentsDateFilter} variant="outline" size="sm" className="h-10 px-3">
-                      Limpiar
-                    </Button>
-                    <Button
-                      onClick={handleExportAllPayments}
-                      variant="outline"
-                      size="sm"
-                      className="h-10 px-3 transition-colors"
-                      style={{ backgroundColor: '#16a34a', color: '#ffffff', borderColor: '#16a34a' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#15803d'; e.currentTarget.style.borderColor = '#15803d'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#16a34a'; e.currentTarget.style.borderColor = '#16a34a'; }}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Exportar
-                    </Button>
-                  </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[200px] max-w-xs">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+                  <Input
+                    placeholder="Buscar pagos..."
+                    className="pl-10 h-9 text-sm w-full"
+                    value={paymentsSearch}
+                    onChange={(e) => setPaymentsSearch(e.target.value)}
+                  />
                 </div>
+                {/* Filtro por Estado */}
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Estado:</span>
+                  <Select value={paymentsStatusFilter} onValueChange={setPaymentsStatusFilter}>
+                    <SelectTrigger className="w-[120px] h-9 text-sm">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="approved">Aprobado</SelectItem>
+                      <SelectItem value="pending">Pendiente</SelectItem>
+                      <SelectItem value="legacy">Manual</SelectItem>
+                      <SelectItem value="canceled">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro por Rango de Monto */}
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Monto:</span>
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    value={paymentsAmountRangeFilter.from}
+                    onChange={(e) => setPaymentsAmountRangeFilter((prev) => ({ ...prev, from: e.target.value }))}
+                    className="w-20 h-9 text-xs"
+                  />
+                  <span className="text-[#64748B] text-xs">-</span>
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    value={paymentsAmountRangeFilter.to}
+                    onChange={(e) => setPaymentsAmountRangeFilter((prev) => ({ ...prev, to: e.target.value }))}
+                    className="w-20 h-9 text-xs"
+                  />
+                </div>
+
+                {/* Filtro por Rango de Fecha de pago */}
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Fecha:</span>
+                    {/* Fecha desde */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-[110px] justify-start text-left font-normal text-xs h-9",
+                            !paymentsDateRangeFilter.from && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-1 h-3 w-3" />
+                          {paymentsDateRangeFilter.from
+                            ? paymentsDateRangeFilter.from.toLocaleDateString("es-AR")
+                            : "Desde"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={paymentsDateRangeFilter.from}
+                          onSelect={(date) => {
+                            setPaymentsDateRangeFilter((prev) => ({ ...prev, from: date }));
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Separador */}
+                    <span className="text-[#64748B] text-xs">-</span>
+
+                    {/* Fecha hasta */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-[110px] justify-start text-left font-normal text-xs h-9",
+                            !paymentsDateRangeFilter.to && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-1 h-3 w-3" />
+                          {paymentsDateRangeFilter.to
+                            ? paymentsDateRangeFilter.to.toLocaleDateString("es-AR")
+                            : "Hasta"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={paymentsDateRangeFilter.to}
+                          onSelect={(date) => {
+                            setPaymentsDateRangeFilter((prev) => ({ ...prev, to: date }));
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                {(paymentsSearch || paymentsDateRangeFilter.from || paymentsDateRangeFilter.to || paymentsStatusFilter !== "all" || paymentsAmountRangeFilter.from || paymentsAmountRangeFilter.to) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 text-xs"
+                    onClick={() => {
+                      setPaymentsSearch("");
+                      setPaymentsDateRangeFilter({ from: undefined, to: undefined });
+                      setPaymentsStatusFilter("all");
+                      setPaymentsAmountRangeFilter({ from: "", to: "" });
+                    }}
+                  >
+                    <X className="mr-1 h-3 w-3" />
+                    Limpiar
+                  </Button>
+                )}
+                <Button
+                  onClick={handleExportAllPayments}
+                  className="h-9 text-xs"
+                >
+                  <Download className="mr-1 h-3 w-3" />
+                  Exportar
+                </Button>
               </div>
 
               <Card>
@@ -3450,10 +3770,122 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* Certificates */}
           {activeTab === "certificates" && (
             <div className="space-y-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative flex-1 sm:max-w-md">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[200px] max-w-xs">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
-                  <Input placeholder="Buscar certificados..." className="pl-10" />
+                  <Input
+                    placeholder="Buscar estudiante..."
+                    className="pl-10 h-9 text-sm w-full"
+                    value={certificatesSearch}
+                    onChange={(e) => setCertificatesSearch(e.target.value)}
+                  />
+                </div>
+
+                {/* Filtro por Curso */}
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Curso:</span>
+                  <Select value={certificatesCourseFilter} onValueChange={setCertificatesCourseFilter}>
+                    <SelectTrigger className="w-[160px] h-9 text-sm">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {realtimeCourses.map((course) => (
+                        <SelectItem key={course.id} value={course.title}>
+                          {course.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro por Rango de Fecha de Emisión */}
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Emisión:</span>
+                  {/* Fecha desde */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[110px] justify-start text-left font-normal text-xs h-9",
+                          !certificatesDateRangeFilter.from && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-1 h-3 w-3" />
+                        {certificatesDateRangeFilter.from
+                          ? certificatesDateRangeFilter.from.toLocaleDateString("es-AR")
+                          : "Desde"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={certificatesDateRangeFilter.from}
+                        onSelect={(date) => {
+                          setCertificatesDateRangeFilter((prev) => ({ ...prev, from: date }));
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Separador */}
+                  <span className="text-[#64748B] text-xs">-</span>
+
+                  {/* Fecha hasta */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[110px] justify-start text-left font-normal text-xs h-9",
+                          !certificatesDateRangeFilter.to && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-1 h-3 w-3" />
+                        {certificatesDateRangeFilter.to
+                          ? certificatesDateRangeFilter.to.toLocaleDateString("es-AR")
+                          : "Hasta"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={certificatesDateRangeFilter.to}
+                        onSelect={(date) => {
+                          setCertificatesDateRangeFilter((prev) => ({ ...prev, to: date }));
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Botón Limpiar Filtros + Exportar */}
+                <div className="flex items-center gap-2 ml-auto">
+                  {(certificatesSearch || certificatesCourseFilter !== "all" || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 text-xs"
+                      onClick={() => {
+                        setCertificatesSearch("");
+                        setCertificatesCourseFilter("all");
+                        setCertificatesDateRangeFilter({ from: undefined, to: undefined });
+                      }}
+                    >
+                      <X className="mr-1 h-3 w-3" />
+                      Limpiar
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleExportAllCertificates}
+                    className="h-9 text-xs"
+                  >
+                    <Download className="mr-1 h-3 w-3" />
+                    Exportar
+                  </Button>
                 </div>
               </div>
 
@@ -3550,11 +3982,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     )}
                   </TableBody>
                 </Table>
-                {!certificatesLoading && !certificatesError && realtimeCertificates.length > 0 && (
+                {!certificatesLoading && !certificatesError && filteredCertificates.length > 0 && (
                   <div className="flex items-center justify-between border-t px-4 py-3">
                     <p className="text-sm text-[#64748B]">
                       Mostrando {(certificatesPage - 1) * ADMIN_TABLE_ROWS_PER_PAGE + 1}
-                      -{Math.min(certificatesPage * ADMIN_TABLE_ROWS_PER_PAGE, realtimeCertificates.length)} de {realtimeCertificates.length} certificados
+                      -{Math.min(certificatesPage * ADMIN_TABLE_ROWS_PER_PAGE, filteredCertificates.length)} de {filteredCertificates.length} certificados
                     </p>
                     <div className="flex items-center gap-2">
                       <Button
