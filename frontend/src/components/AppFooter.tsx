@@ -168,7 +168,7 @@ export function AppFooter({ onNavigate }: AppFooterProps) {
                 </button>
               </li>
               <li>
-                <a href="https://wa.me/543815537057" target="_blank" rel="noopener noreferrer" className="body-sm text-[#64748B] hover:text-[#1e467c]">
+                <a href="https://wa.me/543813314457" target="_blank" rel="noopener noreferrer" className="body-sm text-[#64748B] hover:text-[#1e467c]">
                   WhatsApp
                 </a>
               </li>

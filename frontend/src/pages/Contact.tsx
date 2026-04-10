@@ -186,11 +186,11 @@ export function Contact() {
                 </div>
                 <h3 className="mb-4 text-lg">Teléfono</h3>
                 <div className="space-y-1">
-                  <a href="https://wa.me/543815537057" target="_blank" rel="noopener noreferrer" className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors block">
-                    +54 9 3815 53-7057
+                  <a href="https://wa.me/543813314457" target="_blank" rel="noopener noreferrer" className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors block">
+                    +54 9 3813 31-4457
                   </a>
-                  <a href="https://wa.me/543815537057" target="_blank" rel="noopener noreferrer" className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors block">
-                    WhatsApp: +54 9 3815 53-7057
+                  <a href="https://wa.me/543813314457" target="_blank" rel="noopener noreferrer" className="text-sm text-[#64748B] hover:text-[#1e467c] transition-colors block">
+                    WhatsApp: +54 9 3813 31-4457
                   </a>
                 </div>
               </Card>
