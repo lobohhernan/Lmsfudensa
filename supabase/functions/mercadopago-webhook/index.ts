@@ -148,6 +148,7 @@ async function processPaymentAsync(paymentId: string, data: unknown): Promise<vo
 
     // Extraer datos
     const userEmail = paymentData.payer?.email;
+    const payerName = paymentData.payer?.first_name || "Usuario";
     
     // El external_reference es JSON: {"courseId": "...", "userId": "..."}
     let externalRef: { courseId?: string; userId?: string } = {};
@@ -214,10 +215,10 @@ async function createEnrollment(
   userEmail: string,
   paymentId: string
 ) {
-  console.log("📝 [WEBHOOK] Creando inscripción:", { userId, courseId });
+  console.log("📝 [WEBHOOK] Creando inscripción:", { userId, courseId, userEmail });
 
   try {
-    // Verificar que la inscripción no exista (si tenemos userId)
+    // Si tenemos userId, verificar que la inscripción no exista
     if (userId) {
       const { data: existing } = await supabase
         .from("enrollments")
@@ -227,28 +228,33 @@ async function createEnrollment(
         .maybeSingle();
 
       if (existing) {
-        console.log("⚠️ [WEBHOOK] Inscripción ya existe");
+        console.log("⚠️ [WEBHOOK] Inscripción ya existe para userid:", userId);
         return;
       }
+
+      // Crear inscripción (solo con los campos que existen en la tabla)
+      const { data, error } = await supabase
+        .from("enrollments")
+        .insert({
+          user_id: userId,
+          course_id: courseId,
+        })
+        .select();
+
+      if (error) {
+        console.error("❌ [WEBHOOK] Error creando inscripción:", error.message, error.details);
+        throw error;
+      }
+
+      console.log("✅ [WEBHOOK] Inscripción creada para user_id:", userId, data?.[0]?.id);
+    } else {
+      // Si no tenemos userId, registrar el pago pero NO crear inscripción automática
+      console.warn("⚠️ [WEBHOOK] No hay user_id, registrando pago sin inscripción");
+      console.log("   Email del pagador:", userEmail);
+      console.log("   Payment ID:", paymentId);
+      // El usuario podría estar sin autenticar en el dashboard
+      return;
     }
-
-    // Crear inscripción
-    const { data, error } = await supabase.from("enrollments").insert({
-      user_id: userId || null,
-      course_id: courseId,
-      user_email: userEmail,
-      payment_id: paymentId,
-      status: "active",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }).select();
-
-    if (error) {
-      console.error("❌ [WEBHOOK] Error en BD:", error.message, error.details);
-      throw error;
-    }
-
-    console.log("✅ [WEBHOOK] Inscripción creada:", data?.[0]?.id);
   } catch (error) {
     console.error("❌ [WEBHOOK] Error en createEnrollment:", error);
     throw error;
