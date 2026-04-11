@@ -285,26 +285,63 @@ async function createEnrollment(
     return;
   }
 
-  // Crear inscripción nueva (solo con columnas que existen)
+  // Crear inscripción nueva con TODOS los campos
+  const enrollmentData: any = {
+    user_id: userId,
+    course_id: courseId,
+    enrolled_at: new Date().toISOString(),
+    user_email: userEmail,
+    payment_id: String(paymentId),
+    status: "active",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  console.log("📝 [WEBHOOK] Datos de inscripción a insertar:", enrollmentData);
+
   const { data: enrollment, error: enrollError } = await supabase
     .from("enrollments")
-    .insert({
-      user_id: userId,
-      course_id: courseId,
-      enrolled_at: new Date().toISOString(),
-    })
+    .insert(enrollmentData)
     .select();
 
   if (enrollError) {
     // Si el error es por duplicate key, significa que otra instancia la creó
-    if (enrollError.message?.includes("duplicate")) {
-      console.warn("⚠️ [WEBHOOK] Inscripción creada por otro proceso, ignorando error");
+    if (enrollError.message?.includes("duplicate") || enrollError.code === "23505") {
+      console.warn("⚠️ [WEBHOOK] Inscripción creada por otro proceso (duplicate key), actualizando...");
+      
+      // Intentar actualizar con los datos de pago
+      const { error: updateErr } = await supabase
+        .from("enrollments")
+        .update({
+          user_email: userEmail,
+          payment_id: String(paymentId),
+          status: "active",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("course_id", courseId);
+      
+      if (updateErr) {
+        console.error("❌ [WEBHOOK] Error actualizando después de duplicate:", updateErr);
+        throw updateErr;
+      }
+      
+      console.log("✅ [WEBHOOK] Inscripción actualizada con datos de pago");
       return;
     }
     
-    console.error("❌ [WEBHOOK] Error creando inscripción:", enrollError);
+    console.error("❌ [WEBHOOK] Error creando inscripción:", {
+      message: enrollError.message,
+      code: enrollError.code,
+      details: enrollError.details,
+    });
     throw enrollError;
   }
 
-  console.log("✅ [WEBHOOK] Inscripción creada:", enrollment?.[0]?.id);
+  console.log("✅ [WEBHOOK] Inscripción creada:", {
+    id: enrollment?.[0]?.id,
+    user_id: enrollment?.[0]?.user_id,
+    course_id: enrollment?.[0]?.course_id,
+    payment_id: enrollment?.[0]?.payment_id,
+  });
 }

@@ -93,57 +93,51 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
           return;
         }
 
-        // NOTA: El webhook de Mercado Pago es el único que crea la inscripción
-        // Aquí solo verificamos que existe (con reintentos para esperar al webhook)
-        console.log(`🔍 Verificando inscripción del usuario ${user.id} en curso ${courseId}...`);
+        // IMPORTANTE: El frontend crea la inscripción directamente si no existe
+        // Esto es un failsafe en caso de que el webhook no se ejecute
+        console.log(`📝 Creando inscripción del usuario ${user.id} en curso ${courseId}...`);
         
-        let enrolled = false;
-        let retries = 0;
-        const maxRetries = 30; // ~12 segundos de espera (con backoff)
-        let waitTime = 400; // Empezar con 400ms
-        
-        while (!enrolled && retries < maxRetries) {
-          const { data: enrollment } = await supabase
+        const { data: existing } = await supabase
+          .from("enrollments")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("course_id", courseId)
+          .maybeSingle();
+
+        if (existing) {
+          console.log("✅ Inscripción ya existe");
+          setEnrolledCourseId(courseId);
+        } else {
+          // Crear inscripción
+          const { data: newEnrollment, error: insertError } = await supabase
             .from("enrollments")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("course_id", courseId)
-            .single();
-          
-          if (enrollment) {
-            console.log("✅ Inscripción confirmada");
-            enrolled = true;
-            setEnrolledCourseId(courseId);
-            
-            // Resolver courseId a slug para navegación completa
-            const slug = await resolveCourseIdToSlug(courseId);
-            if (slug) {
-              console.log(`✅ Slug resuelto: ${courseId} → ${slug}`);
-              setEnrolledCourseSlug(slug);
-            } else {
-              console.warn(`⚠️ No se pudo resolver slug para courseId: ${courseId}`);
-            }
-            
-            setIsVerifying(false); // ← IMPORTANTE: Establecer false para activar el useEffect de redirección
-          } else {
-            retries++;
-            if (retries < maxRetries) {
-              // Espera progresiva (exponencial backoff)
-              const actualWait = Math.min(waitTime, 1000); // Máximo 1 segundo de espera
-              console.log(`⏳ Inscripción no encontrada (intento ${retries}/${maxRetries}), esperando ${actualWait}ms...`);
-              await new Promise(resolve => setTimeout(resolve, actualWait));
-              waitTime = Math.min(waitTime * 1.2, 1000); // Aumentar espera progresivamente
-            } else {
-              console.error("❌ Se agotaron los reintentos de verificación");
-            }
+            .insert({
+              user_id: user.id,
+              course_id: courseId,
+            })
+            .select();
+
+          if (insertError) {
+            console.error("❌ Error creando inscripción:", insertError);
+            setEnrollmentError("Error al crear inscripción: " + insertError.message);
+            setIsVerifying(false);
+            return;
           }
+
+          console.log("✅ Inscripción creada por frontend:", newEnrollment?.[0]?.id);
+          setEnrolledCourseId(courseId);
         }
-        
-        if (!enrolled) {
-          console.error("❌ La inscripción no se completó en el tiempo esperado");
-          setEnrollmentError("La inscripción tardó más de lo esperado. Por favor intenta en unos momentos.");
-          setIsVerifying(false);
+
+        // Resolver courseId a slug para navegación completa
+        const slug = await resolveCourseIdToSlug(courseId);
+        if (slug) {
+          console.log(`✅ Slug resuelto: ${courseId} → ${slug}`);
+          setEnrolledCourseSlug(slug);
+        } else {
+          console.warn(`⚠️ No se pudo resolver slug para courseId: ${courseId}`);
         }
+
+        setIsVerifying(false); // ← IMPORTANTE: Establecer false para activar el useEffect de redirección
       } catch (err) {
         console.error("❌ Error en verificación:", err);
         setEnrollmentError(
