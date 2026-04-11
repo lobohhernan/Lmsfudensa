@@ -84,11 +84,40 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log("💰 [WEBHOOK] Procesando pago:", paymentId);
 
+    // ⚡ RESPUESTA INMEDIATA (sin esperar procesamiento)
+    // Mercado Pago necesita respuesta rápida (máx 2-3 segundos)
+    // El procesamiento se hace en background
+    
+    // IMPORTANTE: Responder INMEDIATAMENTE para que auto_return no espere
+    const responsePromise = successResponse({ 
+      status: "accepted", // Aceptado para procesamiento async
+      paymentId,
+      message: "Pago recibido, procesando inscripción en background"
+    });
+
+    // Procesar en background (sin esperar)
+    processPaymentAsync(paymentId, data)
+      .catch(err => console.error("❌ [WEBHOOK] Error async:", err));
+
+    return responsePromise;
+  } catch (error) {
+    console.error("❌ [WEBHOOK] Error general:", error);
+    return successResponse({ status: "general_error", error: true });
+  }
+
+/**
+ * Procesar pago de forma ASINCRÓNICA (en background)
+ * No bloquea la respuesta HTTP
+ */
+async function processPaymentAsync(paymentId: string, data: unknown): Promise<void> {
+  try {
+    console.log("🔄 [WEBHOOK] Iniciando procesamiento async para:", paymentId);
+
     // Obtener detalles del pago desde MP
     const mpToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
     if (!mpToken) {
       console.error("❌ [WEBHOOK] No hay Access Token de MP");
-      return successResponse({ status: "no_mp_token", error: true });
+      return;
     }
 
     console.log("🔍 [WEBHOOK] Obteniendo detalles de MP...");
@@ -105,7 +134,7 @@ serve(async (req: Request): Promise<Response> => {
     if (!mpResponse.ok) {
       const errorText = await mpResponse.text();
       console.error("❌ [WEBHOOK] Error de MP:", mpResponse.status, errorText.substring(0, 200));
-      return successResponse({ status: "mp_error", code: mpResponse.status, error: true });
+      return;
     }
 
     const paymentData = await mpResponse.json();
@@ -114,7 +143,7 @@ serve(async (req: Request): Promise<Response> => {
     // Solo procesar pagos aprobados
     if (paymentData.status !== "approved") {
       console.log("⏭️ [WEBHOOK] Pago no aprobado:", paymentData.status);
-      return successResponse({ status: "not_approved", payment_status: paymentData.status });
+      return;
     }
 
     // Extraer datos
@@ -140,24 +169,20 @@ serve(async (req: Request): Promise<Response> => {
 
     if (!userEmail || !courseId) {
       console.error("❌ [WEBHOOK] Faltan email o courseId");
-      return successResponse({ status: "missing_data", error: true });
+      return;
     }
 
     // Crear inscripción
     try {
       await createEnrollment(userId, courseId, userEmail, paymentId);
-      console.log("✅ [WEBHOOK] Inscripción procesada exitosamente");
+      console.log("✅ [WEBHOOK] Inscripción procesada exitosamente (async)");
     } catch (enrollError) {
       console.error("❌ [WEBHOOK] Error en inscripción:", enrollError);
-      // No fallar el webhook si hay error en inscripción
-      return successResponse({ status: "enrollment_error", error: true });
     }
-
-    return successResponse({ status: "success", paymentId });
   } catch (error) {
-    console.error("❌ [WEBHOOK] Error general:", error);
-    return successResponse({ status: "general_error", error: true });
+    console.error("❌ [WEBHOOK] Error en procesamiento async:", error);
   }
+}
 });
 
 /**

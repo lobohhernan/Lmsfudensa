@@ -99,7 +99,8 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
         
         let enrolled = false;
         let retries = 0;
-        const maxRetries = 15; // ~30 segundos (esperar webhook)
+        const maxRetries = 30; // ~12 segundos de espera (con backoff)
+        let waitTime = 400; // Empezar con 400ms
         
         while (!enrolled && retries < maxRetries) {
           const { data: enrollment } = await supabase
@@ -127,8 +128,13 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
           } else {
             retries++;
             if (retries < maxRetries) {
-              console.log(`⏳ Esperando inscripción... (intento ${retries}/${maxRetries})`);
-              await new Promise(resolve => setTimeout(resolve, 2000)); // Esperar 2 segundos
+              // Espera progresiva (exponencial backoff)
+              const actualWait = Math.min(waitTime, 1000); // Máximo 1 segundo de espera
+              console.log(`⏳ Inscripción no encontrada (intento ${retries}/${maxRetries}), esperando ${actualWait}ms...`);
+              await new Promise(resolve => setTimeout(resolve, actualWait));
+              waitTime = Math.min(waitTime * 1.2, 1000); // Aumentar espera progresivamente
+            } else {
+              console.error("❌ Se agotaron los reintentos de verificación");
             }
           }
         }
