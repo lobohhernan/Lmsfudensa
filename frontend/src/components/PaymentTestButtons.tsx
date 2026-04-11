@@ -19,11 +19,11 @@ function PaymentTestButtonsComponent({
 }: PaymentTestButtonsProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Only show in development mode - always show for testing
-  // NOTE: Remove this check to always show in production for testing
-  // if (import.meta.env.MODE !== "development") {
-  //   return null;
-  // }
+  // DESACTIVADO: Cambiar ENABLE_TESTING a true para mostrar de nuevo
+  const ENABLE_TESTING = false;
+  if (!ENABLE_TESTING) {
+    return null;
+  }
 
   const handleSimulation = useCallback(async (
     status: "approved" | "pending" | "rejected"
