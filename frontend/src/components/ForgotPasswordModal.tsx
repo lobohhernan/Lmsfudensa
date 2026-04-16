@@ -45,7 +45,7 @@ export function ForgotPasswordModal({
 
     if (result.success) {
       setEmailSent(true);
-      toast.success('Email enviado! Revisa tu bandeja de entrada');
+      toast.success('Si el correo existe, recibirás un link de recuperación');
       debug('✅ Email de recuperación enviado exitosamente');
     } else {
       toast.error(result.error || 'Error al enviar el email');
@@ -94,7 +94,7 @@ export function ForgotPasswordModal({
             </DialogTitle>
             <DialogDescription className="text-white/70">
               {emailSent
-                ? 'Hemos enviado un link de recuperación a tu email. Revisa tu bandeja de entrada.'
+                ? 'Si el correo existe, recibirás un link de recuperación en tu bandeja de entrada.'
                 : 'Ingresa tu email y te enviaremos un link para resetear tu contraseña.'}
             </DialogDescription>
           </DialogHeader>
@@ -103,7 +103,7 @@ export function ForgotPasswordModal({
             <div className="space-y-4 pt-4">
               <div className="p-4 rounded-lg bg-green-500/20 border border-green-500/30">
                 <p className="text-green-200 text-sm">
-                  📧 Revisa tu email (incluyendo la carpeta de spam) dentro de los próximos 5 minutos.
+                  📧 Revisa tu email (incluyendo spam) dentro de los próximos 5 minutos.
                 </p>
               </div>
               <p className="text-sm text-white/70">

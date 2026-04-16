@@ -37,8 +37,12 @@ npx supabase functions serve
 # Deploy a producción
 npx supabase functions deploy admin-operations
 npx supabase functions deploy bright-action
+npx supabase functions deploy check-payment-status
 npx supabase functions deploy mercadopago-preference --no-verify-jwt
 npx supabase functions deploy mercadopago-webhook --no-verify-jwt
+npx supabase functions deploy send-reset-email
+npx supabase functions deploy send_contact_email
+npx supabase functions deploy server
 
 # Ver logs
 npx supabase functions logs mercadopago-webhook
