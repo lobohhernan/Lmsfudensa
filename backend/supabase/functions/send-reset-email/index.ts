@@ -12,6 +12,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") ?? "FUDENSA Seguridad <onboarding@resend.dev>";
 
 // Frontend URL for redirect
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") ?? "https://fudensa.pages.dev";
@@ -32,7 +33,7 @@ async function sendEmailViaResend(
       Authorization: `Bearer ${RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: "FUDENSA Seguridad <onboarding@resend.dev>",
+      from: RESEND_FROM_EMAIL,
       to: [to],
       subject: subject,
       html: htmlContent,
@@ -61,6 +62,10 @@ serve(async (req: Request) => {
 
     if (!SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("SUPABASE_SERVICE_ROLE_KEY no configurada");
+    }
+
+    if (!SUPABASE_URL) {
+      throw new Error("SUPABASE_URL no configurada");
     }
 
     const { email }: ResetEmailRequest = await req.json();
@@ -152,12 +157,28 @@ serve(async (req: Request) => {
       </div>
     `;
 
-    // Send email
-    await sendEmailViaResend(
-      email,
-      "Recupera tu contraseña - FUDENSA",
-      emailHtml
-    );
+    // Send email. This must succeed for the UI to show a success message.
+    try {
+      await sendEmailViaResend(
+        email,
+        "Recupera tu contraseña - FUDENSA",
+        emailHtml
+      );
+    } catch (sendError: unknown) {
+      const sendErrorMessage = sendError instanceof Error ? sendError.message : String(sendError);
+      console.error("Resend delivery error:", sendErrorMessage);
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "No pudimos enviar el email de recuperación. Intenta más tarde.",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 502,
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify({
@@ -175,12 +196,12 @@ serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({
-        success: true,
-        message: "Si el email existe, recibirás un link de recuperación",
+        success: false,
+        message: "No pudimos procesar tu solicitud en este momento. Intenta más tarde.",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 500,
       }
     );
   }

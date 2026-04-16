@@ -8,6 +8,11 @@ export interface PasswordResetResult {
   loading: boolean;
 }
 
+interface ResetEmailFunctionResponse {
+  success?: boolean;
+  message?: string;
+}
+
 export function usePasswordReset() {
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +27,7 @@ export function usePasswordReset() {
       debug(`📧 Enviando email de recuperación a: ${email}`);
 
       // Llamar edge function para enviar email
-      const { data, error } = await supabase.functions.invoke('send-reset-email', {
+      const { data, error } = await supabase.functions.invoke<ResetEmailFunctionResponse>('send-reset-email', {
         body: { email },
       });
 
@@ -31,6 +36,15 @@ export function usePasswordReset() {
         return {
           success: false,
           error: 'No pudimos enviar el email. Intenta más tarde.',
+          loading: false,
+        };
+      }
+
+      if (data?.success === false) {
+        logError('La función reportó fallo de envío:', data?.message);
+        return {
+          success: false,
+          error: data?.message || 'No pudimos enviar el email. Intenta más tarde.',
           loading: false,
         };
       }
