@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "deploy:functions": "npx supabase functions deploy admin-operations --workdir backend && npx supabase functions deploy bright-action --workdir backend && npx supabase functions deploy check-payment-status --workdir backend && npx supabase functions deploy mercadopago-preference --no-verify-jwt --workdir backend && npx supabase functions deploy mercadopago-webhook --no-verify-jwt --workdir backend && npx supabase functions deploy send-reset-email --workdir backend && npx supabase functions deploy send_contact_email --workdir backend && npx supabase functions deploy server --workdir backend"
+  },
   "devDependencies": {
     "supabase": "^2.58.5"
   }
