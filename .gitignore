@@ -8,9 +8,10 @@ backend/node_modules/
 .env
 .env.local
 .env.*.local
+.env.production
 .env.production.local
-frontend/.env.local*
-backend/.env.local*
+frontend/.env.*
+backend/.env.*
 
 # Build y distribución
 dist/
@@ -52,6 +53,9 @@ yarn-error.log*
 pnpm-debug.log*
 function.log
 *.log.old
+errors.txt
+frontend/errors.txt
+backend/errors.txt
 
 # Lockfiles (comentado: algunos proyectos los necesitan)
 # package-lock.json
