@@ -211,6 +211,43 @@ export const CheckoutFormSchema = z.object({
 export type CheckoutFormData = z.infer<typeof CheckoutFormSchema>;
 
 /**
+ * Validación para Recuperación de Contraseña
+ */
+export const ForgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .email('Ingresa un email válido')
+    .max(100, 'El email no puede exceder 100 caracteres'),
+});
+
+export type ForgotPasswordData = z.infer<typeof ForgotPasswordSchema>;
+
+/**
+ * Validación para Reset de Contraseña
+ */
+export const ResetPasswordSchema = z.object({
+  password: z
+    .string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .regex(/[A-Z]/, 'Debe contener al menos una letra mayúscula')
+    .regex(/[a-z]/, 'Debe contener al menos una letra minúscula')
+    .regex(/[0-9]/, 'Debe contener al menos un número')
+    .regex(/[^a-zA-Z0-9]/, 'Debe contener al menos un carácter especial'),
+
+  confirmPassword: z
+    .string()
+    .min(1, 'Confirma tu contraseña'),
+}).refine(
+  (data) => data.password === data.confirmPassword,
+  {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
+  }
+);
+
+export type ResetPasswordData = z.infer<typeof ResetPasswordSchema>;
+
+/**
  * Utilidad para validar datos
  */
 export const validateFormData = async <T>(

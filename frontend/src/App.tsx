@@ -20,6 +20,7 @@ const DesignSystem = lazy(() => import("./pages/DesignSystem").then(m => ({ defa
 const Evaluation = lazy(() => import("./pages/Evaluation").then(m => ({ default: m.Evaluation })));
 const AboutUs = lazy(() => import("./pages/AboutUs").then(m => ({ default: m.AboutUs })));
 const Contact = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage").then(m => ({ default: m.ResetPasswordPage })));
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { supabase } from "./lib/supabase";
@@ -44,7 +45,8 @@ type Page =
   | "design"
   | "evaluation"
   | "about"
-  | "contact";
+  | "contact"
+  | "reset-password";
 
 // Función para parsear la ruta desde el pathname y hash
 function parseRouteFromPath(): {
@@ -158,6 +160,10 @@ function parseRouteFromPath(): {
 
   if (parts[0] === 'contacto') {
     return { page: 'contact' };
+  }
+
+  if (parts[0] === 'reset-password' || parts[0] === 'recuperar-contraseña') {
+    return { page: 'reset-password' };
   }
 
   return { page: 'home' };
@@ -831,6 +837,7 @@ export default function App() {
           {currentPage === "design" && <DesignSystem />}
           {currentPage === "about" && <AboutUs onNavigate={handleNavigate} />}
           {currentPage === "contact" && <Contact />}
+          {currentPage === "reset-password" && <ResetPasswordPage onNavigate={handleNavigate} />}
         </Suspense>
       </main>
 

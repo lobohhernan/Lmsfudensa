@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
 import logoHorizontal from "../assets/logo-horizontal.svg";
+import { ForgotPasswordModal } from "./ForgotPasswordModal";
 
 interface AppNavbarProps {
   onNavigate?: (page: string) => void;
@@ -57,6 +58,7 @@ export function AppNavbar({
   // Used for loading state during login (setter only)
   const [, setIsLoggingIn] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   
   // Use controlled state if provided, otherwise use internal state
   const loginOpen = openLoginModal !== undefined ? openLoginModal : internalLoginOpen;
@@ -482,12 +484,13 @@ export function AppNavbar({
                   />
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <a 
-                    href="#" 
+                  <a
+                    href="#"
                     className="text-white/90 transition-all hover:text-white hover:underline hover:underline-offset-4"
                     onClick={(e) => {
                       e.preventDefault();
-                      toast.info("Función de recuperación de contraseña próximamente");
+                      setLoginOpen(false);
+                      setForgotPasswordOpen(true);
                     }}
                   >
                     ¿Olvidaste tu contraseña?
@@ -728,6 +731,16 @@ export function AppNavbar({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        open={forgotPasswordOpen}
+        onOpenChange={setForgotPasswordOpen}
+        onBackToLogin={() => {
+          setForgotPasswordOpen(false);
+          setLoginOpen(true);
+        }}
+      />
     </>
   );
 }
