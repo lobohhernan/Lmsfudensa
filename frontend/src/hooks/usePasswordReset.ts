@@ -64,6 +64,39 @@ export function usePasswordReset() {
   };
 
   /**
+   * Valida el código de recuperación contra Supabase
+   * @param code - Código de recuperación
+   * @returns Promise con resultado
+   */
+  const verifyRecoveryCode = async (code: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      debug('🔒 Validando código de recuperación...');
+
+      // Intercambiar el código por una sesión válida
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+      if (error) {
+        logError('Error validando código:', error);
+        return {
+          success: false,
+          error: error.message === 'invalid code' 
+            ? 'El código de recuperación es inválido o expirado'
+            : 'No pudimos validar el código de recuperación',
+        };
+      }
+
+      debug('✅ Código de recuperación validado correctamente');
+      return { success: true };
+    } catch (err) {
+      logError('Excepción validando código:', err);
+      return {
+        success: false,
+        error: 'Error al validar el código de recuperación',
+      };
+    }
+  };
+
+  /**
    * Actualiza la contraseña del usuario autenticado
    * @param newPassword - Nueva contraseña
    * @returns Promise con resultado
@@ -87,6 +120,16 @@ export function usePasswordReset() {
       }
 
       debug('✅ Contraseña actualizada exitosamente');
+      
+      // Realizar logout después de cambiar la contraseña
+      try {
+        await supabase.auth.signOut();
+        debug('✅ Sesión cerrada después de cambio de contraseña');
+      } catch (logoutError) {
+        logError('Error cerrando sesión:', logoutError);
+        // No fallar el flujo si el logout falla
+      }
+      
       return { success: true, loading: false };
     } catch (err) {
       logError('Excepción al actualizar contraseña:', err);
@@ -100,5 +143,5 @@ export function usePasswordReset() {
     }
   };
 
-  return { sendResetEmail, resetPassword, loading };
+  return { sendResetEmail, verifyRecoveryCode, resetPassword, loading };
 }

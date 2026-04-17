@@ -20,21 +20,40 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [isValidatingCode, setIsValidatingCode] = useState(true);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const { resetPassword } = usePasswordReset();
+  const { resetPassword, verifyRecoveryCode } = usePasswordReset();
 
-  // Validar token en URL
+  // Validar código de recuperación en URL
   const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
+  const code = params.get('code');
 
   useEffect(() => {
-    if (!token) {
-      debug('⚠️ Token faltante en URL de reset de contraseña');
-      toast.error('Link de recuperación inválido o expirado');
-      // Redirigir a home después de 2 segundos
-      setTimeout(() => onNavigate?.('home'), 2000);
-    }
-  }, [token, onNavigate]);
+    const validateCode = async () => {
+      if (!code) {
+        debug('⚠️ Código de recuperación faltante en URL');
+        toast.error('Link de recuperación inválido o expirado');
+        // Redirigir a home después de 2 segundos
+        setTimeout(() => onNavigate?.('home'), 2000);
+        return;
+      }
+
+      // Validar el código contra Supabase
+      const result = await verifyRecoveryCode(code);
+      if (!result.success) {
+        debug('❌ Código de recuperación inválido:', result.error);
+        toast.error(result.error || 'Link de recuperación inválido o expirado');
+        // Redirigir a home después de 2 segundos
+        setTimeout(() => onNavigate?.('home'), 2000);
+        return;
+      }
+
+      debug('✅ Código de recuperación validado');
+      setIsValidatingCode(false);
+    };
+
+    validateCode();
+  }, [code, onNavigate, verifyRecoveryCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +95,25 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
     setIsSubmitting(false);
   };
 
-  if (!token) {
+  if (isValidatingCode) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#1e467c] to-[#2c5a9e] flex items-center justify-center px-4">
+        <Card className="w-full max-w-md border-white/20 bg-white/10 backdrop-blur-xl">
+          <CardHeader>
+            <CardTitle className="text-white">Validando tu solicitud...</CardTitle>
+            <CardDescription className="text-white/70">
+              Estamos verificando tu link de recuperación.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Loader2 className="w-8 h-8 text-white animate-spin" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!code) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#1e467c] to-[#2c5a9e] flex items-center justify-center px-4">
         <Card className="w-full max-w-md border-white/20 bg-white/10 backdrop-blur-xl">

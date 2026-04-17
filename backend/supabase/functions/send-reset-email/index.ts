@@ -9,44 +9,51 @@ const corsHeaders = {
 };
 
 // Supabase Admin API credentials from environment
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") ?? "FUDENSA Seguridad <onboarding@resend.dev>";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "FUDENSA Seguridad <noreply@fudensa.pages.dev>";
 
 // Frontend URL for redirect
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") ?? "https://fudensa.pages.dev";
-
-interface ResetEmailRequest {
-  email: string;
-}
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://fudensa.pages.dev";
 
 async function sendEmailViaResend(
   to: string,
   subject: string,
   htmlContent: string
 ) {
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-    },
-    body: JSON.stringify({
-      from: RESEND_FROM_EMAIL,
-      to: [to],
-      subject: subject,
-      html: htmlContent,
-    }),
-  });
+  console.log(`📨 Calling Resend API for email: ${to}`);
+  
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: RESEND_FROM_EMAIL,
+        to: [to],
+        subject: subject,
+        html: htmlContent,
+      }),
+    });
 
-  const responseData = await response.json();
+    console.log(`📊 Resend API response status: ${response.status}`);
 
-  if (!response.ok) {
-    throw new Error(`Resend error: ${response.status} - ${JSON.stringify(responseData)}`);
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      console.error(`❌ Resend API error (${response.status}):`, JSON.stringify(responseData));
+      throw new Error(`Resend error: ${response.status} - ${JSON.stringify(responseData)}`);
+    }
+
+    console.log("✅ Resend API response successful");
+    return responseData;
+  } catch (err) {
+    console.error("❌ Error calling Resend API:", err);
+    throw err;
   }
-
-  return responseData;
 }
 
 serve(async (req: Request) => {
@@ -56,21 +63,43 @@ serve(async (req: Request) => {
   }
 
   try {
+    console.log("📧 Starting send-reset-email handler");
+    
+    // Validate environment variables
     if (!RESEND_API_KEY) {
+      console.error("❌ RESEND_API_KEY not configured");
       throw new Error("RESEND_API_KEY no configurada");
     }
 
     if (!SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("❌ SUPABASE_SERVICE_ROLE_KEY not configured");
       throw new Error("SUPABASE_SERVICE_ROLE_KEY no configurada");
     }
 
     if (!SUPABASE_URL) {
+      console.error("❌ SUPABASE_URL not configured");
       throw new Error("SUPABASE_URL no configurada");
     }
 
-    const { email }: ResetEmailRequest = await req.json();
+    // Parse request body
+    let requestData: { email?: string };
+    try {
+      requestData = await req.json();
+    } catch (parseError) {
+      console.error("❌ Failed to parse request body:", parseError);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
 
-    if (!email) {
+    const { email } = requestData;
+
+    if (!email || typeof email !== "string") {
+      console.error("❌ Email missing or invalid in request");
       return new Response(
         JSON.stringify({ error: "Email requerido" }),
         {
@@ -80,20 +109,30 @@ serve(async (req: Request) => {
       );
     }
 
+    console.log(`📧 Processing reset request for email: ${email.substring(0, 3)}...`);
+
     // Initialize Supabase Admin client
-    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    let adminClient;
+    try {
+      adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      console.log("✅ Supabase client initialized");
+    } catch (clientError) {
+      console.error("❌ Failed to create Supabase client:", clientError);
+      throw new Error("Failed to initialize Supabase client");
+    }
 
     // Generate recovery link using Supabase Admin API
+    console.log("🔑 Generating recovery link...");
     const { data, error } = await adminClient.auth.admin.generateLink({
       type: "recovery",
       email: email,
       options: {
-        redirectTo: `${FRONTEND_URL}/#/reset-password`,
+        redirectTo: `${FRONTEND_URL}/reset-password`,
       },
     });
 
-    if (error || !data) {
-      console.error("Supabase admin error:", error);
+    if (error) {
+      console.error("⚠️ Supabase generateLink error:", error);
       // Don't reveal if user exists or not (security)
       return new Response(
         JSON.stringify({
@@ -107,11 +146,37 @@ serve(async (req: Request) => {
       );
     }
 
-    const resetLink = data.properties?.action_link;
+    if (!data || !data.properties) {
+      console.error("❌ No data returned from generateLink");
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Si el email existe, recibirás un link de recuperación",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    const resetLink = data.properties.action_link;
 
     if (!resetLink) {
-      throw new Error("No reset link generated");
+      console.error("❌ No reset link generated");
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Si el email existe, recibirás un link de recuperación",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
     }
+
+    console.log("✅ Recovery link generated successfully");
 
     // Prepare email HTML
     const emailHtml = `
@@ -157,16 +222,18 @@ serve(async (req: Request) => {
       </div>
     `;
 
-    // Send email. This must succeed for the UI to show a success message.
+    // Send email via Resend
+    console.log("📤 Sending email via Resend...");
     try {
       await sendEmailViaResend(
         email,
         "Recupera tu contraseña - FUDENSA",
         emailHtml
       );
+      console.log("✅ Email sent successfully via Resend");
     } catch (sendError: unknown) {
       const sendErrorMessage = sendError instanceof Error ? sendError.message : String(sendError);
-      console.error("Resend delivery error:", sendErrorMessage);
+      console.error("❌ Resend delivery error:", sendErrorMessage);
 
       return new Response(
         JSON.stringify({
@@ -175,11 +242,12 @@ serve(async (req: Request) => {
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 502,
+          status: 500,
         }
       );
     }
 
+    console.log("✅ Password reset email workflow completed successfully");
     return new Response(
       JSON.stringify({
         success: true,
@@ -192,7 +260,8 @@ serve(async (req: Request) => {
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Error in send-reset-email:", errorMessage);
+    console.error("❌ Unexpected error in send-reset-email:", errorMessage);
+    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
 
     return new Response(
       JSON.stringify({
