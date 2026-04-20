@@ -31,33 +31,13 @@ export function usePasswordReset() {
         body: { email },
       });
 
-      if (error) {
-        logError('Error enviando email de recuperación:', error);
-        return {
-          success: false,
-          error: 'No pudimos enviar el email. Intenta más tarde.',
-          loading: false,
-        };
-      }
-
-      if (data?.success === false) {
-        logError('La función reportó fallo de envío:', data?.message);
-        return {
-          success: false,
-          error: data?.message || 'No pudimos enviar el email. Intenta más tarde.',
-          loading: false,
-        };
-      }
-
-      debug(`✅ Email de recuperación enviado exitosamente`);
+      // Siempre mostrar éxito sin importar el resultado
+      debug(`✅ Email de recuperación procesado`);
       return { success: true, loading: false };
     } catch (err) {
       logError('Excepción al enviar email de recuperación:', err);
-      return {
-        success: false,
-        error: 'Error al procesar tu solicitud. Intenta más tarde.',
-        loading: false,
-      };
+      // También mostrar éxito en caso de error
+      return { success: true, loading: false };
     } finally {
       setLoading(false);
     }
