@@ -64,27 +64,6 @@ export interface FullCourse {
 
 // Instructors removed - migrated to Teachers table in Supabase
 
-// Initialize courses from localStorage or use defaults
-const getStoredCourses = (): FullCourse[] => {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("fudensa_courses");
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        console.error("Error parsing stored courses:", e);
-      }
-    }
-  }
-  return defaultCourses;
-};
-
-export const saveCourses = (courses: FullCourse[]) => {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("fudensa_courses", JSON.stringify(courses));
-  }
-};
-
 // Instructors data removed - migrated to Teachers table in Supabase
 
 const defaultCourses: FullCourse[] = [
@@ -221,7 +200,3 @@ const defaultCourses: FullCourse[] = [
   },
 ];
 
-// Instructors removed - migrated to Teachers table in Supabase
-export let courses = getStoredCourses();
-
-export type Course = FullCourse;

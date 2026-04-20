@@ -150,20 +150,6 @@ export interface EvaluationDB {
 // Constantes para validación
 export const COURSE_LEVELS = ["Básico", "Intermedio", "Avanzado"] as const;
 
-// Tipo para profe/teacher
-export interface Teacher {
-  id: string;
-  full_name: string;
-  email: string;
-  specialization?: string;
-  years_of_experience?: number;
-  total_students?: number;
-  total_courses?: number;
-  hourly_rate?: number;
-  is_active?: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
 export const LESSON_TYPES = ["video", "quiz", "document"] as const;
 
 // Utilidades de tipo
@@ -210,17 +196,6 @@ export interface Teacher {
   bio?: string;
   created_at: string;
   updated_at: string;
-}
-
-// Enrollment (inscripción en curso)
-export interface Enrollment {
-  id: string;
-  user_id: string;
-  course_id: string;
-  enrolled_at: string;
-  last_accessed_at?: string;
-  completed: boolean;
-  courses?: Course;
 }
 
 // User Progress (progreso en lecciones)
