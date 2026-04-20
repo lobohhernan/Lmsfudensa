@@ -1,6 +1,7 @@
 import { Award, Users, Target, Heart } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
+import { SEOHead } from "../components/SEOHead";
 import { useState, useEffect, useRef } from "react";
 
 interface AboutUsProps {
@@ -92,6 +93,12 @@ export function AboutUs({ onNavigate }: AboutUsProps) {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEOHead
+        title="Sobre FUDENSA - Fundación para el Desarrollo de la Enfermería"
+        description="Conoce la misión de FUDENSA: formar profesionales de la salud mediante educación online de calidad. Más de 1250+ estudiantes confían en nuestros programas certificados."
+        keyword="fundación enfermería, educación profesional salud, FUDENSA, formación enfermeros, desarrollo profesional"
+        url="https://fudensa.pages.dev/#/about"
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] -mt-16 pt-32 pb-20 text-white">
         {/* Decorative background elements */}

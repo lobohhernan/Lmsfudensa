@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { Progress } from "../components/ui/progress";
 import { Skeleton } from "../components/ui/skeleton";
+import { SEOHead } from "../components/SEOHead";
 import cprTrainingImage from "../assets/section-home.png";
 import { useCoursesRealtime } from "../hooks/useCoursesRealtime";
 import { useEnrollmentProgress } from "../hooks/useEnrollmentProgress";
@@ -78,6 +79,12 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      <SEOHead
+        title="Cursos Online en Enfermería y Salud"
+        description="FUDENSA ofrece cursos certificados en enfermería, RCP y cuidados de salud. Formación profesional a tu ritmo con certificados digitales verificables y reconocimiento internacional."
+        keyword="cursos enfermería online, educación salud, RCP, primeros auxilios, certificación digital, formación profesional"
+        url="https://fudensa.pages.dev/"
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden -mt-16 min-h-screen flex items-center text-white">
         {/* Background Image with Overlay */}

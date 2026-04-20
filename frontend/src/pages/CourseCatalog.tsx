@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { CourseCard } from "../components/CourseCard";
 import { Card } from "../components/ui/card";
 import { Skeleton } from "../components/ui/skeleton";
+import { SEOHead } from "../components/SEOHead";
 import {
   Select,
   SelectContent,
@@ -50,6 +51,12 @@ export function CourseCatalog({ onNavigate }: CourseCatalogProps) {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      <SEOHead
+        title="Catálogo de Cursos - FUDENSA"
+        description="Explora nuestro catálogo completo de cursos en enfermería, RCP y cuidados de salud. Disponibles en diferentes niveles de dificultad con certificación digital verificable."
+        keyword="catálogo cursos, cursos enfermería, educación online salud, programas certificados, formación profesional"
+        url="https://fudensa.pages.dev/#/catalog"
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] -mt-16 pt-32 pb-20 text-white">
         {/* Decorative background elements */}

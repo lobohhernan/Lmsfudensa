@@ -4,6 +4,7 @@ import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { Card } from "../components/ui/card";
 import { Label } from "../components/ui/label";
+import { SEOHead } from "../components/SEOHead";
 import {
   Select,
   SelectContent,
@@ -135,6 +136,12 @@ export function Contact() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEOHead
+        title="Contacto - FUDENSA"
+        description="¿Tienes preguntas sobre nuestros cursos? Contáctanos. FUDENSA está disponible para ayudarte con tu formación en enferméría y salud."
+        keyword="contacto FUDENSA, soporte educativo, consultas cursos, atención al cliente"
+        url="https://fudensa.pages.dev/#/contact"
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#1e467c] via-[#2d5f93] to-[#55a5c7] -mt-16 pt-32 pb-20 text-white">
         {/* Decorative background elements */}
