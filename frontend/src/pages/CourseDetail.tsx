@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/ui/skeleton";
+import { SEOHead } from "../components/SEOHead";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError } from '../lib/logger'
@@ -194,6 +195,13 @@ export function CourseDetail({ courseId: initialCourseId, courseSlug, onNavigate
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      <SEOHead
+        title={`${courseData.title || 'Curso'} - FUDENSA`}
+        description={`${courseData.description || 'Aprende en línea'} Certificado digital verificable. Nivel: ${courseData.level || 'Intermedio'}. Duración: ${courseData.duration || '-'}.`}
+        keyword={`${courseData.title}, curso enfermería, educación en línea, ${courseData.level || 'curso'}, certificación`}
+        image={courseData.image as string || 'https://fudensa.pages.dev/og-image.jpg'}
+        url={`https://fudensa.pages.dev/#/course/${currentSlug || courseId}`}
+      />
       {/* Breadcrumbs */}
 
 

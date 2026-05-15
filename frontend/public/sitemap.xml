@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+   xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+   xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+   
+  <!-- Página principal -->
+  <url>
+    <loc>https://fudensa.pages.dev/</loc>
+    <lastmod>2026-04-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Catálogo de cursos -->
+  <url>
+    <loc>https://fudensa.pages.dev/#/catalog</loc>
+    <lastmod>2026-04-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Sobre nosotros -->
+  <url>
+    <loc>https://fudensa.pages.dev/#/about</loc>
+    <lastmod>2026-04-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Contacto -->
+  <url>
+    <loc>https://fudensa.pages.dev/#/contact</loc>
+    <lastmod>2026-04-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Perfil de usuario -->
+  <url>
+    <loc>https://fudensa.pages.dev/#/profile</loc>
+    <lastmod>2026-04-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Panel de administración (no indexable, pero incluido) -->
+  <url>
+    <loc>https://fudensa.pages.dev/#/admin</loc>
+    <lastmod>2026-04-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <!-- Ejemplos de cursos dinámicos (estos deberían generarse desde tu API) -->
+  <!-- Descomentar y personalizar según tus cursos reales -->
+  <!--
+  <url>
+    <loc>https://fudensa.pages.dev/#/course/enfermeria-basica</loc>
+    <lastmod>2026-04-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://fudensa.pages.dev/course-enfermeria.jpg</image:loc>
+      <image:title>Enfermería Básica</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://fudensa.pages.dev/#/course/cuidados-salud</loc>
+    <lastmod>2026-04-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://fudensa.pages.dev/course-cuidados.jpg</image:loc>
+      <image:title>Cuidados de la Salud</image:title>
+    </image:image>
+  </url>
+  -->
+
+</urlset>

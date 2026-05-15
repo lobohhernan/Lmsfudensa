@@ -31,35 +31,48 @@ export function usePasswordReset() {
         body: { email },
       });
 
-      if (error) {
-        logError('Error enviando email de recuperación:', error);
-        return {
-          success: false,
-          error: 'No pudimos enviar el email. Intenta más tarde.',
-          loading: false,
-        };
-      }
-
-      if (data?.success === false) {
-        logError('La función reportó fallo de envío:', data?.message);
-        return {
-          success: false,
-          error: data?.message || 'No pudimos enviar el email. Intenta más tarde.',
-          loading: false,
-        };
-      }
-
-      debug(`✅ Email de recuperación enviado exitosamente`);
+      // Siempre mostrar éxito sin importar el resultado
+      debug(`✅ Email de recuperación procesado`);
       return { success: true, loading: false };
     } catch (err) {
       logError('Excepción al enviar email de recuperación:', err);
-      return {
-        success: false,
-        error: 'Error al procesar tu solicitud. Intenta más tarde.',
-        loading: false,
-      };
+      // También mostrar éxito en caso de error
+      return { success: true, loading: false };
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Valida el código de recuperación contra Supabase
+   * @param code - Código de recuperación
+   * @returns Promise con resultado
+   */
+  const verifyRecoveryCode = async (code: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      debug('🔒 Validando código de recuperación...');
+
+      // Intercambiar el código por una sesión válida
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+      if (error) {
+        logError('Error validando código:', error);
+        return {
+          success: false,
+          error: error.message === 'invalid code' 
+            ? 'El código de recuperación es inválido o expirado'
+            : 'No pudimos validar el código de recuperación',
+        };
+      }
+
+      debug('✅ Código de recuperación validado correctamente');
+      return { success: true };
+    } catch (err) {
+      logError('Excepción validando código:', err);
+      return {
+        success: false,
+        error: 'Error al validar el código de recuperación',
+      };
     }
   };
 
@@ -87,6 +100,16 @@ export function usePasswordReset() {
       }
 
       debug('✅ Contraseña actualizada exitosamente');
+      
+      // Realizar logout después de cambiar la contraseña
+      try {
+        await supabase.auth.signOut();
+        debug('✅ Sesión cerrada después de cambio de contraseña');
+      } catch (logoutError) {
+        logError('Error cerrando sesión:', logoutError);
+        // No fallar el flujo si el logout falla
+      }
+      
       return { success: true, loading: false };
     } catch (err) {
       logError('Excepción al actualizar contraseña:', err);
@@ -100,5 +123,5 @@ export function usePasswordReset() {
     }
   };
 
-  return { sendResetEmail, resetPassword, loading };
+  return { sendResetEmail, verifyRecoveryCode, resetPassword, loading };
 }

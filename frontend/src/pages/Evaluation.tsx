@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
-import { courses, type EvaluationQuestion } from "../lib/data";
+import { type EvaluationQuestion } from "../lib/data";
 import { CertificateTemplate, type CertificateData } from "../components/CertificateTemplate";
 import { generateCertificatePDF, generateCertificateId, formatCertificateDate, generateCertificatePreview } from "../utils/certificate";
 import { issueCertificate } from "../utils/issueCertificate";
@@ -55,7 +55,6 @@ export function Evaluation({ onNavigate, courseId = "1", courseSlug }: Evaluatio
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
-  const [, setTimeElapsed] = useState(0);
   const [evaluationData, setEvaluationData] = useState<EvaluationQuestion[]>([]);
   const [courseTitle, setCourseTitle] = useState("");
   const [certificateData, setCertificateData] = useState<CertificateData | null>(null);
@@ -229,7 +228,6 @@ export function Evaluation({ onNavigate, courseId = "1", courseSlug }: Evaluatio
     // Generate certificate if passed
     if (passed) {
       console.log("🎯 [Evaluation] Usuario aprobó, generando certificado...");
-      const course = courses.find((c) => c.id === courseId);
       
       try {
         // Obtener usuario autenticado
@@ -302,12 +300,11 @@ export function Evaluation({ onNavigate, courseId = "1", courseSlug }: Evaluatio
         });
         
         // Fallback: generar certificado local sin guardar en DB
-        const course = courses.find((c) => c.id === courseId);
         const certData: CertificateData = {
           studentName: "Usuario",
           dni: "",
-          courseName: courseTitle || course?.title || "Curso Completado",
-          courseHours: course?.duration || "40",
+          courseName: courseTitle || "Curso Completado",
+          courseHours: "40",
           issueDate: formatCertificateDate(),
           certificateId: generateCertificateId(),
         };

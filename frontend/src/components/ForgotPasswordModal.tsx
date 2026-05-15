@@ -94,21 +94,13 @@ export function ForgotPasswordModal({
             </DialogTitle>
             <DialogDescription className="text-white/70">
               {emailSent
-                ? 'Si el correo existe, recibirás un link de recuperación en tu bandeja de entrada.'
+                ? 'Si el correo existe, recibirás un link de recuperación en tu bandeja de entrada. El link expirará en 1 hora.'
                 : 'Ingresa tu email y te enviaremos un link para resetear tu contraseña.'}
             </DialogDescription>
           </DialogHeader>
 
           {emailSent ? (
             <div className="space-y-4 pt-4">
-              <div className="p-4 rounded-lg bg-green-500/20 border border-green-500/30">
-                <p className="text-green-200 text-sm">
-                  📧 Revisa tu email (incluyendo spam) dentro de los próximos 5 minutos.
-                </p>
-              </div>
-              <p className="text-sm text-white/70">
-                El link expirará en 1 hora por seguridad. Si no recibiste nada, intenta nuevamente.
-              </p>
               <Button
                 onClick={() => handleClose(false)}
                 className="w-full bg-gradient-to-b from-[#22C55E] to-[#16A34A] text-white shadow-[0_4px_12px_0_rgba(34,197,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_6px_16px_0_rgba(34,197,94,0.4),inset_0_1px_0_0_rgba(255,255,255,0.2)] active:scale-[0.98]"

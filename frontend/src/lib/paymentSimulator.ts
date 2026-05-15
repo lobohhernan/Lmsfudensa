@@ -146,10 +146,3 @@ async function createOrUpdateEnrollment(
   );
 }
 
-/**
- * Check if payment simulation is enabled (development mode)
- */
-export function isPaymentSimulationEnabled(): boolean {
-  const isDev = import.meta.env.MODE === "development";
-  return isDev;
-}

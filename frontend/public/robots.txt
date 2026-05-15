@@ -1,0 +1,53 @@
+# FUDENSA SEO Robots Configuration
+# 🤖 Optimizado para Google y otros motores de búsqueda
+
+# Permitir a Google rastrear todas las páginas indexables
+User-agent: Googlebot
+Allow: /
+Allow: /#/
+Allow: /#/catalog
+Allow: /#/about
+Allow: /#/contact
+Allow: /#/course/
+Disallow: /#/admin
+Disallow: /#/profile
+Disallow: /admin
+Disallow: /profile
+Crawl-delay: 0
+
+# Permitir a Bingbot
+User-agent: Bingbot
+Allow: /
+Disallow: /#/admin
+Disallow: /#/profile
+
+# Permitir a otros bots responsables
+User-agent: *
+Allow: /
+Allow: /#/
+Allow: /#/catalog
+Allow: /#/about
+Allow: /#/contact
+Allow: /#/course/
+Disallow: /#/admin
+Disallow: /#/profile
+Disallow: /node_modules
+Disallow: /.git
+Disallow: /dist
+Crawl-delay: 1
+
+# Bloquear bots maliciosos
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: TrendsmapBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# Especificar ubicación de sitemap
+Sitemap: https://fudensa.pages.dev/sitemap.xml
+
+# Tiempo máximo de rastreo
+Request-rate: 1/1s
