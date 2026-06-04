@@ -60,12 +60,6 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
         const paymentId = urlParams.get("payment_id");
         const externalRef = urlParams.get("external_reference");
 
-
-          preferenceId,
-          paymentId,
-          externalRef,
-        });
-
         if (!externalRef) {
           setEnrollmentError("No se encontró referencia del curso");
           setIsVerifying(false);
