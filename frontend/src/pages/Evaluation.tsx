@@ -125,7 +125,7 @@ export function Evaluation({ onNavigate, courseId = "1", courseSlug }: Evaluatio
     // Cargar evaluación desde Supabase
     const loadEvaluation = async () => {
       try {
-        console.log("🎓 [Evaluation] Cargando evaluación para courseId:", courseId);
+
         
         // Obtener título del curso
         const { data: courseData, error: courseError } = await supabase
@@ -136,7 +136,7 @@ export function Evaluation({ onNavigate, courseId = "1", courseSlug }: Evaluatio
 
         if (courseError) throw courseError;
         setCourseTitle(courseData?.title || "Curso");
-        console.log("✅ [Evaluation] Curso encontrado:", courseData?.title);
+
 
         // Obtener preguntas de evaluación desde la tabla evaluations
         const { data: evaluationQuestions, error: evalError } = await supabase
@@ -145,7 +145,7 @@ export function Evaluation({ onNavigate, courseId = "1", courseSlug }: Evaluatio
           .eq("course_id", courseId)
           .order("question_order", { ascending: true });
 
-        console.log("📋 [Evaluation] Preguntas encontradas:", evaluationQuestions?.length || 0);
+
 
         if (evalError) {
           console.error("Error cargando evaluación:", evalError);
@@ -223,7 +223,7 @@ export function Evaluation({ onNavigate, courseId = "1", courseSlug }: Evaluatio
     const score = calculateScore();
     const passed = score.percentage >= 70;
     
-    console.log("📊 [Evaluation] Puntaje calculado:", score.percentage, "% - Aprobó:", passed);
+
     
     // Generate certificate if passed
     if (passed) {
@@ -247,29 +247,17 @@ export function Evaluation({ onNavigate, courseId = "1", courseSlug }: Evaluatio
           .eq("id", user.id)
           .single();
 
-        console.log("📋 [Evaluation] Perfil obtenido:", profile);
-
         const studentName = profile?.full_name || user.email?.split("@")[0] || "Usuario";
-        
-        console.log("📝 [Evaluation] Llamando issueCertificate con:", {
-          studentId: user.id,
-          courseId: courseId,
-          studentName: studentName,
-          courseTitle: courseTitle || course?.title || "Curso Completado",
-          grade: score.percentage,
-        });
         
         // Emitir certificado en la base de datos
         const certificate = await issueCertificate({
           studentId: user.id,
           courseId: courseId,
           studentName: studentName,
-          courseTitle: courseTitle || course?.title || "Curso Completado",
+          courseTitle: courseTitle || "Curso Completado",
           grade: score.percentage,
           completionDate: new Date().toISOString().split("T")[0],
         });
-
-        console.log("✅ [Evaluation] Certificado recibido:", certificate);
 
         // Guardar hash para mostrar al usuario
         setCertificateHash(certificate.hash);
@@ -282,21 +270,17 @@ export function Evaluation({ onNavigate, courseId = "1", courseSlug }: Evaluatio
         const certData: CertificateData = {
           studentName: studentName,
           dni: "", // Opcional
-          courseName: courseTitle || course?.title || "Curso Completado",
-          courseHours: course?.duration || "40",
+          courseName: courseTitle || "Curso Completado",
+          courseHours: "40",
           issueDate: formatCertificateDate(),
           certificateId: certificate.hash.substring(0, 12).toUpperCase(),
         };
         setCertificateData(certData);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        console.error("❌❌❌ [Evaluation] ERROR COMPLETO al emitir certificado:");
-        console.error("Error message:", message);
-        console.error("Error details:", error);
-
         
         toast.error("Error al emitir el certificado", {
-          description: error.message || "Intenta nuevamente",
+          description: error instanceof Error ? error.message : "Intenta nuevamente",
         });
         
         // Fallback: generar certificado local sin guardar en DB
@@ -634,7 +618,7 @@ export function Evaluation({ onNavigate, courseId = "1", courseSlug }: Evaluatio
   // If already passed, don't load questions - just show results
   if (isSubmitted && passedCertificate) {
     console.log('👤 passedCertificate:', passedCertificate);
-    console.log('📊 passedCertificate.grade:', passedCertificate.grade, 'tipo:', typeof passedCertificate.grade);
+
     
     const gradeValue = Number(passedCertificate.grade) || 0;
     const passed = gradeValue >= 70;

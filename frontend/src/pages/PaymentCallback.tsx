@@ -27,7 +27,7 @@ export function PaymentCallback({ onNavigate }: PaymentCallbackProps) {
     console.log("📍 [PaymentCallback] SessionStorage:", { pendingCourse, pendingEmail });
 
     if (!pendingCourse || !pendingEmail) {
-      console.error("❌ Datos de pago incompletos");
+      console.error("Datos de pago incompletos");
       setStatus("error");
       setMessage("Error: Datos de pago no encontrados.");
       return;
@@ -35,7 +35,7 @@ export function PaymentCallback({ onNavigate }: PaymentCallbackProps) {
 
     // Si Mercado Pago envió parámetros de éxito, podemos confiar en eso
     if (mpStatus === "approved" || paymentId) {
-      console.log("✅ [PaymentCallback] Pago aprobado según parámetros MP");
+
       // Aún así, hacer polling para confirmar que el webhook procesó
       // porque Mercado Pago puede estar equivocado
     }
@@ -57,7 +57,7 @@ export function PaymentCallback({ onNavigate }: PaymentCallbackProps) {
           }
         );
 
-        console.log("📊 [PaymentCallback] Respuesta:", { data, error });
+
 
         if (error) {
           throw new Error(error.message || "Error desconocido");
@@ -93,7 +93,7 @@ export function PaymentCallback({ onNavigate }: PaymentCallbackProps) {
           );
         }
       } catch (error) {
-        console.error("❌ [PaymentCallback] Error al verificar pago:", error);
+        console.error("[PaymentCallback] Error al verificar pago:", error);
 
         // Reintentar en caso de error
         if (pollAttempts < maxAttempts) {

@@ -28,26 +28,14 @@ export async function issueCertificate(params: IssueCertificateParams) {
     completionDate = new Date().toISOString().split("T")[0],
   } = params;
 
-  console.log("🎓 [issueCertificate] Iniciando emisión con params:", {
-    studentId,
-    courseId,
-    studentName,
-    courseTitle,
-    grade,
-    completionDate
-  });
-
   try {
     // Usar admin client si está configurado (para evitar problemas de RLS)
     const client = isAdminClientConfigured() ? supabaseAdmin : supabase;
-    console.log("🔑 [issueCertificate] Usando client:", isAdminClientConfigured() ? "ADMIN" : "NORMAL");
 
     // Llamar a la función SQL que genera el hash
     const { data: hashData, error: hashError } = await client.rpc(
       "generate_certificate_hash"
     );
-
-    console.log("🔐 [issueCertificate] Hash generado:", { hashData, hashError });
 
     if (hashError) {
       logError("Error generando hash:", hashError);
@@ -55,8 +43,6 @@ export async function issueCertificate(params: IssueCertificateParams) {
     }
 
     const hash = hashData as string;
-
-    console.log("📝 [issueCertificate] Insertando certificado...");
 
     // Insertar certificado
     const { data, error } = await client
@@ -78,18 +64,16 @@ export async function issueCertificate(params: IssueCertificateParams) {
       .select()
       .single();
 
-    console.log("💾 [issueCertificate] Resultado INSERT:", { data, error });
-
     if (error) {
       logError("Error insertando certificado:", error);
       throw error;
     }
 
-    info("✅ Certificado emitido:", data);
+    debug("Certificado emitido:", data);
     return data;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    logError("❌ Error en issueCertificate:", message);
+    logError("Error en issueCertificate:", message);
     throw err;
   }
 }

@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
           completionDate = new Date().toISOString().split('T')[0]
         } = data
 
-        console.log('🎓 [Admin] Issuing certificate:', { studentId, courseId })
+
 
         // Generar hash para el certificado
         const { data: hashData, error: hashError } = await supabaseAdmin.rpc(
@@ -565,7 +565,7 @@ Deno.serve(async (req: Request) => {
         )
     }
   } catch (error) {
-    console.error('❌ [Admin Operations] Error:', error)
+    console.error('[Admin Operations] Error:', error)
     return new Response(
       JSON.stringify({ error: error.message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

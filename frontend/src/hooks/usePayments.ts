@@ -66,7 +66,7 @@ export function usePayments(): UsePaymentsReturn {
         .order("created_at", { ascending: false });
 
       if (paymentsError) {
-        console.warn("⚠️ [usePayments] Error tabla payments:", paymentsError.message || paymentsError.code);
+
       } else {
         paymentsData = rawPayments || [];
       }
@@ -79,7 +79,7 @@ export function usePayments(): UsePaymentsReturn {
         .order("enrolled_at", { ascending: false });
 
       if (enrollmentsError) {
-        console.warn("⚠️ [usePayments] Error tabla enrollments:", enrollmentsError.message || enrollmentsError.code);
+
       } else {
         enrollmentsData = rawEnrollments || [];
       }
@@ -158,7 +158,7 @@ export function usePayments(): UsePaymentsReturn {
       const msg = err instanceof Error
         ? err.message
         : (err as any)?.message || JSON.stringify(err);
-      console.error("❌ [usePayments]", msg);
+      console.error("[usePayments]", msg);
       setError(msg);
     } finally {
       setLoading(false);

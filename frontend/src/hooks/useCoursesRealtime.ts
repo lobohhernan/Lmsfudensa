@@ -110,7 +110,7 @@ export function useCoursesRealtime() {
 
       setCourses(processed)
       setError(null)
-      console.log(`✅ [useCoursesRealtime] ${processed.length} active courses loaded`)
+
 
       // Stage 2: defer loading inactive courses after active ones are rendered
       fetchInactiveCourses()
@@ -121,7 +121,7 @@ export function useCoursesRealtime() {
       const isTransient = isAbortError || (err instanceof Error && err.message.includes('Failed to fetch'))
 
       if (isTransient && retryCount < MAX_RETRIES) {
-        console.warn(`⚠️ [useCoursesRealtime] Transient error (${retryCount + 1}/${MAX_RETRIES}), retrying in ${RETRY_DELAY}ms...`)
+
         setTimeout(() => {
           if (mountedRef.current) fetchActiveCourses(retryCount + 1)
         }, RETRY_DELAY)
@@ -129,7 +129,7 @@ export function useCoursesRealtime() {
       }
 
       const message = err instanceof Error ? err.message : 'Error fetching courses'
-      console.error('❌ [useCoursesRealtime] Error fetching active courses:', err)
+      console.error('[useCoursesRealtime] Error fetching active courses:', err)
       setError(message)
     } finally {
       if (mountedRef.current) setLoading(false)
@@ -150,7 +150,7 @@ export function useCoursesRealtime() {
 
       if (!mountedRef.current) return
       if (queryError) {
-        console.warn('⚠️ [useCoursesRealtime] Could not load inactive courses:', queryError.message)
+
         return
       }
 
@@ -166,10 +166,10 @@ export function useCoursesRealtime() {
           const activeOnly = prev.filter(c => c.is_active !== false)
           return [...activeOnly, ...inactive]
         })
-        console.log(`✅ [useCoursesRealtime] ${inactive.length} inactive courses appended`)
+
       }
     } catch (err) {
-      console.warn('⚠️ [useCoursesRealtime] Error loading inactive courses:', err)
+
     } finally {
       if (mountedRef.current) setInactiveLoading(false)
     }

@@ -22,8 +22,6 @@ async function sendEmailViaResend(
   subject: string,
   htmlContent: string
 ) {
-  console.log(`📨 Calling Resend API for email: ${to}`);
-  
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -39,19 +37,16 @@ async function sendEmailViaResend(
       }),
     });
 
-    console.log(`📊 Resend API response status: ${response.status}`);
 
     const responseData = await response.json();
 
     if (!response.ok) {
-      console.error(`❌ Resend API error (${response.status}):`, JSON.stringify(responseData));
+      console.error(`Resend API error (${response.status}):`, JSON.stringify(responseData));
       throw new Error(`Resend error: ${response.status} - ${JSON.stringify(responseData)}`);
     }
-
-    console.log("✅ Resend API response successful");
     return responseData;
   } catch (err) {
-    console.error("❌ Error calling Resend API:", err);
+    console.error("Error calling Resend API:", err);
     throw err;
   }
 }
@@ -63,21 +58,19 @@ serve(async (req: Request) => {
   }
 
   try {
-    console.log("📧 Starting send-reset-email handler");
-    
     // Validate environment variables
     if (!RESEND_API_KEY) {
-      console.error("❌ RESEND_API_KEY not configured");
+      console.error("RESEND_API_KEY not configured");
       throw new Error("RESEND_API_KEY no configurada");
     }
 
     if (!SUPABASE_SERVICE_ROLE_KEY) {
-      console.error("❌ SUPABASE_SERVICE_ROLE_KEY not configured");
+      console.error("SUPABASE_SERVICE_ROLE_KEY not configured");
       throw new Error("SUPABASE_SERVICE_ROLE_KEY no configurada");
     }
 
     if (!SUPABASE_URL) {
-      console.error("❌ SUPABASE_URL not configured");
+      console.error("SUPABASE_URL not configured");
       throw new Error("SUPABASE_URL no configurada");
     }
 
@@ -86,7 +79,7 @@ serve(async (req: Request) => {
     try {
       requestData = await req.json();
     } catch (parseError) {
-      console.error("❌ Failed to parse request body:", parseError);
+      console.error("Failed to parse request body:", parseError);
       return new Response(
         JSON.stringify({ error: "Invalid JSON in request body" }),
         {
@@ -99,7 +92,7 @@ serve(async (req: Request) => {
     const { email } = requestData;
 
     if (!email || typeof email !== "string") {
-      console.error("❌ Email missing or invalid in request");
+      console.error("Email missing or invalid in request");
       return new Response(
         JSON.stringify({ error: "Email requerido" }),
         {
@@ -109,20 +102,16 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`📧 Processing reset request for email: ${email.substring(0, 3)}...`);
-
     // Initialize Supabase Admin client
     let adminClient;
     try {
       adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      console.log("✅ Supabase client initialized");
     } catch (clientError) {
-      console.error("❌ Failed to create Supabase client:", clientError);
+      console.error("Failed to create Supabase client:", clientError);
       throw new Error("Failed to initialize Supabase client");
     }
 
     // Generate recovery link using Supabase Admin API
-    console.log("🔑 Generating recovery link...");
     const { data, error } = await adminClient.auth.admin.generateLink({
       type: "recovery",
       email: email,
@@ -132,7 +121,6 @@ serve(async (req: Request) => {
     });
 
     if (error) {
-      console.error("⚠️ Supabase generateLink error:", error);
       // Don't reveal if user exists or not (security)
       return new Response(
         JSON.stringify({
@@ -147,7 +135,6 @@ serve(async (req: Request) => {
     }
 
     if (!data || !data.properties) {
-      console.error("❌ No data returned from generateLink");
       return new Response(
         JSON.stringify({
           success: true,
@@ -163,7 +150,6 @@ serve(async (req: Request) => {
     const resetLink = data.properties.action_link;
 
     if (!resetLink) {
-      console.error("❌ No reset link generated");
       return new Response(
         JSON.stringify({
           success: true,
@@ -175,8 +161,6 @@ serve(async (req: Request) => {
         }
       );
     }
-
-    console.log("✅ Recovery link generated successfully");
 
     // Prepare email HTML
     const emailHtml = `
@@ -223,17 +207,15 @@ serve(async (req: Request) => {
     `;
 
     // Send email via Resend
-    console.log("📤 Sending email via Resend...");
     try {
       await sendEmailViaResend(
         email,
         "Recupera tu contraseña - FUDENSA",
         emailHtml
       );
-      console.log("✅ Email sent successfully via Resend");
     } catch (sendError: unknown) {
       const sendErrorMessage = sendError instanceof Error ? sendError.message : String(sendError);
-      console.error("❌ Resend delivery error:", sendErrorMessage);
+      console.error("Resend delivery error:", sendErrorMessage);
 
       return new Response(
         JSON.stringify({
@@ -247,7 +229,6 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("✅ Password reset email workflow completed successfully");
     return new Response(
       JSON.stringify({
         success: true,
@@ -260,7 +241,7 @@ serve(async (req: Request) => {
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("❌ Unexpected error in send-reset-email:", errorMessage);
+    console.error("Unexpected error in send-reset-email:", errorMessage);
     console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
 
     return new Response(

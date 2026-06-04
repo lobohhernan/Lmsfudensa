@@ -13,7 +13,7 @@ serve(async (req: Request) => {
     const body = await req.json();
     const { courseId, userEmail } = body;
 
-    console.log("📋 [Check Payment] Verificando pago:", { courseId, userEmail });
+
 
     if (!courseId || !userEmail) {
       return new Response(
@@ -30,7 +30,7 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("❌ Supabase credentials missing");
+      console.error("Supabase credentials missing");
       return new Response(
         JSON.stringify({ success: false, error: "Configuración incompleta", enrolled: false }),
         {
@@ -51,7 +51,7 @@ serve(async (req: Request) => {
       .single();
 
     if (profileError || !profileData) {
-      console.warn("⚠️ [Check Payment] Usuario no encontrado por email:", userEmail);
+
       // No es un error fatal — el usuario puede no haber completado su perfil todavía
       return new Response(
         JSON.stringify({ success: true, enrolled: false, message: "Usuario no encontrado" }),
@@ -69,10 +69,10 @@ serve(async (req: Request) => {
       .eq("user_id", userId)
       .limit(1);
 
-    console.log("📋 [Check Payment] Resultado de búsqueda:", { enrollmentData, queryError });
+
 
     if (queryError) {
-      console.error("❌ Error al consultar enrollments:", queryError);
+      console.error("Error al consultar enrollments:", queryError);
       return new Response(
         JSON.stringify({ success: false, error: "Error al verificar estado", enrolled: false }),
         {
@@ -85,7 +85,7 @@ serve(async (req: Request) => {
     // Si existe enrollment, el pago fue procesado
     const isEnrolled = enrollmentData && enrollmentData.length > 0;
 
-    console.log("📋 [Check Payment] Estado final:", { isEnrolled, enrollmentData });
+
 
     return new Response(
       JSON.stringify({
@@ -99,7 +99,7 @@ serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error("❌ Error en check-payment-status:", error);
+    console.error("Error en check-payment-status:", error);
     return new Response(
       JSON.stringify({ success: false, error: "Error interno", enrolled: false }),
       {

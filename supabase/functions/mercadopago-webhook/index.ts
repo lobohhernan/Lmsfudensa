@@ -12,10 +12,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
  * Procesa notificaciones de pagos y crea inscripciones
  */
 serve(async (req: Request): Promise<Response> => {
-  console.log("🔔 [WEBHOOK] Solicitud recibida:", {
-    method: req.method,
-    timestamp: new Date().toISOString(),
-  });
+
 
   // Configurar CORS
   if (req.method === "OPTIONS") {
@@ -50,7 +47,6 @@ serve(async (req: Request): Promise<Response> => {
     const bodyText = await req.text();
 
     if (!bodyText) {
-      console.warn("⚠️ [WEBHOOK] Body vacío");
       return successResponse({ status: "body_empty" });
     }
 
@@ -59,30 +55,19 @@ serve(async (req: Request): Promise<Response> => {
     try {
       data = JSON.parse(bodyText);
     } catch (parseError) {
-      console.error("❌ [WEBHOOK] Error parseando JSON:", parseError);
       return successResponse({ status: "invalid_json" });
     }
 
-    console.log("📨 [WEBHOOK] Notificación recibida:", {
-      type: data.type,
-      action: data.action,
-      paymentId: data.data?.id,
-    });
-
     // Solo procesar notificaciones de pago
     if (data.type !== "payment") {
-      console.log("⏭️ [WEBHOOK] Ignorando tipo no-pago:", data.type);
       return successResponse({ status: "ignored_type" });
     }
 
     // Obtener ID del pago
     const paymentId = data.data?.id;
     if (!paymentId) {
-      console.warn("⚠️ [WEBHOOK] Sin ID de pago");
       return successResponse({ status: "no_payment_id" });
     }
-
-    console.log("💰 [WEBHOOK] Procesando pago:", paymentId);
 
     // ⚡ RESPUESTA INMEDIATA (sin esperar procesamiento)
     // Mercado Pago necesita respuesta rápida (máx 2-3 segundos)
@@ -97,11 +82,11 @@ serve(async (req: Request): Promise<Response> => {
 
     // Procesar en background (sin esperar)
     processPaymentAsync(paymentId, data)
-      .catch(err => console.error("❌ [WEBHOOK] Error async:", err));
+      .catch(err => console.error("[WEBHOOK] Error async:", err));
 
     return responsePromise;
   } catch (error) {
-    console.error("❌ [WEBHOOK] Error general:", error);
+    console.error("[WEBHOOK] Error general:", error);
     return successResponse({ status: "general_error", error: true });
   }
 
@@ -111,16 +96,12 @@ serve(async (req: Request): Promise<Response> => {
  */
 async function processPaymentAsync(paymentId: string, data: unknown): Promise<void> {
   try {
-    console.log("🔄 [WEBHOOK] Iniciando procesamiento async para:", paymentId);
-
     // Obtener detalles del pago desde MP
     const mpToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
     if (!mpToken) {
-      console.error("❌ [WEBHOOK] No hay Access Token de MP");
+      console.error("[WEBHOOK] No hay Access Token de MP");
       return;
     }
-
-    console.log("🔍 [WEBHOOK] Obteniendo detalles de MP...");
 
     const mpResponse = await fetch(
       `https://api.mercadopago.com/v1/payments/${paymentId}`,
@@ -133,16 +114,14 @@ async function processPaymentAsync(paymentId: string, data: unknown): Promise<vo
 
     if (!mpResponse.ok) {
       const errorText = await mpResponse.text();
-      console.error("❌ [WEBHOOK] Error de MP:", mpResponse.status, errorText.substring(0, 200));
+      console.error("[WEBHOOK] Error de MP:", mpResponse.status, errorText.substring(0, 200));
       return;
     }
 
     const paymentData = await mpResponse.json();
-    console.log("📊 [WEBHOOK] Status del pago:", paymentData.status);
 
     // Solo procesar pagos aprobados
     if (paymentData.status !== "approved") {
-      console.log("⏭️ [WEBHOOK] Pago no aprobado:", paymentData.status);
       return;
     }
 
@@ -164,24 +143,19 @@ async function processPaymentAsync(paymentId: string, data: unknown): Promise<vo
     const courseId = externalRef.courseId || paymentData.external_reference;
     const userId = externalRef.userId;
 
-    console.log("👤 [WEBHOOK] Email:", userEmail);
-    console.log("📚 [WEBHOOK] Curso:", courseId);
-    console.log("🆔 [WEBHOOK] User ID:", userId);
-
     if (!userEmail || !courseId) {
-      console.error("❌ [WEBHOOK] Faltan email o courseId");
+      console.error("[WEBHOOK] Faltan email o courseId");
       return;
     }
 
     // Crear inscripción
     try {
       await createEnrollment(userId, courseId, userEmail, paymentId);
-      console.log("✅ [WEBHOOK] Inscripción procesada exitosamente (async)");
     } catch (enrollError) {
-      console.error("❌ [WEBHOOK] Error en inscripción:", enrollError);
+      console.error("[WEBHOOK] Error en inscripción:", enrollError);
     }
   } catch (error) {
-    console.error("❌ [WEBHOOK] Error en procesamiento async:", error);
+    console.error("[WEBHOOK] Error en procesamiento async:", error);
   }
 }
 });
@@ -215,7 +189,6 @@ async function createEnrollment(
   userEmail: string,
   paymentId: string
 ) {
-  console.log("📝 [WEBHOOK] Creando inscripción:", { userId, courseId, userEmail });
 
   try {
     // Si tenemos userId, verificar que la inscripción no exista
@@ -228,7 +201,6 @@ async function createEnrollment(
         .maybeSingle();
 
       if (existing) {
-        console.log("⚠️ [WEBHOOK] Inscripción ya existe para userid:", userId);
         return;
       }
 
@@ -242,21 +214,15 @@ async function createEnrollment(
         .select();
 
       if (error) {
-        console.error("❌ [WEBHOOK] Error creando inscripción:", error.message, error.details);
+        console.error("[WEBHOOK] Error creando inscripción:", error.message, error.details);
         throw error;
       }
-
-      console.log("✅ [WEBHOOK] Inscripción creada para user_id:", userId, data?.[0]?.id);
     } else {
-      // Si no tenemos userId, registrar el pago pero NO crear inscripción automática
-      console.warn("⚠️ [WEBHOOK] No hay user_id, registrando pago sin inscripción");
-      console.log("   Email del pagador:", userEmail);
-      console.log("   Payment ID:", paymentId);
       // El usuario podría estar sin autenticar en el dashboard
       return;
     }
   } catch (error) {
-    console.error("❌ [WEBHOOK] Error en createEnrollment:", error);
+    console.error("[WEBHOOK] Error en createEnrollment:", error);
     throw error;
   }
 }

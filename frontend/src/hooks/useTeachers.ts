@@ -146,7 +146,7 @@ export function useTeachersRealtime() {
         .order('created_at', { ascending: false })
 
       if (queryError) {
-        console.warn('⚠️ [useTeachersRealtime] Could not load inactive teachers:', queryError.message)
+
         return
       }
 
@@ -159,7 +159,7 @@ export function useTeachersRealtime() {
         console.log(`✅ [useTeachersRealtime] ${inactive.length} inactive teachers appended`)
       }
     } catch (err) {
-      console.warn('⚠️ [useTeachersRealtime] Error loading inactive teachers:', err)
+
     } finally {
       setInactiveLoading(false)
     }

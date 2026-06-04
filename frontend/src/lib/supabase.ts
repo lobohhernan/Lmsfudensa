@@ -30,7 +30,7 @@ console.log('🔧 [Supabase] Config:', {
 
 // Validar que las variables existan
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ ERROR: Variables de entorno de Supabase no encontradas')
+  console.error('ERROR: Variables de entorno de Supabase no encontradas')
   console.error('VITE_SUPABASE_URL:', supabaseUrl)
   console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'presente' : 'ausente')
   throw new Error('Faltan variables de entorno de Supabase. Verifica que .env.local existe y contiene VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY')

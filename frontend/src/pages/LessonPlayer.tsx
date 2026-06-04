@@ -87,7 +87,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
           
           if (!enrolled) {
             // ❌ Usuario NO inscrito → Redirigir a la página del curso
-            console.log('⚠️ [LessonPlayer] Usuario no inscrito, redirigiendo a CourseDetail');
+
             toast.error("Debes inscribirte en el curso para acceder a las lecciones");
             setLoading(false);
             setTimeout(() => {
@@ -97,10 +97,10 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
             return;
           }
           
-          console.log('✅ [LessonPlayer] Usuario inscrito, cargando lecciones...');
+
         } else {
           // ❌ Usuario NO autenticado → Redirigir a CourseDetail
-          console.log('⚠️ [LessonPlayer] Usuario no autenticado, redirigiendo');
+
           toast.error("Debes iniciar sesión para acceder al curso");
           setLoading(false);
           setTimeout(() => {
@@ -140,7 +140,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
             .eq("completed", true);
 
           if (progressError) {
-            console.warn('⚠️ Error cargando progreso (posible RLS):', progressError);
+
           } else {
             // Crear Set de lecciones completadas para búsqueda O(1)
             completedIds = new Set(
@@ -149,7 +149,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
             console.log(`✅ [LessonPlayer] Progreso cargado: ${completedIds.size} lecciones completadas`);
           }
         } catch (progressErr) {
-          console.warn('⚠️ Error al cargar progreso del usuario, continuando sin él:', progressErr);
+
         }
         
         setCompletedLessons(completedIds);
@@ -239,7 +239,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
           .eq('lesson_id', currentLesson);
 
         if (deleteError) {
-          console.error('❌ Error al desmarcar:', deleteError);
+          console.error('Error al desmarcar:', deleteError);
           toast.error("Error al guardar tu progreso");
           return;
         }
@@ -269,7 +269,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
         });
 
         if (saveError) {
-          console.error('❌ Error guardando progreso:', saveError);
+          console.error('Error guardando progreso:', saveError);
           toast.error("Error al guardar tu progreso");
           return;
         }
@@ -290,7 +290,7 @@ export function LessonPlayer({ onNavigate, courseId: initialCourseId, courseSlug
 
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error('❌ Error al actualizar progreso:', message);
+      console.error('Error al actualizar progreso:', message);
       toast.error("Error al guardar tu progreso");
     } finally {
       setSavingProgress(false);

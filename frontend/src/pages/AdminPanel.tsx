@@ -636,7 +636,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       const msg = err instanceof Error ? err.message : String(err);
       setUsersError(msg);
       toast.error("Error al cargar usuarios: " + msg);
-      console.error("Error completo:", err);
     } finally {
       setUsersLoading(false);
     }
@@ -703,7 +702,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       
       // Validar que tenemos un instructor válido antes de continuar
       if (!dbInstructorId && course.instructorId) {
-        console.error('❌ No se pudo resolver el instructor_id para la BD');
+        console.error('No se pudo resolver el instructor_id para la BD');
         return; // El toast ya se mostró en resolveInstructorIdForDB
       }
       
@@ -729,7 +728,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           .eq("id", course.id);
         
         if (error) {
-          console.error("❌ Error UPDATE:", error);
+          console.error("Error UPDATE:", error);
           toast.error("Error al actualizar el curso: " + error.message);
           return;
         }
@@ -769,7 +768,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         }]).select();
         
         if (error) {
-          console.error("❌ Error INSERT:", error);
+          console.error("Error INSERT:", error);
           toast.error("Error al crear el curso: " + error.message);
           return;
         }
@@ -803,21 +802,21 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             content: lesson.content || null,
           }));
 
-          debug(`📝 Insertando ${lessonsToInsert.length} lecciones para curso ${course.id}`);
+
 
           const { error: lessonsError } = await client
             .from("lessons")
             .insert(lessonsToInsert);
 
           if (lessonsError) {
-            console.error("❌ Error guardando lecciones:", lessonsError);
-            console.error("❌ Datos que intentamos insertar:", lessonsToInsert);
+            console.error("Error guardando lecciones:", lessonsError);
+            console.error("Datos que intentamos insertar:", lessonsToInsert);
             toast.warning("Curso guardado, pero error al guardar lecciones: " + lessonsError.message);
           } else {
             debug(`✅ ${lessonsToInsert.length} lecciones guardadas exitosamente`);
           }
         } catch (lessonsErr) {
-          console.error("❌ Error guardando lecciones (catch):", lessonsErr);
+          console.error("Error guardando lecciones (catch):", lessonsErr);
           toast.warning("Curso guardado, pero error al guardar lecciones");
         }
       }
@@ -840,21 +839,21 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             explanation: q.explanation || null,
           }));
 
-          debug(`📝 Insertando ${evaluationsToInsert.length} evaluaciones para curso ${course.id}`);
+
 
           const { error: evalError } = await client
             .from("evaluations")
             .insert(evaluationsToInsert);
 
           if (evalError) {
-            console.error("❌ Error guardando evaluaciones:", evalError);
-            console.error("❌ Datos que intentamos insertar:", evaluationsToInsert);
+            console.error("Error guardando evaluaciones:", evalError);
+            console.error("Datos que intentamos insertar:", evaluationsToInsert);
             toast.warning("Curso guardado, pero error al guardar evaluaciones: " + evalError.message);
           } else {
             debug(`✅ ${evaluationsToInsert.length} evaluaciones guardadas exitosamente`);
           }
         } catch (evalErr) {
-          console.error("❌ Error guardando evaluaciones (catch):", evalErr);
+          console.error("Error guardando evaluaciones (catch):", evalErr);
           toast.warning("Curso guardado, pero error al guardar evaluaciones");
         }
       }
@@ -2131,7 +2130,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           .eq("id", teacher.id);
         
         if (error) {
-          console.error("❌ Error UPDATE teacher:", error);
+          console.error("Error UPDATE teacher:", error);
           toast.error("Error al actualizar el profesor: " + error.message);
           return;
         }
@@ -2156,7 +2155,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         }]);
         
         if (error) {
-          console.error("❌ Error INSERT teacher:", error);
+          console.error("Error INSERT teacher:", error);
           toast.error("Error al crear el profesor: " + error.message);
           return;
         }
@@ -2196,7 +2195,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           .eq("id", courseToDelete);
         
         if (error) {
-          console.error("❌ Error DELETE:", error);
+          console.error("Error DELETE:", error);
           toast.error("Error al eliminar el curso: " + error.message);
           setDeletingCourseId(null); // Reset animation state on error
           return;
@@ -2252,7 +2251,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           .eq("id", actualId);
 
         if (error) {
-          console.error("❌ Error DELETE payment:", error);
+          console.error("Error DELETE payment:", error);
           toast.error("Error al eliminar el pago: " + error.message);
           setDeletingPaymentId(null);
           return;
