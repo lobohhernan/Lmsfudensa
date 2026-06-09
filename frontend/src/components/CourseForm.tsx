@@ -231,7 +231,7 @@ export function CourseForm({ course, teachers, onSave, onCancel }: CourseFormPro
       duration: formData.duration || "0 horas",
       level: formData.level || "Básico",
       certified: formData.certified ?? true,
-      students: formData.students ?? undefined,
+      students: formData.students ?? 0,
       category: formData.category,
       rating: formData.rating || 0,
       reviews: formData.reviews || 0,
