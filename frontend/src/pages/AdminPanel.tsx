@@ -151,7 +151,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [certificatesPage, setCertificatesPage] = useState(1);
   const [certificatesSearch, setCertificatesSearch] = useState("");
-  const [certificatesCourseFilter, setCertificatesCourseFilter] = useState<string>("all");
+  const [certificatesCourseFilter, setCertificatesCourseFilter] = useState<string>("");
   const [certificatesDateRangeFilter, setCertificatesDateRangeFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [hasAdminAccess, setHasAdminAccess] = useState<boolean | null>(null);
   // Filtros de cursos
@@ -169,6 +169,27 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   // Use realtime hook for courses
   const { courses: realtimeCourses, refetch: refetchCourses } = useCoursesRealtime();
+
+  // Ordenar los cursos del filtro de manera del abecedario
+  const sortedCoursesForFilter = useMemo(() => {
+    return [...realtimeCourses].sort((a, b) => a.title.localeCompare(b.title));
+  }, [realtimeCourses]);
+
+  // Deja por defecto el curso que empiece x la letra A (o el primero en orden alfabetico)
+  const defaultCertificatesCourse = useMemo(() => {
+    if (realtimeCourses.length === 0) return "";
+    const courseStartingWithA = sortedCoursesForFilter.find((c) =>
+      c.title.trim().toLowerCase().startsWith("a")
+    );
+    return courseStartingWithA ? courseStartingWithA.title : (sortedCoursesForFilter[0]?.title || "");
+  }, [realtimeCourses, sortedCoursesForFilter]);
+
+  // Establecer el curso por defecto para los certificados una vez cargados los cursos
+  useEffect(() => {
+    if (defaultCertificatesCourse && (certificatesCourseFilter === "all" || certificatesCourseFilter === "")) {
+      setCertificatesCourseFilter(defaultCertificatesCourse);
+    }
+  }, [defaultCertificatesCourse, certificatesCourseFilter]);
 
   // Conteo de alumnos inscriptos en tiempo real (solo visible para admin)
   const { counts: enrollmentCounts } = useEnrollmentCounts();
@@ -412,6 +433,12 @@ const defaultFromDate = new Date();
   const filteredCertificates = useMemo(() => {
     let result = realtimeCertificates;
 
+    const isFilteringActive = 
+      certificatesSearch.trim() !== "" || 
+      (certificatesCourseFilter !== defaultCertificatesCourse && certificatesCourseFilter !== "") || 
+      certificatesDateRangeFilter.from !== undefined || 
+      certificatesDateRangeFilter.to !== undefined;
+
     // Filtro por búsqueda de estudiante
     if (certificatesSearch) {
       const q = certificatesSearch.trim().toLowerCase();
@@ -419,7 +446,7 @@ const defaultFromDate = new Date();
     }
 
     // Filtro por curso
-    if (certificatesCourseFilter !== "all") {
+    if (certificatesCourseFilter) {
       result = result.filter((c) => c.course_title === certificatesCourseFilter);
     }
 
@@ -437,8 +464,20 @@ const defaultFromDate = new Date();
       });
     }
 
+    // Si NO se están usando filtros, aplicar el límite por defecto de los últimos 7 días
+    if (!isFilteringActive) {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+
+      result = result.filter((c) => {
+        const issueDate = new Date(c.issue_date);
+        return issueDate >= sevenDaysAgo;
+      });
+    }
+
     return result;
-  }, [realtimeCertificates, certificatesSearch, certificatesCourseFilter, certificatesDateRangeFilter]);
+  }, [realtimeCertificates, certificatesSearch, certificatesCourseFilter, certificatesDateRangeFilter, defaultCertificatesCourse]);
 
   const totalCertificatesPages = Math.max(1, Math.ceil(filteredCertificates.length / ADMIN_TABLE_ROWS_PER_PAGE));
   const paginatedCertificates = useMemo(() => {
@@ -3808,11 +3847,10 @@ const defaultFromDate = new Date();
                   <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Curso:</span>
                   <Select value={certificatesCourseFilter} onValueChange={setCertificatesCourseFilter}>
                     <SelectTrigger className="w-[160px] h-9 text-sm">
-                      <SelectValue placeholder="Todos" />
+                      <SelectValue placeholder="Seleccionar Curso" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {realtimeCourses.map((course) => (
+                      {sortedCoursesForFilter.map((course) => (
                         <SelectItem key={course.id} value={course.title}>
                           {course.title}
                         </SelectItem>
@@ -3886,14 +3924,14 @@ const defaultFromDate = new Date();
 
                 {/* Botón Limpiar Filtros + Exportar */}
                 <div className="flex items-center gap-2 ml-auto">
-                  {(certificatesSearch || certificatesCourseFilter !== "all" || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to) && (
+                  {(certificatesSearch || (certificatesCourseFilter !== defaultCertificatesCourse && certificatesCourseFilter !== "") || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to) && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-9 text-xs"
                       onClick={() => {
                         setCertificatesSearch("");
-                        setCertificatesCourseFilter("all");
+                        setCertificatesCourseFilter(defaultCertificatesCourse);
                         setCertificatesDateRangeFilter({ from: undefined, to: undefined });
                       }}
                     >
