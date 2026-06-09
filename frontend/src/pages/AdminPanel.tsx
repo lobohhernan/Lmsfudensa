@@ -155,7 +155,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [certificatesDateRangeFilter, setCertificatesDateRangeFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [hasAdminAccess, setHasAdminAccess] = useState<boolean | null>(null);
   // Filtros de cursos
-  const [courseLevelFilter, setCourseLevelFilter] = useState<string>("all");
+  const [courseLevelFilter, setCourseLevelFilter] = useState<string>("Básico");
   const [courseSortBy, setCourseSortBy] = useState<string>("default");
   const [coursesSearch, setCoursesSearch] = useState("");
   const [coursesPage, setCoursesPage] = useState(1);
@@ -489,7 +489,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     let filtered = [...courseList];
 
     // Filtro por inactivos
-    if (!showInactiveCourses) {
+    if (showInactiveCourses) {
+      filtered = filtered.filter(course => course.is_active === false);
+    } else {
       filtered = filtered.filter(course => course.is_active !== false);
     }
 
@@ -504,7 +506,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     }
 
     // Filtro por nivel
-    if (courseLevelFilter !== "all") {
+    if (courseLevelFilter && courseLevelFilter !== "all") {
       filtered = filtered.filter(course => course.level === courseLevelFilter);
     }
 
@@ -2753,10 +2755,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Nivel:</span>
                   <Select value={courseLevelFilter} onValueChange={setCourseLevelFilter}>
                     <SelectTrigger className="w-[130px] h-9 text-sm">
-                      <SelectValue placeholder="Todos" />
+                      <SelectValue placeholder="Básico" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="Básico">Básico</SelectItem>
                       <SelectItem value="Intermedio">Intermedio</SelectItem>
                       <SelectItem value="Avanzado">Avanzado</SelectItem>
@@ -2789,13 +2790,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     Inactivos
                   </label>
                 </div>
-                {(courseLevelFilter !== "all" || courseSortBy !== "default" || coursesSearch || showInactiveCourses) && (
+                {(courseLevelFilter !== "Básico" || courseSortBy !== "default" || coursesSearch || showInactiveCourses) && (
                   <Button 
                     variant="outline" 
                     size="sm"
                     className="h-9 text-xs"
                     onClick={() => {
-                      setCourseLevelFilter("all");
+                      setCourseLevelFilter("Básico");
                       setCourseSortBy("default");
                       setCoursesSearch("");
                       setShowInactiveCourses(false);
@@ -2900,7 +2901,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 ) : (
                   <div className="col-span-full flex items-center justify-center py-12">
                     <p className="text-[#64748B]">
-                      {courseLevelFilter !== "all" || coursesSearch 
+                      {courseLevelFilter !== "Básico" || coursesSearch 
                         ? "No se encontraron cursos con los filtros seleccionados."
                         : "No hay cursos disponibles. Crea uno para comenzar."}
                     </p>
