@@ -144,7 +144,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [showInactiveTeachers, setShowInactiveTeachers] = useState(false);
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
   const [usersSearch, setUsersSearch] = useState("");
-  const [usersRoleFilter, setUsersRoleFilter] = useState<string>("all");
+  const [usersRoleFilter, setUsersRoleFilter] = useState<string>("");
   const [usersDateRangeFilter, setUsersDateRangeFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [teachersPage, setTeachersPage] = useState(1);
   const [usersPage, setUsersPage] = useState(1);
@@ -238,9 +238,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       return bActive - aActive;
     });
   }, [realtimeTeachers, teacherQuery, showInactiveTeachers]);
+  const hasAnyUserFilter = Boolean(usersSearch || usersRoleFilter || usersDateRangeFilter.from || usersDateRangeFilter.to || showInactiveUsers);
+
   const filteredUsers = useMemo(() => {
+    if (!hasAnyUserFilter) return [] as any[];
+
     // Sincronizar el estado isActive de los usuarios profesores con su registro real de la tabla teachers
-    let result = usersList.map(user => {
+    let result: any[] = usersList.map(user => {
       let is_active = user.is_active;
       if (user.role === 'instructor') {
         const teacher = realtimeTeachers.find(t => t.user_id === user.id);
@@ -252,7 +256,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     });
 
     // Filtro por inactivos
-    if (!showInactiveUsers) {
+    if (showInactiveUsers) {
+      result = result.filter(u => u.is_active === false);
+    } else {
       result = result.filter(u => u.is_active !== false);
     }
 
@@ -268,7 +274,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     }
 
     // Filtro por rol
-    if (usersRoleFilter !== "all") {
+    if (usersRoleFilter && usersRoleFilter !== "all") {
       result = result.filter((u) => u.role === usersRoleFilter);
     }
 
@@ -286,7 +292,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       });
     }
 
-    // Inactive users always go to the bottom
+    // Inactive users always go to the bottom (though if showInactiveUsers is true, all are inactive)
     result = [...result].sort((a, b) => {
       const aActive = (a.is_active as boolean) !== false ? 1 : 0;
       const bActive = (b.is_active as boolean) !== false ? 1 : 0;
@@ -294,7 +300,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     });
 
     return result;
-  }, [usersList, usersSearch, usersRoleFilter, usersDateRangeFilter, showInactiveUsers, realtimeTeachers]);
+  }, [usersList, hasAnyUserFilter, usersSearch, usersRoleFilter, usersDateRangeFilter, showInactiveUsers, realtimeTeachers]);
 
   // Mapa dinámico: teacher.id → cursos que dicta
   // Soporta tanto instructor_id=teacher.id (cursos nuevos) como instructor_id=profile.id (cursos legacy)
@@ -559,7 +565,7 @@ const defaultFromDate = new Date();
 
   useEffect(() => {
     setUsersPage(1);
-  }, [usersSearch, usersRoleFilter, usersDateRangeFilter]);
+  }, [usersSearch, usersRoleFilter, usersDateRangeFilter, showInactiveUsers]);
 
   useEffect(() => {
     setPaymentsPage(1);
@@ -3210,10 +3216,9 @@ const defaultFromDate = new Date();
                   <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Rol:</span>
                   <Select value={usersRoleFilter} onValueChange={setUsersRoleFilter}>
                     <SelectTrigger className="w-[130px] h-9 text-sm">
-                      <SelectValue placeholder="Todos" />
+                      <SelectValue placeholder="Seleccione un rol" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos los roles</SelectItem>
                       <SelectItem value="student">Estudiante</SelectItem>
                       <SelectItem value="instructor">Profesor</SelectItem>
                       <SelectItem value="admin">Administrador</SelectItem>
@@ -3301,14 +3306,14 @@ const defaultFromDate = new Date();
 
                 {/* Limpiar filtros + Exportar */}
                 <div className="flex items-center gap-2 ml-auto">
-                  {(usersSearch || usersRoleFilter !== "all" || usersDateRangeFilter.from || usersDateRangeFilter.to || showInactiveUsers) && (
+                  {(usersSearch || usersRoleFilter !== "" || usersDateRangeFilter.from || usersDateRangeFilter.to || showInactiveUsers) && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-9 text-xs"
                       onClick={() => {
                         setUsersSearch("");
-                        setUsersRoleFilter("all");
+                        setUsersRoleFilter("");
                         setUsersDateRangeFilter({ from: undefined, to: undefined });
                         setShowInactiveUsers(false);
                       }}
@@ -3320,6 +3325,7 @@ const defaultFromDate = new Date();
                   <Button
                     onClick={handleExportAllUsers}
                     className="h-9 text-xs"
+                    variant="secondary"
                   >
                     <Download className="mr-1 h-3 w-3" />
                     Exportar
@@ -3328,45 +3334,52 @@ const defaultFromDate = new Date();
               </div>
 
               <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>#</TableHead>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Rol</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Registrado</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {usersLoading ? (
+                {!hasAnyUserFilter ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500 min-h-[300px]">
+                    <Search className="h-10 w-10 text-gray-300 mb-3" />
+                    <p className="text-sm font-medium">Aplique uno o más filtros para visualizar usuarios</p>
+                  </div>
+                ) : (
+                  <>
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
-                          <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                        </TableCell>
+                        <TableHead>#</TableHead>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Rol</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Registrado</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
-                    ) : usersError ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4 text-red-600">
-                          Error cargando usuarios: {usersError}
-                        </TableCell>
-                      </TableRow>
-                    ) : usersList.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4 text-gray-500">
-                          No hay usuarios registrados aún
-                        </TableCell>
-                      </TableRow>
-                    ) : filteredUsers.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4 text-gray-500">
-                          No se encontraron usuarios con los filtros aplicados
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginatedUsers.map((user, index) => (
+                    </TableHeader>
+                    <TableBody>
+                      {usersLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ) : usersError ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-4 text-red-600">
+                            Error cargando usuarios: {usersError}
+                          </TableCell>
+                        </TableRow>
+                      ) : usersList.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                            No hay usuarios registrados aún
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredUsers.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                            No se encontraron usuarios con los filtros aplicados
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedUsers.map((user, index) => (
                         <TableRow key={user.id} className={cn(
                           "transition-all duration-300 relative",
                           !getUserActiveState(user.id as string, (user.is_active as boolean) !== false) && "opacity-40 bg-gray-100 grayscale"
@@ -3462,6 +3475,8 @@ const defaultFromDate = new Date();
                       </Button>
                     </div>
                   </div>
+                )}
+                </>
                 )}
               </Card>
             </div>
