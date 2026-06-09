@@ -258,6 +258,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   }, [realtimeTeachers, teacherQuery, showInactiveTeachers]);
   const hasAnyUserFilter = Boolean(usersSearch || usersRoleFilter || usersDateRangeFilter.from || usersDateRangeFilter.to || showInactiveUsers);
 
+  const hasAnyPaymentFilter = Boolean(paymentsSearch.trim() || paymentsStatusFilter !== "approved" || paymentsDateRangeFilter.from || paymentsDateRangeFilter.to || paymentsAmountRangeFilter.from || paymentsAmountRangeFilter.to);
+  
+  const hasAnyCertificateFilter = Boolean(certificatesSearch.trim() || certificatesCourseFilter !== "" || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to);
+
   const filteredUsers = useMemo(() => {
     if (!hasAnyUserFilter) return [] as any[];
 
@@ -3699,8 +3703,15 @@ const defaultFromDate = new Date();
               </div>
 
               <Card>
-                <Table>
-                  <TableHeader>
+                {!hasAnyPaymentFilter ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500 min-h-[300px]">
+                    <Search className="h-10 w-10 text-gray-300 mb-3" />
+                    <p className="text-sm font-medium">Aplique uno o más filtros para visualizar resultados</p>
+                  </div>
+                ) : (
+                  <>
+                  <Table>
+                    <TableHeader>
                     <TableRow>
                       <TableHead>#</TableHead>
                       <TableHead>Estado</TableHead>
@@ -3826,6 +3837,8 @@ const defaultFromDate = new Date();
                       </Button>
                     </div>
                   </div>
+                )}
+                  </>
                 )}
               </Card>
             </div>
@@ -3953,8 +3966,15 @@ const defaultFromDate = new Date();
               </div>
 
               <Card>
-                <Table>
-                  <TableHeader>
+                {!hasAnyCertificateFilter ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500 min-h-[300px]">
+                    <Search className="h-10 w-10 text-gray-300 mb-3" />
+                    <p className="text-sm font-medium">Aplique uno o más filtros para visualizar resultados</p>
+                  </div>
+                ) : (
+                  <>
+                  <Table>
+                    <TableHeader>
                     <TableRow>
                       <TableHead>#</TableHead>
                       <TableHead>Fecha de Emisión</TableHead>
@@ -4071,6 +4091,8 @@ const defaultFromDate = new Date();
                       </Button>
                     </div>
                   </div>
+                )}
+                  </>
                 )}
               </Card>
             </div>
