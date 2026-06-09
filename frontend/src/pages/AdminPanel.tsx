@@ -175,14 +175,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     return [...realtimeCourses].sort((a, b) => a.title.localeCompare(b.title));
   }, [realtimeCourses]);
 
-  // Deja por defecto el curso que empiece x la letra A (o el primero en orden alfabetico)
-  const defaultCertificatesCourse = useMemo(() => {
-    if (realtimeCourses.length === 0) return "";
-    const courseStartingWithA = sortedCoursesForFilter.find((c) =>
-      c.title.trim().toLowerCase().startsWith("a")
-    );
-    return courseStartingWithA ? courseStartingWithA.title : (sortedCoursesForFilter[0]?.title || "");
-  }, [realtimeCourses, sortedCoursesForFilter]);
 
 
 
@@ -259,8 +251,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const hasAnyUserFilter = Boolean(usersSearch || usersRoleFilter || usersDateRangeFilter.from || usersDateRangeFilter.to || showInactiveUsers);
 
   const hasAnyPaymentFilter = Boolean(paymentsSearch.trim() || paymentsStatusFilter !== "approved" || paymentsDateRangeFilter.from || paymentsDateRangeFilter.to || paymentsAmountRangeFilter.from || paymentsAmountRangeFilter.to);
-  
-  const hasAnyCertificateFilter = Boolean(certificatesSearch.trim() || certificatesCourseFilter !== "" || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to);
+
 
   const filteredUsers = useMemo(() => {
     if (!hasAnyUserFilter) return [] as any[];
@@ -433,22 +424,11 @@ const defaultFromDate = new Date();
   const filteredCertificates = useMemo(() => {
     let result = realtimeCertificates;
 
-    const effectiveCourseFilter = certificatesCourseFilter || defaultCertificatesCourse;
-
-    // Si aún no tenemos un curso efectivo, no mostramos certificados (evita flashing)
-    if (!effectiveCourseFilter) {
-      return [];
-    }
-
-    const isFilteringActive = 
-      certificatesSearch.trim() !== "" || 
-      certificatesCourseFilter !== "" || 
-      certificatesDateRangeFilter.from !== undefined || 
-      certificatesDateRangeFilter.to !== undefined;
+    const effectiveCourseFilter = certificatesCourseFilter === "all" ? "" : certificatesCourseFilter;
 
     // Filtro por búsqueda de estudiante
-    if (certificatesSearch) {
-      const q = certificatesSearch.trim().toLowerCase();
+    const q = certificatesSearch.trim().toLowerCase();
+    if (q) {
       result = result.filter((c) => (c.student_name || "").toLowerCase().includes(q));
     }
 
@@ -471,8 +451,9 @@ const defaultFromDate = new Date();
       });
     }
 
-    // Si NO se están usando filtros, aplicar el límite por defecto de los últimos 7 días
-    if (!isFilteringActive) {
+    // Si no hay búsqueda activa, aplicar el límite por defecto de los últimos 7 días
+    // (Igual comportamiento que en la sección de pagos)
+    if (!q) {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -484,7 +465,7 @@ const defaultFromDate = new Date();
     }
 
     return result;
-  }, [realtimeCertificates, certificatesSearch, certificatesCourseFilter, certificatesDateRangeFilter, defaultCertificatesCourse]);
+  }, [realtimeCertificates, certificatesSearch, certificatesCourseFilter, certificatesDateRangeFilter]);
 
   const totalCertificatesPages = Math.max(1, Math.ceil(filteredCertificates.length / ADMIN_TABLE_ROWS_PER_PAGE));
   const paginatedCertificates = useMemo(() => {
@@ -3861,11 +3842,12 @@ const defaultFromDate = new Date();
                 {/* Filtro por Curso */}
                 <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
                   <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Curso:</span>
-                  <Select value={certificatesCourseFilter || defaultCertificatesCourse} onValueChange={setCertificatesCourseFilter}>
+                  <Select value={certificatesCourseFilter || "all"} onValueChange={setCertificatesCourseFilter}>
                     <SelectTrigger className="w-[160px] h-9 text-sm">
                       <SelectValue placeholder="Seleccionar Curso" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">Todos los cursos</SelectItem>
                       {sortedCoursesForFilter.map((course) => (
                         <SelectItem key={course.id} value={course.title}>
                           {course.title}
@@ -3940,14 +3922,14 @@ const defaultFromDate = new Date();
 
                 {/* Botón Limpiar Filtros + Exportar */}
                 <div className="flex items-center gap-2 ml-auto">
-                  {(certificatesSearch || certificatesCourseFilter !== "" || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to) && (
+                  {(certificatesSearch || (certificatesCourseFilter !== "" && certificatesCourseFilter !== "all") || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to) && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-9 text-xs"
                       onClick={() => {
                         setCertificatesSearch("");
-                        setCertificatesCourseFilter("");
+                        setCertificatesCourseFilter("all");
                         setCertificatesDateRangeFilter({ from: undefined, to: undefined });
                       }}
                     >
@@ -3966,15 +3948,8 @@ const defaultFromDate = new Date();
               </div>
 
               <Card>
-                {!hasAnyCertificateFilter ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500 min-h-[300px]">
-                    <Search className="h-10 w-10 text-gray-300 mb-3" />
-                    <p className="text-sm font-medium">Aplique uno o más filtros para visualizar resultados</p>
-                  </div>
-                ) : (
-                  <>
-                  <Table>
-                    <TableHeader>
+                <Table>
+                  <TableHeader>
                     <TableRow>
                       <TableHead>#</TableHead>
                       <TableHead>Fecha de Emisión</TableHead>
@@ -4091,8 +4066,6 @@ const defaultFromDate = new Date();
                       </Button>
                     </div>
                   </div>
-                )}
-                  </>
                 )}
               </Card>
             </div>
