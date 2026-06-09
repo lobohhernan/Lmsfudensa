@@ -138,7 +138,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [optimisticActiveState, setOptimisticActiveState] = useState<Record<string, boolean>>({});
   const [paymentsSearch, setPaymentsSearch] = useState("");
   const [paymentsDateRangeFilter, setPaymentsDateRangeFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
-  const [paymentsStatusFilter, setPaymentsStatusFilter] = useState<string>("all");
+  const [paymentsStatusFilter, setPaymentsStatusFilter] = useState<string>("approved");
   const [paymentsAmountRangeFilter, setPaymentsAmountRangeFilter] = useState<{ from: string; to: string }>({ from: "", to: "" });
   const [showInactiveCourses, setShowInactiveCourses] = useState(false);
   const [showInactiveTeachers, setShowInactiveTeachers] = useState(false);
@@ -345,6 +345,17 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     const minAmount = paymentsAmountRangeFilter.from ? parseFloat(paymentsAmountRangeFilter.from) : null;
     const maxAmount = paymentsAmountRangeFilter.to ? parseFloat(paymentsAmountRangeFilter.to) : null;
     
+    // Determinar si estamos en el estado "por defecto" sin usar filtros activamente
+    const isDefaultState = q === "" && 
+                           minAmount === null && 
+                           maxAmount === null && 
+                           paymentsDateRangeFilter.from === undefined && 
+                           paymentsDateRangeFilter.to === undefined && 
+                           paymentsStatusFilter === "approved";
+
+    const defaultFromDate = new Date();
+    defaultFromDate.setDate(defaultFromDate.getDate() - 7);
+
     return allPayments.filter((p) => {
       const matchText =
         !q ||
@@ -355,7 +366,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       if (!matchText) return false;
 
       // Filtro de estado
-      if (paymentsStatusFilter !== "all" && p.status !== paymentsStatusFilter) return false;
+      if (paymentsStatusFilter && p.status !== paymentsStatusFilter) return false;
 
       // Filtro de rango de monto
       if (minAmount !== null && (p.amount || 0) < minAmount) return false;
@@ -371,6 +382,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           nextDay.setDate(nextDay.getDate() + 1);
           if (created >= nextDay) return false;
         }
+      } else if (isDefaultState) {
+        // Por defecto traer datos de la ultima semana (7 dias como maximo)
+        if (created < defaultFromDate) return false;
       }
 
       return true;
@@ -3514,10 +3528,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Estado:</span>
                   <Select value={paymentsStatusFilter} onValueChange={setPaymentsStatusFilter}>
                     <SelectTrigger className="w-[120px] h-9 text-sm">
-                      <SelectValue placeholder="Todos" />
+                      <SelectValue placeholder="Aprobado" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="approved">Aprobado</SelectItem>
                       <SelectItem value="pending">Pendiente</SelectItem>
                       <SelectItem value="legacy">Manual</SelectItem>
@@ -3609,7 +3622,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </Popover>
                   </div>
 
-                {(paymentsSearch || paymentsDateRangeFilter.from || paymentsDateRangeFilter.to || paymentsStatusFilter !== "all" || paymentsAmountRangeFilter.from || paymentsAmountRangeFilter.to) && (
+                {(paymentsSearch || paymentsDateRangeFilter.from || paymentsDateRangeFilter.to || paymentsStatusFilter !== "approved" || paymentsAmountRangeFilter.from || paymentsAmountRangeFilter.to) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -3617,7 +3630,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     onClick={() => {
                       setPaymentsSearch("");
                       setPaymentsDateRangeFilter({ from: undefined, to: undefined });
-                      setPaymentsStatusFilter("all");
+                      setPaymentsStatusFilter("approved");
                       setPaymentsAmountRangeFilter({ from: "", to: "" });
                     }}
                   >
