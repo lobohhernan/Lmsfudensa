@@ -344,16 +344,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     const q = paymentsSearch.trim().toLowerCase();
     const minAmount = paymentsAmountRangeFilter.from ? parseFloat(paymentsAmountRangeFilter.from) : null;
     const maxAmount = paymentsAmountRangeFilter.to ? parseFloat(paymentsAmountRangeFilter.to) : null;
-    
-    // Determinar si estamos en el estado "por defecto" sin usar filtros activamente
-    const isDefaultState = q === "" && 
-                           minAmount === null && 
-                           maxAmount === null && 
-                           paymentsDateRangeFilter.from === undefined && 
-                           paymentsDateRangeFilter.to === undefined && 
-                           paymentsStatusFilter === "approved";
 
-    const defaultFromDate = new Date();
+const defaultFromDate = new Date();
     defaultFromDate.setDate(defaultFromDate.getDate() - 7);
 
     return allPayments.filter((p) => {
@@ -382,7 +374,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           nextDay.setDate(nextDay.getDate() + 1);
           if (created >= nextDay) return false;
         }
-      } else if (isDefaultState) {
+      } else {
         // Por defecto traer datos de la ultima semana (7 dias como maximo)
         if (created < defaultFromDate) return false;
       }
