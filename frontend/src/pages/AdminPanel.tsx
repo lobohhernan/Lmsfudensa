@@ -216,7 +216,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const filteredTeachers = useMemo(() => {
     let result = realtimeTeachers;
 
-    if (!showInactiveTeachers) {
+    if (showInactiveTeachers) {
+      result = result.filter(t => t.is_active === false);
+    } else {
       result = result.filter(t => t.is_active !== false);
     }
 
