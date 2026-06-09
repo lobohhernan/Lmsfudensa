@@ -74,7 +74,7 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
     }
 
     setIsSubmitting(true);
-    debug('📝 Actualizando contraseña...');
+
 
     const result = await resetPassword(password);
 

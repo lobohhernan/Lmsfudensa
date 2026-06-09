@@ -21,19 +21,19 @@ export const initMercadoPago = async () => {
   try {
     const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY;
     if (!publicKey) {
-      console.error("❌ Public Key de Mercado Pago no configurada");
+      console.error("Public Key de Mercado Pago no configurada");
       return null;
     }
 
     if (typeof window !== 'undefined' && window.MercadoPago) {
-      console.log("✅ Mercado Pago SDK disponible");
+
       return true;
     }
 
-    console.error("❌ SDK de Mercado Pago no disponible");
+    console.error("SDK de Mercado Pago no disponible");
     return null;
   } catch (error) {
-    console.error("❌ Error al inicializar Mercado Pago:", error);
+    console.error("Error al inicializar Mercado Pago:", error);
     return null;
   }
 };
@@ -75,7 +75,7 @@ export const createMercadoPagoPreference = async (
     );
 
     if (error) {
-      console.error("❌ Error en Edge Function:", error);
+      console.error("Error en Edge Function:", error);
       throw error;
     }
 
@@ -83,10 +83,10 @@ export const createMercadoPagoPreference = async (
       throw new Error(data?.error || "Error al crear preferencia");
     }
 
-    console.log("✅ Preferencia creada:", data.preferenceId);
+
     return data.initPoint || null;
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error("Error:", error);
     return null;
   }
 };
@@ -96,7 +96,7 @@ export const createMercadoPagoPreference = async (
  */
 export const redirectToMercadoPago = (initPoint: string) => {
   if (!initPoint) {
-    console.error("❌ Init Point inválido");
+    console.error("Init Point inválido");
     return;
   }
 

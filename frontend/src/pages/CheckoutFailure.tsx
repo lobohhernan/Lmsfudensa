@@ -22,7 +22,7 @@ export default function CheckoutFailure({ onNavigate }: CheckoutFailureProps) {
     setPaymentId(payId);
     setReason(failReason);
 
-    console.log("❌ Pago rechazado desde Mercado Pago:", {
+    console.log("Pago rechazado desde Mercado Pago:", {
       preferenceId: urlParams.get("preference_id"),
       paymentId: payId,
       externalRef: extRef,

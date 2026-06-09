@@ -456,7 +456,7 @@ export default function App() {
     let oauthFallbackTimer: ReturnType<typeof setTimeout> | null = null
 
     if (isOAuthCallback) {
-      console.warn('🔐 [App] Callback OAuth detectado en URL')
+
       // Limpiar URL después de 500ms (Supabase ya procesó el código/token antes)
       urlCleanTimer = setTimeout(() => {
         if (window.location.search || window.location.hash) {
@@ -468,11 +468,11 @@ export default function App() {
       // llamar getSession() explícitamente (el auth lock ya estará libre)
       oauthFallbackTimer = setTimeout(async () => {
         if (authUserRef.current) return // ya hay sesión, no hace falta
-        console.warn('🔐 [App] OAuth fallback: llamando getSession()...')
+
         try {
           const { data: { session } } = await supabase.auth.getSession()
           if (session?.user && !authUserRef.current) {
-            console.warn('🔐 [App] OAuth fallback: sesión encontrada para', session.user.email)
+
             const userData_ = extractUserDataFromMeta(session.user)
             authUserRef.current = { id: session.user.id, email: userData_.email, name: userData_.name }
             setIsLoggedIn(true)
@@ -480,7 +480,7 @@ export default function App() {
             sessionStorage.setItem('user_session', JSON.stringify(userData_))
             setAuthBootstrapped(true)
           } else {
-            console.warn('🔐 [App] OAuth fallback: sin sesión, posible error en intercambio PKCE')
+
           }
         } catch (err) {
           logError('🔐 [App] OAuth fallback error:', err)
@@ -537,7 +537,7 @@ export default function App() {
         const dbRole = (profile?.role || 'student') as 'student' | 'instructor' | 'admin'
         const dbFullName = profile?.full_name || authUser.name
         
-        console.warn('🔑 [App] Perfil desde DB:', { name: dbFullName, role: dbRole }, '| user:', authUser.email)
+
         
         // 🔑 IMPORTANTE: Asegurar que siempre actualizamos userData, incluso si prev es null
         setUserData(prev => {

@@ -147,7 +147,7 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
 
         const enrolled = await isUserEnrolled(user.id, courseId);
         if (enrolled) {
-          console.log("✅ [Checkout] Usuario ya inscrito, redirigiendo a lección 1...");
+
           toast.info("Ya estás inscrito en este curso", {
             description: "Te redirigiremos a la lección",
           });
@@ -181,24 +181,24 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
     
     try {
       setIsProcessing(true);
-      console.log("✅ isProcessing establecido a true");
+
       
       if (!userData) {
-        console.error("❌ userData vacío:", userData);
+        console.error("userData vacío:", userData);
         toast.error("Datos de usuario incompletos.");
         setIsProcessing(false);
         return;
       }
       
       if (!courseData) {
-        console.error("❌ courseData vacío:", courseData);
+        console.error("courseData vacío:", courseData);
         toast.error("Datos del curso incompletos.");
         setIsProcessing(false);
         return;
       }
       
       if (!courseId) {
-        console.error("❌ courseId vacío:", courseId);
+        console.error("courseId vacío:", courseId);
         toast.error("ID del curso no disponible.");
         setIsProcessing(false);
         return;
@@ -207,7 +207,7 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
       // Obtener userId del usuario autenticado
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) {
-        console.error("❌ Usuario no autenticado");
+        console.error("Usuario no autenticado");
         toast.error("Debes estar autenticado para comprar.");
         setIsProcessing(false);
         return;
@@ -236,7 +236,7 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
       console.log("📍 initPoint recibido:", initPoint);
 
       if (!initPoint) {
-        console.error("❌ initPoint es null o vacío");
+        console.error("initPoint es null o vacío");
         toast.error("No se pudo crear la preferencia de pago. Intenta de nuevo.");
         setIsProcessing(false);
         return;
@@ -247,14 +247,14 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
       sessionStorage.setItem("mp_pending_course", courseId);
       sessionStorage.setItem("mp_pending_email", userData.email);
       
-      console.log("✅ Preferencia creada, redirigiendo a Mercado Pago...");
+
       console.log("🔗 URL de redirección:", initPoint);
       
       // Redirigir directamente a Mercado Pago (CHECKOUT PRO)
       redirectToMercadoPago(initPoint);
       
     } catch (err) {
-      console.error("❌ Error en handlePayment:", err);
+      console.error("Error en handlePayment:", err);
       console.error("Error details:", err instanceof Error ? err.message : String(err));
       toast.error("Error al procesar el pago");
       setIsProcessing(false);
@@ -539,12 +539,12 @@ export function Checkout({ onNavigate, courseId: initialCourseId, courseSlug, us
                             setTimeout(() => {
                               // Use courseData slug (from loaded course) or courseSlug prop
                               const slug = courseData?.slug || courseSlug;
-                              console.log("🎓 [Checkout] Redirigiendo con slug:", slug, "courseId:", courseId);
+
                               
                               if (slug) {
                                 onNavigate?.("lesson", courseId, slug, "1");
                               } else {
-                                console.error("❌ No slug available for navigation", { courseData, courseSlug });
+                                console.error("No slug available for navigation", { courseData, courseSlug });
                                 toast.error("Error al redirigir al curso. Por favor, intenta nuevamente.");
                               }
                             }, 2500);

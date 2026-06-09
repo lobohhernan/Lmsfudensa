@@ -12,7 +12,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
  * Se ejecuta cuando hay cambios en el estado de los pagos
  */
 serve(async (req: Request): Promise<Response> => {
-  console.log("🔔 [WEBHOOK] Solicitud webhook recibida:", {
+
     method: req.method,
     url: req.url,
     timestamp: new Date().toISOString(),
@@ -40,7 +40,7 @@ serve(async (req: Request): Promise<Response> => {
 
   // Solo permitir POST para webhooks
   if (req.method !== "POST") {
-    console.log("❌ [WEBHOOK] Método no permitido:", req.method);
+    console.log("[WEBHOOK] Método no permitido:", req.method);
     return new Response(
       JSON.stringify({ error: "Método no permitido" }),
       { status: 405, headers: { "Content-Type": "application/json" } }
@@ -50,10 +50,10 @@ serve(async (req: Request): Promise<Response> => {
   try {
     // Obtener el cuerpo del webhook
     const body = await req.text();
-    console.log("📝 [WEBHOOK] Cuerpo:", body.substring(0, 300));
+
 
     if (!body) {
-      console.warn("⚠️ [WEBHOOK] Body vacío");
+
       return new Response(
         JSON.stringify({ error: "Body vacío" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
@@ -63,7 +63,7 @@ serve(async (req: Request): Promise<Response> => {
     // Parsear JSON
     const data = JSON.parse(body);
 
-    console.log("📨 [WEBHOOK] Parseado:", {
+
       type: data.type,
       action: data.action,
       dataId: data.data?.id,
@@ -71,7 +71,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // Solo procesamos notificaciones de pago
     if (data.type !== "payment") {
-      console.log("⏭️ [WEBHOOK] Ignorando tipo:", data.type);
+
       return new Response(JSON.stringify({ success: true, ignored: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -81,7 +81,7 @@ serve(async (req: Request): Promise<Response> => {
     // Obtener ID del pago
     const paymentId = data.data?.id;
     if (!paymentId) {
-      console.warn("⚠️ [WEBHOOK] No hay ID de pago");
+
       return new Response(JSON.stringify({ success: true, noPaymentId: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -93,7 +93,7 @@ serve(async (req: Request): Promise<Response> => {
     // Obtener detalles del pago desde Mercado Pago API
     const mpToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")!;
     
-    console.log("🔍 [WEBHOOK] Obteniendo detalles del pago desde MP API...");
+
     
     const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: {
@@ -103,7 +103,7 @@ serve(async (req: Request): Promise<Response> => {
 
     if (!mpResponse.ok) {
       const errorText = await mpResponse.text();
-      console.error("❌ [WEBHOOK] Error obteniendo pago de MP:", mpResponse.status, errorText);
+      console.error("[WEBHOOK] Error obteniendo pago de MP:", mpResponse.status, errorText);
       return new Response(
         JSON.stringify({ error: "No se pudo obtener el pago de MP" }),
         { status: 500, headers: { "Content-Type": "application/json" } }
@@ -111,8 +111,8 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const paymentData = await mpResponse.json();
-    console.log("📊 [WEBHOOK] Status del pago:", paymentData.status);
-    console.log("📊 [WEBHOOK] External reference:", paymentData.external_reference);
+
+
 
     // Parsear external_reference (contiene JSON con courseId y userId)
     let courseId: string;
@@ -122,16 +122,16 @@ serve(async (req: Request): Promise<Response> => {
       const externalRefData = JSON.parse(paymentData.external_reference);
       courseId = externalRefData.courseId;
       userId = externalRefData.userId;
-      console.log("✅ [WEBHOOK] Parsed external_reference:", { courseId, userId });
+
     } catch (e) {
       // Si falla el parse, asumir que es solo courseId (compatibilidad backwards)
       courseId = paymentData.external_reference;
-      console.warn("⚠️ [WEBHOOK] No se pudo parsear external_reference, usando como courseId:", courseId);
+
       
       // Sin userId, intentar obtener por email
       const userEmail = paymentData.payer?.email;
       if (!userEmail) {
-        console.error("❌ [WEBHOOK] No hay userId ni email disponible");
+        console.error("[WEBHOOK] No hay userId ni email disponible");
         return new Response(
           JSON.stringify({ error: "No se puede identificar al usuario" }),
           { status: 400, headers: { "Content-Type": "application/json" } }
@@ -148,7 +148,7 @@ serve(async (req: Request): Promise<Response> => {
         .single();
 
       if (userError || !profile) {
-        console.warn("⚠️ [WEBHOOK] Usuario no encontrado:", userEmail);
+
         return new Response(
           JSON.stringify({ error: "Usuario no encontrado" }),
           { status: 400, headers: { "Content-Type": "application/json" } }
@@ -158,7 +158,7 @@ serve(async (req: Request): Promise<Response> => {
       userId = profile.id;
     }
 
-    console.log("✅ [WEBHOOK] Datos extraídos:", { courseId, userId });
+
 
     const userEmail = paymentData.payer?.email || "unknown@mercadopago.com";
     const payerName = [
@@ -193,14 +193,14 @@ serve(async (req: Request): Promise<Response> => {
 
     if (upsertError) {
       // Log but don't block—enrollment is more critical
-      console.error("⚠️ [WEBHOOK] Error guardando en tabla payments:", upsertError);
+
     } else {
-      console.log("✅ [WEBHOOK] Pago guardado en tabla payments");
+
     }
 
     // ── Crear enrollment solo para pagos aprobados ───────────────────────
     if (paymentData.status !== "approved") {
-      console.log("⏭️ [WEBHOOK] Pago no aprobado, status:", paymentData.status, "– solo guardado en payments");
+
       return new Response(JSON.stringify({ success: true, status: paymentData.status }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -209,7 +209,7 @@ serve(async (req: Request): Promise<Response> => {
 
     await createEnrollment(userId, courseId, userEmail, paymentId);
 
-    console.log("✅ [WEBHOOK] Pago procesado correctamente");
+
 
     return new Response(
       JSON.stringify({
@@ -226,7 +226,7 @@ serve(async (req: Request): Promise<Response> => {
       }
     );
   } catch (error) {
-    console.error("❌ [WEBHOOK] Error general:", error);
+    console.error("[WEBHOOK] Error general:", error);
 
     return new Response(
       JSON.stringify({
@@ -254,7 +254,7 @@ async function createEnrollment(
   userEmail: string,
   paymentId: string
 ) {
-  console.log("📝 [WEBHOOK] Creando inscripción:", { userId, courseId });
+
 
   // Primero verificar si ya existe la inscripción
   const { data: existingEnrollment, error: checkError } = await supabase
@@ -265,7 +265,7 @@ async function createEnrollment(
     .single();
 
   if (existingEnrollment) {
-    console.warn("⚠️ [WEBHOOK] Inscripción ya existe, actualizando...");
+
     
     // Actualizar si ya existe (solo enrolled_at, sin status ni payment_id que no existen)
     const { error: updateError } = await supabase
@@ -277,11 +277,11 @@ async function createEnrollment(
       .eq("course_id", courseId);
 
     if (updateError) {
-      console.error("❌ [WEBHOOK] Error actualizando inscripción:", updateError);
+      console.error("[WEBHOOK] Error actualizando inscripción:", updateError);
       throw updateError;
     }
 
-    console.log("✅ [WEBHOOK] Inscripción actualizada");
+
     return;
   }
 
@@ -297,7 +297,7 @@ async function createEnrollment(
     updated_at: new Date().toISOString(),
   };
 
-  console.log("📝 [WEBHOOK] Datos de inscripción a insertar:", enrollmentData);
+
 
   const { data: enrollment, error: enrollError } = await supabase
     .from("enrollments")
@@ -307,7 +307,7 @@ async function createEnrollment(
   if (enrollError) {
     // Si el error es por duplicate key, significa que otra instancia la creó
     if (enrollError.message?.includes("duplicate") || enrollError.code === "23505") {
-      console.warn("⚠️ [WEBHOOK] Inscripción creada por otro proceso (duplicate key), actualizando...");
+
       
       // Intentar actualizar con los datos de pago
       const { error: updateErr } = await supabase
@@ -322,15 +322,15 @@ async function createEnrollment(
         .eq("course_id", courseId);
       
       if (updateErr) {
-        console.error("❌ [WEBHOOK] Error actualizando después de duplicate:", updateErr);
+        console.error("[WEBHOOK] Error actualizando después de duplicate:", updateErr);
         throw updateErr;
       }
       
-      console.log("✅ [WEBHOOK] Inscripción actualizada con datos de pago");
+
       return;
     }
     
-    console.error("❌ [WEBHOOK] Error creando inscripción:", {
+    console.error("[WEBHOOK] Error creando inscripción:", {
       message: enrollError.message,
       code: enrollError.code,
       details: enrollError.details,
@@ -338,7 +338,7 @@ async function createEnrollment(
     throw enrollError;
   }
 
-  console.log("✅ [WEBHOOK] Inscripción creada:", {
+
     id: enrollment?.[0]?.id,
     user_id: enrollment?.[0]?.user_id,
     course_id: enrollment?.[0]?.course_id,

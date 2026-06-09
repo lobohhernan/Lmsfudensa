@@ -138,7 +138,7 @@ export async function handleAdminToggleRequest(req: Request): Promise<Response> 
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("❌ [Admin Toggle] Error:", message);
+    console.error("[Admin Toggle] Error:", message);
     return jsonResponse({ error: message || "Internal server error" }, 500);
   }
 }

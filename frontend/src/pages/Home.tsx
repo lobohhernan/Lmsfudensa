@@ -259,7 +259,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
                             if (course.id && course.slug) {
                               onNavigate?.("lesson", course.id, course.slug, "1");
                             } else {
-                              console.error('❌ [Home] No se pudo navegar: courseId o slug faltante', course);
+                              console.error('[Home] No se pudo navegar: courseId o slug faltante', course);
                             }
                           }}
                         >

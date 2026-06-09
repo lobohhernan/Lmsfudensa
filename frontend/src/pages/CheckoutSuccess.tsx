@@ -36,10 +36,10 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
       const redirectTimer = setTimeout(() => {
         console.log("🔄 Ejecutando redirección (antes de Mercado Pago)...");
         if (onNavigate) {
-          console.log("✅ Usando onNavigate con courseId y courseSlug");
+
           onNavigate("course", enrolledCourseId, enrolledCourseSlug || undefined);
         } else {
-          console.log("⚠️ onNavigate no disponible, usando window.location.hash");
+
           window.location.hash = `/#/curso/${enrolledCourseId}`;
         }
       }, 1500); // Reducido a 1.5 segundos para ser MÁS rápido que Mercado Pago
@@ -60,12 +60,6 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
         const paymentId = urlParams.get("payment_id");
         const externalRef = urlParams.get("external_reference");
 
-        console.log("✅ Pago exitoso desde Mercado Pago:", {
-          preferenceId,
-          paymentId,
-          externalRef,
-        });
-
         if (!externalRef) {
           setEnrollmentError("No se encontró referencia del curso");
           setIsVerifying(false);
@@ -77,11 +71,11 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
         try {
           const externalRefData = JSON.parse(decodeURIComponent(externalRef));
           courseId = externalRefData.courseId;
-          console.log("✅ Parsed external_reference:", { courseId, userId: externalRefData.userId });
+
         } catch (e) {
           // Si falla el parse, asumir que es solo courseId (compatibilidad backwards)
           courseId = externalRef;
-          console.warn("⚠️ No se pudo parsear external_reference, usando como courseId:", courseId);
+
         }
 
         // Obtener usuario autenticado
@@ -95,7 +89,7 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
 
         // IMPORTANTE: El frontend crea la inscripción directamente si no existe
         // Esto es un failsafe en caso de que el webhook no se ejecute
-        console.log(`📝 Creando inscripción del usuario ${user.id} en curso ${courseId}...`);
+
         
         const { data: existing } = await supabase
           .from("enrollments")
@@ -105,7 +99,7 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
           .maybeSingle();
 
         if (existing) {
-          console.log("✅ Inscripción ya existe");
+
           setEnrolledCourseId(courseId);
         } else {
           // Crear inscripción
@@ -118,13 +112,13 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
             .select();
 
           if (insertError) {
-            console.error("❌ Error creando inscripción:", insertError);
+            console.error("Error creando inscripción:", insertError);
             setEnrollmentError("Error al crear inscripción: " + insertError.message);
             setIsVerifying(false);
             return;
           }
 
-          console.log("✅ Inscripción creada por frontend:", newEnrollment?.[0]?.id);
+
           setEnrolledCourseId(courseId);
         }
 
@@ -139,7 +133,7 @@ export default function CheckoutSuccess({ onNavigate }: CheckoutSuccessProps) {
 
         setIsVerifying(false); // ← IMPORTANTE: Establecer false para activar el useEffect de redirección
       } catch (err) {
-        console.error("❌ Error en verificación:", err);
+        console.error("Error en verificación:", err);
         setEnrollmentError(
           err instanceof Error ? err.message : "Error desconocido"
         );

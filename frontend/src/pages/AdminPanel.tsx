@@ -155,7 +155,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [certificatesDateRangeFilter, setCertificatesDateRangeFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [hasAdminAccess, setHasAdminAccess] = useState<boolean | null>(null);
   // Filtros de cursos
-  const [courseLevelFilter, setCourseLevelFilter] = useState<string>("all");
+  const [courseLevelFilter, setCourseLevelFilter] = useState<string>("Básico");
   const [courseSortBy, setCourseSortBy] = useState<string>("default");
   const [coursesSearch, setCoursesSearch] = useState("");
   const [coursesPage, setCoursesPage] = useState(1);
@@ -489,7 +489,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     let filtered = [...courseList];
 
     // Filtro por inactivos
-    if (!showInactiveCourses) {
+    if (showInactiveCourses) {
+      filtered = filtered.filter(course => course.is_active === false);
+    } else {
       filtered = filtered.filter(course => course.is_active !== false);
     }
 
@@ -504,7 +506,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     }
 
     // Filtro por nivel
-    if (courseLevelFilter !== "all") {
+    if (courseLevelFilter && courseLevelFilter !== "all") {
       filtered = filtered.filter(course => course.level === courseLevelFilter);
     }
 
@@ -636,7 +638,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       const msg = err instanceof Error ? err.message : String(err);
       setUsersError(msg);
       toast.error("Error al cargar usuarios: " + msg);
-      console.error("Error completo:", err);
     } finally {
       setUsersLoading(false);
     }
@@ -703,7 +704,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
       
       // Validar que tenemos un instructor válido antes de continuar
       if (!dbInstructorId && course.instructorId) {
-        console.error('❌ No se pudo resolver el instructor_id para la BD');
+        console.error('No se pudo resolver el instructor_id para la BD');
         return; // El toast ya se mostró en resolveInstructorIdForDB
       }
       
@@ -729,7 +730,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           .eq("id", course.id);
         
         if (error) {
-          console.error("❌ Error UPDATE:", error);
+          console.error("Error UPDATE:", error);
           toast.error("Error al actualizar el curso: " + error.message);
           return;
         }
@@ -769,7 +770,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         }]).select();
         
         if (error) {
-          console.error("❌ Error INSERT:", error);
+          console.error("Error INSERT:", error);
           toast.error("Error al crear el curso: " + error.message);
           return;
         }
@@ -803,21 +804,21 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             content: lesson.content || null,
           }));
 
-          debug(`📝 Insertando ${lessonsToInsert.length} lecciones para curso ${course.id}`);
+
 
           const { error: lessonsError } = await client
             .from("lessons")
             .insert(lessonsToInsert);
 
           if (lessonsError) {
-            console.error("❌ Error guardando lecciones:", lessonsError);
-            console.error("❌ Datos que intentamos insertar:", lessonsToInsert);
+            console.error("Error guardando lecciones:", lessonsError);
+            console.error("Datos que intentamos insertar:", lessonsToInsert);
             toast.warning("Curso guardado, pero error al guardar lecciones: " + lessonsError.message);
           } else {
             debug(`✅ ${lessonsToInsert.length} lecciones guardadas exitosamente`);
           }
         } catch (lessonsErr) {
-          console.error("❌ Error guardando lecciones (catch):", lessonsErr);
+          console.error("Error guardando lecciones (catch):", lessonsErr);
           toast.warning("Curso guardado, pero error al guardar lecciones");
         }
       }
@@ -840,21 +841,21 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             explanation: q.explanation || null,
           }));
 
-          debug(`📝 Insertando ${evaluationsToInsert.length} evaluaciones para curso ${course.id}`);
+
 
           const { error: evalError } = await client
             .from("evaluations")
             .insert(evaluationsToInsert);
 
           if (evalError) {
-            console.error("❌ Error guardando evaluaciones:", evalError);
-            console.error("❌ Datos que intentamos insertar:", evaluationsToInsert);
+            console.error("Error guardando evaluaciones:", evalError);
+            console.error("Datos que intentamos insertar:", evaluationsToInsert);
             toast.warning("Curso guardado, pero error al guardar evaluaciones: " + evalError.message);
           } else {
             debug(`✅ ${evaluationsToInsert.length} evaluaciones guardadas exitosamente`);
           }
         } catch (evalErr) {
-          console.error("❌ Error guardando evaluaciones (catch):", evalErr);
+          console.error("Error guardando evaluaciones (catch):", evalErr);
           toast.warning("Curso guardado, pero error al guardar evaluaciones");
         }
       }
@@ -2131,7 +2132,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           .eq("id", teacher.id);
         
         if (error) {
-          console.error("❌ Error UPDATE teacher:", error);
+          console.error("Error UPDATE teacher:", error);
           toast.error("Error al actualizar el profesor: " + error.message);
           return;
         }
@@ -2156,7 +2157,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         }]);
         
         if (error) {
-          console.error("❌ Error INSERT teacher:", error);
+          console.error("Error INSERT teacher:", error);
           toast.error("Error al crear el profesor: " + error.message);
           return;
         }
@@ -2196,7 +2197,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           .eq("id", courseToDelete);
         
         if (error) {
-          console.error("❌ Error DELETE:", error);
+          console.error("Error DELETE:", error);
           toast.error("Error al eliminar el curso: " + error.message);
           setDeletingCourseId(null); // Reset animation state on error
           return;
@@ -2252,7 +2253,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
           .eq("id", actualId);
 
         if (error) {
-          console.error("❌ Error DELETE payment:", error);
+          console.error("Error DELETE payment:", error);
           toast.error("Error al eliminar el pago: " + error.message);
           setDeletingPaymentId(null);
           return;
@@ -2754,10 +2755,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Nivel:</span>
                   <Select value={courseLevelFilter} onValueChange={setCourseLevelFilter}>
                     <SelectTrigger className="w-[130px] h-9 text-sm">
-                      <SelectValue placeholder="Todos" />
+                      <SelectValue placeholder="Básico" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="Básico">Básico</SelectItem>
                       <SelectItem value="Intermedio">Intermedio</SelectItem>
                       <SelectItem value="Avanzado">Avanzado</SelectItem>
@@ -2790,13 +2790,13 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     Inactivos
                   </label>
                 </div>
-                {(courseLevelFilter !== "all" || courseSortBy !== "default" || coursesSearch || showInactiveCourses) && (
+                {(courseLevelFilter !== "Básico" || courseSortBy !== "default" || coursesSearch || showInactiveCourses) && (
                   <Button 
                     variant="outline" 
                     size="sm"
                     className="h-9 text-xs"
                     onClick={() => {
-                      setCourseLevelFilter("all");
+                      setCourseLevelFilter("Básico");
                       setCourseSortBy("default");
                       setCoursesSearch("");
                       setShowInactiveCourses(false);
@@ -2901,7 +2901,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 ) : (
                   <div className="col-span-full flex items-center justify-center py-12">
                     <p className="text-[#64748B]">
-                      {courseLevelFilter !== "all" || coursesSearch 
+                      {courseLevelFilter !== "Básico" || coursesSearch 
                         ? "No se encontraron cursos con los filtros seleccionados."
                         : "No hay cursos disponibles. Crea uno para comenzar."}
                     </p>

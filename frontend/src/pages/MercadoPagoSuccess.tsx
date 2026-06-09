@@ -20,7 +20,7 @@ export function MercadoPagoSuccess({ onNavigate }: MercadoPagoSuccessProps) {
 
     // Si el pago fue aprobado, redirigir a payment-callback
     if (status === "approved" || paymentId) {
-      console.log("✅ [MP Success] Pago detectado, redirigiendo a payment-callback...");
+
       
       // El sessionStorage ya tiene los datos (courseId, email)
       // Redirigir a payment-callback que hará polling
@@ -30,7 +30,7 @@ export function MercadoPagoSuccess({ onNavigate }: MercadoPagoSuccessProps) {
         window.location.href = "/payment-callback";
       }
     } else {
-      console.log("❌ [MP Success] Pago no aprobado, redirigiendo a home...");
+      console.log("[MP Success] Pago no aprobado, redirigiendo a home...");
       if (onNavigate) {
         onNavigate("home");
       } else {

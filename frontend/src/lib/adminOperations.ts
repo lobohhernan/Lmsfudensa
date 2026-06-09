@@ -86,12 +86,12 @@ async function invokeAdminOperation(request: AdminRequest) {
     const shouldTryLegacy = request.action === 'toggle_active' && isRecoverableFunctionError(primaryErr)
 
     if (shouldTryLegacy) {
-      console.warn('⚠️ Primary admin function unavailable, trying legacy endpoint...')
+
 
       try {
         return await invokeFunction(LEGACY_ADMIN_FUNCTION, request)
       } catch (legacyErr) {
-        console.error('❌ Admin operation error (primary + legacy):', {
+        console.error('Admin operation error (primary + legacy):', {
           primary: extractErrorMessage(primaryErr),
           legacy: extractErrorMessage(legacyErr),
         })
@@ -99,7 +99,7 @@ async function invokeAdminOperation(request: AdminRequest) {
       }
     }
 
-    console.error('❌ Admin operation error:', primaryErr)
+    console.error('Admin operation error:', primaryErr)
     throw new Error(extractErrorMessage(primaryErr))
   }
 }

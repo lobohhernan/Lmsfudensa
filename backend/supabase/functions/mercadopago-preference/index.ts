@@ -22,10 +22,10 @@ serve(async (req: Request) => {
 
     // Get token
     const token = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
-    console.log("🔑 [MP] Token existe:", !!token);
+
 
     if (!token) {
-      console.log("❌ [MP] Token no configurado");
+      console.log("[MP] Token no configurado");
       return new Response(
         JSON.stringify({ success: false, error: "Token no configurado" }),
         {
@@ -70,8 +70,8 @@ serve(async (req: Request) => {
       }),
     };
 
-    console.log("📝 [MP] Preference object:", JSON.stringify(preference, null, 2));
-    console.log("📝 [MP] Enviando a API de MP...");
+
+
 
     // Call MP API
     const mpResponse = await fetch(
@@ -86,11 +86,11 @@ serve(async (req: Request) => {
       }
     );
 
-    console.log("📊 [MP] Respuesta MP status:", mpResponse.status);
+
 
     if (!mpResponse.ok) {
       const errorText = await mpResponse.text();
-      console.log("❌ [MP] Error MP:", errorText);
+      console.log("[MP] Error MP:", errorText);
 
       return new Response(
         JSON.stringify({
@@ -106,7 +106,7 @@ serve(async (req: Request) => {
     }
 
     const mpData = await mpResponse.json();
-    console.log("✅ [MP] Preferencia creada:", mpData.id);
+
 
     return new Response(
       JSON.stringify({
@@ -120,7 +120,7 @@ serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error("❌ [MP] Error:", error);
+    console.error("[MP] Error:", error);
     const msg = error instanceof Error ? error.message : String(error);
 
     return new Response(

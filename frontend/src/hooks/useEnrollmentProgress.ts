@@ -150,7 +150,7 @@ export function useEnrollmentProgress(
         }
       } catch (err: unknown) {
         const message = getErrorMessage(err)
-        console.error('❌ Error en useEnrollmentProgress:', message)
+        console.error('Error en useEnrollmentProgress:', message)
         if (!cancelled) {
           setError(message || 'Error cargando cursos')
           setCourses([])
@@ -201,7 +201,7 @@ export function useEnrollmentProgress(
       )
       setCourses(mapped)
     } catch (err) {
-      console.error('❌ Error en refetch:', err)
+      console.error('Error en refetch:', err)
     } finally {
       setLoading(false)
     }

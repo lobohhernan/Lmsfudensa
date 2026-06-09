@@ -160,7 +160,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
       });
 
       if (metadataError) {
-        console.warn('⚠️ Advancia: No se pudo actualizar metadata de Auth:', metadataError);
+
         // No relanzar error, ya que el cambio en DB fue exitoso
       }
 
@@ -214,7 +214,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
 
   const loadCertificates = async (userId: string) => {
     try {
-      console.log("🔍 [UserProfile] Cargando certificados para userId:", userId);
+
       setCertificatesLoading(true);
       const { data: certs, error: certsError } = await supabase
         .from("certificates")
@@ -223,18 +223,18 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
         .eq("status", "active")
         .order("created_at", { ascending: false });
 
-      console.log("📊 [UserProfile] Respuesta de certificados:", { certs, certsError });
+
 
       if (certsError) {
-        console.error("❌ [UserProfile] Error cargando certificados:", certsError);
+        console.error("[UserProfile] Error cargando certificados:", certsError);
         setUserCertificates([]);
       } else {
-        console.log("✅ [UserProfile] Certificados cargados:", certs?.length || 0);
+
         setUserCertificates(certs || []);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error("❌ [UserProfile] Error en loadCertificates:", message);
+      console.error("[UserProfile] Error en loadCertificates:", message);
       setUserCertificates([]);
     } finally {
       setCertificatesLoading(false);
@@ -312,7 +312,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
           table: 'certificates',
         },
         (payload) => {
-          console.log('🔔 [UserProfile] Certificado actualizado via realtime:', payload);
+
           // Recargar certificados automáticamente
           loadUserData();
         }
@@ -328,7 +328,7 @@ export function UserProfile({ onNavigate, defaultTab = "courses" }: UserProfileP
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && userProfile?.id) {
-        console.log('👁️ [UserProfile] Página visible, recargando certificados...');
+
         loadCertificates(userProfile.id);
       }
     };

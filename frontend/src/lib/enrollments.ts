@@ -12,7 +12,7 @@ export async function isUserEnrolled(
   courseId: string
 ): Promise<boolean> {
   try {
-    console.log(`🔍 [isUserEnrolled] Verificando inscripción: usuario ${userId} en curso ${courseId}`);
+
     
     // Intento 1: Consulta simple con select
     const { data, error, status, statusText } = await supabase
@@ -24,7 +24,7 @@ export async function isUserEnrolled(
     console.log(`[isUserEnrolled] Response status: ${status}, statusText: ${statusText}`);
     
     if (error) {
-      console.error("❌ [isUserEnrolled] Error checking enrollment:", {
+      console.error("[isUserEnrolled] Error checking enrollment:", {
         message: error.message,
         code: error.code,
         status,
@@ -39,14 +39,14 @@ export async function isUserEnrolled(
     const enrolled = data !== null && data.length > 0;
     
     if (enrolled) {
-      console.log(`✅ [isUserEnrolled] Usuario IS inscrito (encontré ${data.length} registro/s)`);
+
     } else {
       console.log(`ℹ️  [isUserEnrolled] Usuario NOT inscrito (sin registros)`);
     }
     
     return enrolled;
   } catch (err) {
-    console.error("❌ [isUserEnrolled] Exception in isUserEnrolled:", err);
+    console.error("[isUserEnrolled] Exception in isUserEnrolled:", err);
     return false;
   }
 }

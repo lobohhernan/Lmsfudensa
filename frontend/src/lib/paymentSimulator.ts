@@ -39,7 +39,7 @@ export async function simulatePayment(
     if (status === "approved") {
       await createOrUpdateEnrollment(userId, courseId, userEmail, testPaymentId);
 
-      console.log("✅ [PAYMENT SIMULATOR] Payment simulated successfully (APPROVED)");
+
       return {
         success: true,
         paymentId: testPaymentId,
@@ -55,7 +55,7 @@ export async function simulatePayment(
       };
     } else if (status === "rejected") {
       // Rejected payments: log rejection
-      console.log("❌ [PAYMENT SIMULATOR] Payment simulated (REJECTED)");
+      console.log("[PAYMENT SIMULATOR] Payment simulated (REJECTED)");
       return {
         success: true,
         paymentId: testPaymentId,
@@ -70,7 +70,7 @@ export async function simulatePayment(
       error: `Unknown payment status: ${status}`,
     };
   } catch (error) {
-    console.error("❌ [PAYMENT SIMULATOR] Error:", error);
+    console.error("[PAYMENT SIMULATOR] Error:", error);
     return {
       success: false,
       paymentId: "",
@@ -93,11 +93,6 @@ async function createOrUpdateEnrollment(
   _userEmail: string,
   paymentId: string
 ): Promise<void> {
-  console.log("📝 [PAYMENT SIMULATOR] Creating/updating enrollment:", {
-    userId,
-    courseId,
-  });
-
   // First check if enrollment already exists
   const { data: existingEnrollment } = await supabase
     .from("enrollments")
@@ -107,10 +102,6 @@ async function createOrUpdateEnrollment(
     .single();
 
   if (existingEnrollment) {
-    console.warn(
-      "⚠️ [PAYMENT SIMULATOR] Enrollment already exists, skipping update..."
-    );
-    console.log("✅ [PAYMENT SIMULATOR] Enrollment already active");
     return;
   }
 

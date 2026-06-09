@@ -59,7 +59,7 @@ serve(async (req: Request): Promise<Response> => {
     // Obtener el Access Token desde variables de entorno
     const accessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
     if (!accessToken) {
-      console.error("❌ Access Token no configurado");
+      console.error("Access Token no configurado");
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -102,14 +102,6 @@ serve(async (req: Request): Promise<Response> => {
       notification_url: `${baseUrl}/api/webhooks/mercadopago`,
     };
 
-    console.log("📝 Creando preferencia de pago:", {
-      courseId: requestData.courseId,
-      courseTitle: requestData.courseTitle,
-      price: requestData.price,
-      email: requestData.userEmail,
-      baseUrl: baseUrl,
-    });
-
     // Llamar a la API de Mercado Pago
     const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
@@ -123,7 +115,7 @@ serve(async (req: Request): Promise<Response> => {
     // Verificar respuesta de Mercado Pago
     if (!response.ok) {
       const errorData = await response.text();
-      console.error("❌ Error de Mercado Pago:", response.status, errorData);
+      console.error("Error de Mercado Pago:", response.status, errorData);
       
       return new Response(
         JSON.stringify({ 
@@ -136,8 +128,6 @@ serve(async (req: Request): Promise<Response> => {
 
     // Procesar respuesta exitosa
     const preferenceData = await response.json();
-
-    console.log("✅ Preferencia creada exitosamente:", preferenceData.id);
 
     const responseData: MercadoPagoResponse = {
       success: true,
@@ -153,7 +143,7 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
   } catch (error) {
-    console.error("❌ Error en Edge Function:", error);
+    console.error("Error en Edge Function:", error);
 
     return new Response(
       JSON.stringify({ 
