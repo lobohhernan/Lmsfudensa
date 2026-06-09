@@ -184,12 +184,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     return courseStartingWithA ? courseStartingWithA.title : (sortedCoursesForFilter[0]?.title || "");
   }, [realtimeCourses, sortedCoursesForFilter]);
 
-  // Establecer el curso por defecto para los certificados una vez cargados los cursos
-  useEffect(() => {
-    if (defaultCertificatesCourse && (certificatesCourseFilter === "all" || certificatesCourseFilter === "")) {
-      setCertificatesCourseFilter(defaultCertificatesCourse);
-    }
-  }, [defaultCertificatesCourse, certificatesCourseFilter]);
+
 
   // Conteo de alumnos inscriptos en tiempo real (solo visible para admin)
   const { counts: enrollmentCounts } = useEnrollmentCounts();
@@ -433,9 +428,16 @@ const defaultFromDate = new Date();
   const filteredCertificates = useMemo(() => {
     let result = realtimeCertificates;
 
+    const effectiveCourseFilter = certificatesCourseFilter || defaultCertificatesCourse;
+
+    // Si aún no tenemos un curso efectivo, no mostramos certificados (evita flashing)
+    if (!effectiveCourseFilter) {
+      return [];
+    }
+
     const isFilteringActive = 
       certificatesSearch.trim() !== "" || 
-      (certificatesCourseFilter !== defaultCertificatesCourse && certificatesCourseFilter !== "") || 
+      certificatesCourseFilter !== "" || 
       certificatesDateRangeFilter.from !== undefined || 
       certificatesDateRangeFilter.to !== undefined;
 
@@ -446,8 +448,8 @@ const defaultFromDate = new Date();
     }
 
     // Filtro por curso
-    if (certificatesCourseFilter) {
-      result = result.filter((c) => c.course_title === certificatesCourseFilter);
+    if (effectiveCourseFilter) {
+      result = result.filter((c) => c.course_title === effectiveCourseFilter);
     }
 
     // Filtro por rango de fecha
@@ -3845,7 +3847,7 @@ const defaultFromDate = new Date();
                 {/* Filtro por Curso */}
                 <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
                   <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Curso:</span>
-                  <Select value={certificatesCourseFilter} onValueChange={setCertificatesCourseFilter}>
+                  <Select value={certificatesCourseFilter || defaultCertificatesCourse} onValueChange={setCertificatesCourseFilter}>
                     <SelectTrigger className="w-[160px] h-9 text-sm">
                       <SelectValue placeholder="Seleccionar Curso" />
                     </SelectTrigger>
@@ -3924,14 +3926,14 @@ const defaultFromDate = new Date();
 
                 {/* Botón Limpiar Filtros + Exportar */}
                 <div className="flex items-center gap-2 ml-auto">
-                  {(certificatesSearch || (certificatesCourseFilter !== defaultCertificatesCourse && certificatesCourseFilter !== "") || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to) && (
+                  {(certificatesSearch || certificatesCourseFilter !== "" || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to) && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-9 text-xs"
                       onClick={() => {
                         setCertificatesSearch("");
-                        setCertificatesCourseFilter(defaultCertificatesCourse);
+                        setCertificatesCourseFilter("");
                         setCertificatesDateRangeFilter({ from: undefined, to: undefined });
                       }}
                     >
