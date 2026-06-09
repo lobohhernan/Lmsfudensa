@@ -398,8 +398,9 @@ const defaultFromDate = new Date();
           nextDay.setDate(nextDay.getDate() + 1);
           if (created >= nextDay) return false;
         }
-      } else {
-        // Por defecto traer datos de la ultima semana (7 dias como maximo)
+      } else if (!q) {
+        // Por defecto traer datos de la ultima semana (7 dias como maximo),
+        // pero si hay una búsqueda activa, saltamos este protocolo
         if (created < defaultFromDate) return false;
       }
 
