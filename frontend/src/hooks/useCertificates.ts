@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { debug, error as logError, getErrorMessage } from '../lib/logger'
+import { supabaseAdmin, isAdminClientConfigured } from "../lib/supabaseAdmin";
 
 export interface Certificate {
   id: string;
@@ -19,7 +20,7 @@ export interface Certificate {
   updated_at: string;
 }
 
-export function useCertificates() {
+export function useCertificates(isAdmin: boolean = false) {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,12 +39,23 @@ export function useCertificates() {
         return;
       }
       
-      // Filtrar SOLO certificados del usuario actual
-      const { data, error: fetchError } = await supabase
-        .from("certificates")
-        .select("*")
-        .eq("student_id", user.id)
-        .order("created_at", { ascending: false });
+      // Si es admin y el cliente admin está configurado, saltamos RLS y traemos todos
+      let query;
+      if (isAdmin && isAdminClientConfigured()) {
+        query = supabaseAdmin
+          .from("certificates")
+          .select("*")
+          .order("created_at", { ascending: false });
+      } else {
+        // Filtrar SOLO certificados del usuario actual
+        query = supabase
+          .from("certificates")
+          .select("*")
+          .eq("student_id", user.id)
+          .order("created_at", { ascending: false });
+      }
+
+      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
       setCertificates(data || []);
@@ -82,9 +94,9 @@ export function useCertificates() {
           (payload) => {
             debug("Certificates realtime event:", payload.eventType);
 
-            // Solo procesar si es del usuario actual
+            // Si no es admin, solo procesar si es del usuario actual
             const certificate = payload.new as Certificate | undefined;
-            if (certificate && certificate.student_id !== userId) {
+            if (!isAdmin && certificate && certificate.student_id !== userId) {
               return; // Ignorar certificados de otros usuarios
             }
 
@@ -115,5 +127,5 @@ export function useCertificates() {
 }
 
 export function useCertificatesRealtime() {
-  return useCertificates();
+  return useCertificates(true);
 }
