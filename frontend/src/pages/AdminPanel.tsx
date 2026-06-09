@@ -424,8 +424,6 @@ const defaultFromDate = new Date();
   const filteredCertificates = useMemo(() => {
     let result = realtimeCertificates;
 
-    const effectiveCourseFilter = certificatesCourseFilter === "all" ? "" : certificatesCourseFilter;
-
     // Filtro por búsqueda de estudiante
     const q = certificatesSearch.trim().toLowerCase();
     if (q) {
@@ -433,8 +431,8 @@ const defaultFromDate = new Date();
     }
 
     // Filtro por curso
-    if (effectiveCourseFilter) {
-      result = result.filter((c) => c.course_title === effectiveCourseFilter);
+    if (certificatesCourseFilter) {
+      result = result.filter((c) => c.course_title === certificatesCourseFilter);
     }
 
     // Filtro por rango de fecha
@@ -451,9 +449,9 @@ const defaultFromDate = new Date();
       });
     }
 
-    // Si no hay búsqueda activa, aplicar el límite por defecto de los últimos 7 días
+    // Si no hay búsqueda activa NI filtro de fecha, aplicar el límite por defecto de los últimos 7 días
     // (Igual comportamiento que en la sección de pagos)
-    if (!q) {
+    if (!q && !certificatesDateRangeFilter.from && !certificatesDateRangeFilter.to) {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -3842,12 +3840,11 @@ const defaultFromDate = new Date();
                 {/* Filtro por Curso */}
                 <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
                   <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Curso:</span>
-                  <Select value={certificatesCourseFilter || "all"} onValueChange={setCertificatesCourseFilter}>
+                  <Select value={certificatesCourseFilter} onValueChange={setCertificatesCourseFilter}>
                     <SelectTrigger className="w-[160px] h-9 text-sm">
                       <SelectValue placeholder="Seleccionar Curso" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos los cursos</SelectItem>
                       {sortedCoursesForFilter.map((course) => (
                         <SelectItem key={course.id} value={course.title}>
                           {course.title}
@@ -3922,14 +3919,14 @@ const defaultFromDate = new Date();
 
                 {/* Botón Limpiar Filtros + Exportar */}
                 <div className="flex items-center gap-2 ml-auto">
-                  {(certificatesSearch || (certificatesCourseFilter !== "" && certificatesCourseFilter !== "all") || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to) && (
+                  {(certificatesSearch || certificatesCourseFilter !== "" || certificatesDateRangeFilter.from || certificatesDateRangeFilter.to) && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-9 text-xs"
                       onClick={() => {
                         setCertificatesSearch("");
-                        setCertificatesCourseFilter("all");
+                        setCertificatesCourseFilter("");
                         setCertificatesDateRangeFilter({ from: undefined, to: undefined });
                       }}
                     >
