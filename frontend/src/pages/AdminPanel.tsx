@@ -328,7 +328,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   // Indicadores de "datos de los últimos 7 días" para las secciones
   // Se muestra solo cuando el filtro de 7 días por defecto está activo (sin búsqueda ni filtro de fecha)
   const isShowingLast7DaysUsers = Boolean(usersRoleFilter && !usersSearch.trim() && !usersDateRangeFilter.from && !usersDateRangeFilter.to);
-  const isShowingLast7DaysPayments = Boolean(!paymentsSearch.trim() && !paymentsDateRangeFilter.from && !paymentsDateRangeFilter.to);
+  const isShowingLast7DaysPayments = Boolean(!paymentsSearch.trim() && !paymentsDateRangeFilter.from && !paymentsDateRangeFilter.to && !paymentsAmountRangeFilter.from && !paymentsAmountRangeFilter.to);
   const isShowingLast7DaysCerts = Boolean(!certificatesSearch.trim() && !certificatesDateRangeFilter.from && !certificatesDateRangeFilter.to);
 
   // Mapa dinámico: teacher.id → cursos que dicta
@@ -409,7 +409,7 @@ const defaultFromDate = new Date();
           nextDay.setDate(nextDay.getDate() + 1);
           if (created >= nextDay) return false;
         }
-      } else if (!q) {
+      } else if (!q && minAmount === null && maxAmount === null) {
         // Por defecto traer datos de la ultima semana (7 dias como maximo),
         // pero si hay una búsqueda activa, saltamos este protocolo
         if (created < defaultFromDate) return false;
@@ -3376,6 +3376,15 @@ const defaultFromDate = new Date();
                 </div>
               </div>
 
+              {isShowingLast7DaysUsers && (
+                <div className="bg-blue-50/50 border border-blue-100 rounded-md p-3">
+                  <p className="text-sm text-[#64748B] flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-blue-500" />
+                    Mostrando datos de los <strong>últimos 7 días</strong>. Use el buscador o el filtro de fecha para ver registros anteriores.
+                  </p>
+                </div>
+              )}
+
               <Card>
                 {!hasAnyUserFilter ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500 min-h-[300px]">
@@ -3384,14 +3393,6 @@ const defaultFromDate = new Date();
                   </div>
                 ) : (
                   <>
-                  {isShowingLast7DaysUsers && (
-                    <div className="px-4 pt-3 pb-1">
-                      <p className="text-xs text-[#64748B] italic flex items-center gap-1">
-                        <CalendarIcon className="h-3 w-3" />
-                        Mostrando datos de los últimos 7 días. Use el buscador o el filtro de fecha para ver registros anteriores.
-                      </p>
-                    </div>
-                  )}
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -3705,22 +3706,16 @@ const defaultFromDate = new Date();
                 </Button>
               </div>
 
+              {isShowingLast7DaysPayments && (
+                <div className="bg-blue-50/50 border border-blue-100 rounded-md p-3">
+                  <p className="text-sm text-[#64748B] flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-blue-500" />
+                    Mostrando datos de los <strong>últimos 7 días</strong>. Use el buscador o el filtro de fecha para ver registros anteriores.
+                  </p>
+                </div>
+              )}
+
               <Card>
-                {!hasAnyPaymentFilter ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500 min-h-[300px]">
-                    <Search className="h-10 w-10 text-gray-300 mb-3" />
-                    <p className="text-sm font-medium">Aplique uno o más filtros para visualizar resultados</p>
-                  </div>
-                ) : (
-                  <>
-                  {isShowingLast7DaysPayments && (
-                    <div className="px-4 pt-3 pb-1">
-                      <p className="text-xs text-[#64748B] italic flex items-center gap-1">
-                        <CalendarIcon className="h-3 w-3" />
-                        Mostrando datos de los últimos 7 días. Use el buscador o el filtro de fecha para ver registros anteriores.
-                      </p>
-                    </div>
-                  )}
                   <Table>
                     <TableHeader>
                     <TableRow>
@@ -3849,8 +3844,6 @@ const defaultFromDate = new Date();
                     </div>
                   </div>
                 )}
-                  </>
-                )}
               </Card>
             </div>
           )}
@@ -3976,15 +3969,16 @@ const defaultFromDate = new Date();
                 </div>
               </div>
 
+              {isShowingLast7DaysCerts && (
+                <div className="bg-blue-50/50 border border-blue-100 rounded-md p-3">
+                  <p className="text-sm text-[#64748B] flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-blue-500" />
+                    Mostrando datos de los <strong>últimos 7 días</strong>. Use el buscador o el filtro de fecha para ver registros anteriores.
+                  </p>
+                </div>
+              )}
+
               <Card>
-                {isShowingLast7DaysCerts && (
-                  <div className="px-4 pt-3 pb-1">
-                    <p className="text-xs text-[#64748B] italic flex items-center gap-1">
-                      <CalendarIcon className="h-3 w-3" />
-                      Mostrando datos de los últimos 7 días. Use el buscador o el filtro de fecha para ver registros anteriores.
-                    </p>
-                  </div>
-                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
