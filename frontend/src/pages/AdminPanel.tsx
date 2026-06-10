@@ -153,6 +153,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [certificatesSearch, setCertificatesSearch] = useState("");
   const [certificatesCourseFilter, setCertificatesCourseFilter] = useState<string>("");
   const [certificatesDateRangeFilter, setCertificatesDateRangeFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
+  const [teachersCourseFilter, setTeachersCourseFilter] = useState<string>("");
   const [hasAdminAccess, setHasAdminAccess] = useState<boolean | null>(null);
   // Filtros de cursos
   const [courseLevelFilter, setCourseLevelFilter] = useState<string>("Básico");
@@ -220,34 +221,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     }, 800);
   };
 
-  // Search/filter state for teachers (memoized)
-  const filteredTeachers = useMemo(() => {
-    let result = realtimeTeachers;
-
-    if (showInactiveTeachers) {
-      result = result.filter(t => t.is_active === false);
-    } else {
-      result = result.filter(t => t.is_active !== false);
-    }
-
-    const q = teacherQuery.trim().toLowerCase();
-    if (q) {
-      result = result.filter((t) => {
-        return (
-          (t.full_name || "").toLowerCase().includes(q) ||
-          (t.email || "").toLowerCase().includes(q) ||
-          ((t.specialization || "").toLowerCase().includes(q))
-        );
-      });
-    }
-
-    // Ordenar para que los inactivos (si se muestran) aparezcan al final
-    return [...result].sort((a, b) => {
-      const aActive = a.is_active !== false ? 1 : 0;
-      const bActive = b.is_active !== false ? 1 : 0;
-      return bActive - aActive;
-    });
-  }, [realtimeTeachers, teacherQuery, showInactiveTeachers]);
   const hasAnyUserFilter = Boolean(usersSearch || usersRoleFilter || usersDateRangeFilter.from || usersDateRangeFilter.to || showInactiveUsers);
 
   const hasAnyPaymentFilter = Boolean(paymentsSearch.trim() || paymentsStatusFilter !== "legacy" || paymentsDateRangeFilter.from || paymentsDateRangeFilter.to || paymentsAmountRangeFilter.from || paymentsAmountRangeFilter.to);
@@ -363,6 +336,43 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
     }
     return map;
   }, [realtimeCourses, realtimeTeachers]);
+
+  // Search/filter state for teachers (memoized)
+  const filteredTeachers = useMemo(() => {
+    let result = realtimeTeachers;
+
+    if (showInactiveTeachers) {
+      result = result.filter(t => t.is_active === false);
+    } else {
+      result = result.filter(t => t.is_active !== false);
+    }
+
+    const q = teacherQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter((t) => {
+        return (
+          (t.full_name || "").toLowerCase().includes(q) ||
+          (t.email || "").toLowerCase().includes(q) ||
+          ((t.specialization || "").toLowerCase().includes(q))
+        );
+      });
+    }
+
+    // Filtro por curso
+    if (teachersCourseFilter) {
+      result = result.filter((t) => {
+        const teacherCourses = teacherCoursesMap[t.id] || [];
+        return teacherCourses.some(c => c.title === teachersCourseFilter);
+      });
+    }
+
+    // Ordenar para que los inactivos (si se muestran) aparezcan al final
+    return [...result].sort((a, b) => {
+      const aActive = a.is_active !== false ? 1 : 0;
+      const bActive = b.is_active !== false ? 1 : 0;
+      return bActive - aActive;
+    });
+  }, [realtimeTeachers, teacherQuery, showInactiveTeachers, teachersCourseFilter, teacherCoursesMap]);
 
   // Datos reales de pagos desde Supabase (payments + enrollments legacy)
   const { payments: allPayments, loading: paymentsLoading, error: paymentsError, refetch: refetchPayments } = usePayments();
@@ -603,7 +613,7 @@ const defaultFromDate = new Date();
 
   useEffect(() => {
     setTeachersPage(1);
-  }, [teacherQuery]);
+  }, [teacherQuery, teachersCourseFilter]);
 
   useEffect(() => {
     setUsersPage(1);
@@ -3061,6 +3071,24 @@ const defaultFromDate = new Date();
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTeacherQuery(e.target.value)}
                   />
                 </div>
+
+                {/* Filtro por Curso */}
+                <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
+                  <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Curso:</span>
+                  <Select value={teachersCourseFilter} onValueChange={setTeachersCourseFilter}>
+                    <SelectTrigger className="w-[160px] h-9 text-sm">
+                      <SelectValue placeholder="Seleccionar Curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sortedCoursesForFilter.map((course) => (
+                        <SelectItem key={course.id} value={course.title}>
+                          {course.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="flex items-center gap-2 border-l border-slate-300 pl-3 py-1">
                   <Checkbox 
                     id="showInactiveTeachers" 
@@ -3074,6 +3102,24 @@ const defaultFromDate = new Date();
                     Inactivos
                   </label>
                 </div>
+
+                {/* Botón Limpiar Filtros */}
+                {(teacherQuery || teachersCourseFilter || showInactiveTeachers) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 text-xs"
+                    onClick={() => {
+                      setTeacherQuery("");
+                      setTeachersCourseFilter("");
+                      setShowInactiveTeachers(false);
+                    }}
+                  >
+                    <X className="mr-1 h-3 w-3" />
+                    Limpiar
+                  </Button>
+                )}
+
                 <Button onClick={() => setShowTeacherForm(true)} className="h-9 text-sm ml-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Nuevo Profesor
@@ -3593,17 +3639,39 @@ const defaultFromDate = new Date();
                   <span className="text-sm text-[#64748B] whitespace-nowrap font-medium">Monto:</span>
                   <Input
                     type="number"
+                    min="0"
                     placeholder="Min"
                     value={paymentsAmountRangeFilter.from}
-                    onChange={(e) => setPaymentsAmountRangeFilter((prev) => ({ ...prev, from: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || Number(val) >= 0) {
+                        setPaymentsAmountRangeFilter((prev) => ({ ...prev, from: val }));
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === '-' || e.key === 'e') {
+                        e.preventDefault();
+                      }
+                    }}
                     className="w-20 h-9 text-xs"
                   />
                   <span className="text-[#64748B] text-xs">-</span>
                   <Input
                     type="number"
+                    min="0"
                     placeholder="Max"
                     value={paymentsAmountRangeFilter.to}
-                    onChange={(e) => setPaymentsAmountRangeFilter((prev) => ({ ...prev, to: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || Number(val) >= 0) {
+                        setPaymentsAmountRangeFilter((prev) => ({ ...prev, to: val }));
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === '-' || e.key === 'e') {
+                        e.preventDefault();
+                      }
+                    }}
                     className="w-20 h-9 text-xs"
                   />
                 </div>
