@@ -138,7 +138,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [optimisticActiveState, setOptimisticActiveState] = useState<Record<string, boolean>>({});
   const [paymentsSearch, setPaymentsSearch] = useState("");
   const [paymentsDateRangeFilter, setPaymentsDateRangeFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
-  const [paymentsStatusFilter, setPaymentsStatusFilter] = useState<string>("approved");
+  const [paymentsStatusFilter, setPaymentsStatusFilter] = useState<string>("legacy");
   const [paymentsAmountRangeFilter, setPaymentsAmountRangeFilter] = useState<{ from: string; to: string }>({ from: "", to: "" });
   const [showInactiveCourses, setShowInactiveCourses] = useState(false);
   const [showInactiveTeachers, setShowInactiveTeachers] = useState(false);
@@ -250,7 +250,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
   }, [realtimeTeachers, teacherQuery, showInactiveTeachers]);
   const hasAnyUserFilter = Boolean(usersSearch || usersRoleFilter || usersDateRangeFilter.from || usersDateRangeFilter.to || showInactiveUsers);
 
-  const hasAnyPaymentFilter = Boolean(paymentsSearch.trim() || paymentsStatusFilter !== "approved" || paymentsDateRangeFilter.from || paymentsDateRangeFilter.to || paymentsAmountRangeFilter.from || paymentsAmountRangeFilter.to);
+  const hasAnyPaymentFilter = Boolean(paymentsSearch.trim() || paymentsStatusFilter !== "legacy" || paymentsDateRangeFilter.from || paymentsDateRangeFilter.to || paymentsAmountRangeFilter.from || paymentsAmountRangeFilter.to);
 
 
   const filteredUsers = useMemo(() => {
@@ -303,6 +303,16 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         }
         return true;
       });
+    } else if (usersRoleFilter && !q) {
+      // Si hay un rol seleccionado pero NO hay búsqueda ni filtro de fecha,
+      // solo traer los datos de los últimos 7 días por defecto
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+      result = result.filter((u) => {
+        const created = new Date(u.created_at as string);
+        return created >= sevenDaysAgo;
+      });
     }
 
     // Inactive users always go to the bottom (though if showInactiveUsers is true, all are inactive)
@@ -314,6 +324,12 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
     return result;
   }, [usersList, hasAnyUserFilter, usersSearch, usersRoleFilter, usersDateRangeFilter, showInactiveUsers, realtimeTeachers]);
+
+  // Indicadores de "datos de los últimos 7 días" para las secciones
+  // Se muestra solo cuando el filtro de 7 días por defecto está activo (sin búsqueda ni filtro de fecha)
+  const isShowingLast7DaysUsers = Boolean(usersRoleFilter && !usersSearch.trim() && !usersDateRangeFilter.from && !usersDateRangeFilter.to);
+  const isShowingLast7DaysPayments = Boolean(!paymentsSearch.trim() && !paymentsDateRangeFilter.from && !paymentsDateRangeFilter.to);
+  const isShowingLast7DaysCerts = Boolean(!certificatesSearch.trim() && !certificatesDateRangeFilter.from && !certificatesDateRangeFilter.to);
 
   // Mapa dinámico: teacher.id → cursos que dicta
   // Soporta tanto instructor_id=teacher.id (cursos nuevos) como instructor_id=profile.id (cursos legacy)
@@ -3368,6 +3384,14 @@ const defaultFromDate = new Date();
                   </div>
                 ) : (
                   <>
+                  {isShowingLast7DaysUsers && (
+                    <div className="px-4 pt-3 pb-1">
+                      <p className="text-xs text-[#64748B] italic flex items-center gap-1">
+                        <CalendarIcon className="h-3 w-3" />
+                        Mostrando datos de los últimos 7 días. Use el buscador o el filtro de fecha para ver registros anteriores.
+                      </p>
+                    </div>
+                  )}
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -3656,7 +3680,7 @@ const defaultFromDate = new Date();
                     </Popover>
                   </div>
 
-                {(paymentsSearch || paymentsDateRangeFilter.from || paymentsDateRangeFilter.to || paymentsStatusFilter !== "approved" || paymentsAmountRangeFilter.from || paymentsAmountRangeFilter.to) && (
+                {(paymentsSearch || paymentsDateRangeFilter.from || paymentsDateRangeFilter.to || paymentsStatusFilter !== "legacy" || paymentsAmountRangeFilter.from || paymentsAmountRangeFilter.to) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -3664,7 +3688,7 @@ const defaultFromDate = new Date();
                     onClick={() => {
                       setPaymentsSearch("");
                       setPaymentsDateRangeFilter({ from: undefined, to: undefined });
-                      setPaymentsStatusFilter("approved");
+                      setPaymentsStatusFilter("legacy");
                       setPaymentsAmountRangeFilter({ from: "", to: "" });
                     }}
                   >
@@ -3689,6 +3713,14 @@ const defaultFromDate = new Date();
                   </div>
                 ) : (
                   <>
+                  {isShowingLast7DaysPayments && (
+                    <div className="px-4 pt-3 pb-1">
+                      <p className="text-xs text-[#64748B] italic flex items-center gap-1">
+                        <CalendarIcon className="h-3 w-3" />
+                        Mostrando datos de los últimos 7 días. Use el buscador o el filtro de fecha para ver registros anteriores.
+                      </p>
+                    </div>
+                  )}
                   <Table>
                     <TableHeader>
                     <TableRow>
@@ -3945,6 +3977,14 @@ const defaultFromDate = new Date();
               </div>
 
               <Card>
+                {isShowingLast7DaysCerts && (
+                  <div className="px-4 pt-3 pb-1">
+                    <p className="text-xs text-[#64748B] italic flex items-center gap-1">
+                      <CalendarIcon className="h-3 w-3" />
+                      Mostrando datos de los últimos 7 días. Use el buscador o el filtro de fecha para ver registros anteriores.
+                    </p>
+                  </div>
+                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
