@@ -115,7 +115,7 @@ export function Home({ onNavigate, isLoggedIn = false }: HomeProps) {
           <div className="flex items-center justify-center">
             <div className="max-w-3xl space-y-4 sm:space-y-6 lg:space-y-8 text-center">
               <h1 className="hero-h1 drop-shadow-lg">
-                Formación profesional en salud certificada
+                Formación Profesional en Salud Certificada
               </h1>
               <p className="body-lg text-white font-[Montserrat] drop-shadow-md">
                 Cursos online certificados en RCP, primeros auxilios y atención médica de emergencia. Reconocidos internacionalmente y 100% a tu ritmo con soporte continuo.
