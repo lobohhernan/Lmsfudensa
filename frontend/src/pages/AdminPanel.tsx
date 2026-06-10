@@ -3413,7 +3413,6 @@ const defaultFromDate = new Date();
                   <Button
                     onClick={handleExportAllUsers}
                     className="h-9 text-xs"
-                    variant="secondary"
                   >
                     <Download className="mr-1 h-3 w-3" />
                     Exportar
