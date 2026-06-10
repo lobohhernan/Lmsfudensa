@@ -254,7 +254,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
 
   const filteredUsers = useMemo(() => {
-    if (!hasAnyUserFilter) return [] as any[];
 
     // Sincronizar el estado isActive de los usuarios profesores con su registro real de la tabla teachers
     let result: any[] = usersList.map(user => {
@@ -303,8 +302,8 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
         }
         return true;
       });
-    } else if (usersRoleFilter && !q) {
-      // Si hay un rol seleccionado pero NO hay búsqueda ni filtro de fecha,
+    } else if (!q) {
+      // Si NO hay búsqueda ni filtro de fecha,
       // solo traer los datos de los últimos 7 días por defecto
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -327,7 +326,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
 
   // Indicadores de "datos de los últimos 7 días" para las secciones
   // Se muestra solo cuando el filtro de 7 días por defecto está activo (sin búsqueda ni filtro de fecha)
-  const isShowingLast7DaysUsers = Boolean(usersRoleFilter && !usersSearch.trim() && !usersDateRangeFilter.from && !usersDateRangeFilter.to);
+  const isShowingLast7DaysUsers = Boolean(!usersSearch.trim() && !usersDateRangeFilter.from && !usersDateRangeFilter.to);
   const isShowingLast7DaysPayments = Boolean(!paymentsSearch.trim() && !paymentsDateRangeFilter.from && !paymentsDateRangeFilter.to && !paymentsAmountRangeFilter.from && !paymentsAmountRangeFilter.to);
   const isShowingLast7DaysCerts = Boolean(!certificatesSearch.trim() && !certificatesDateRangeFilter.from && !certificatesDateRangeFilter.to);
 
@@ -3386,13 +3385,6 @@ const defaultFromDate = new Date();
               )}
 
               <Card>
-                {!hasAnyUserFilter ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500 min-h-[300px]">
-                    <Search className="h-10 w-10 text-gray-300 mb-3" />
-                    <p className="text-sm font-medium">Aplique uno o más filtros para visualizar usuarios</p>
-                  </div>
-                ) : (
-                  <>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -3527,8 +3519,6 @@ const defaultFromDate = new Date();
                       </Button>
                     </div>
                   </div>
-                )}
-                </>
                 )}
               </Card>
             </div>
